@@ -1,0 +1,4 @@
+ERP/config.php
+*.bak
+.DS_Store
+Thumbs.db
