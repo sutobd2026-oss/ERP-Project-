@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/sutobd/public_html/ERP/
+    - /bin/cp -R ERP/. $DEPLOYPATH
