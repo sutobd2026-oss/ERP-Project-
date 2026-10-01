@@ -490,9 +490,8 @@ function render_inline_creation_modals(): void {
     })();
     </script>
 
-    /* v2 fallback: make inline Add Party/Add Product reliable on both /ERP and
-       sense.suto.bd root deployments, including sale-new?edit=... pages. */
     <script>
+    // v2 fallback: make inline Add Party/Add Product reliable on both /ERP and sense.suto.bd root deployments, including sale-new?edit=... pages.
     (function(){
       const appRoot = location.pathname.startsWith('/ERP/') ? '/ERP/' : '/';
       const abs = p => new URL(appRoot + String(p).replace(/^\/+/,''), location.origin).href;
