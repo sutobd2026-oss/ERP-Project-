@@ -4,6 +4,13 @@ if($route==='dashboard'){
     page_start('Home');
     $cid=(int)$u['company_id'];
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
+    $dashboardMoney=function(float $amount)use($currency):string{
+        $formatted=number_format($amount,2,'.',',');
+        $parts=explode('.',$formatted);
+        $whole=$parts[0];
+        $dec=$parts[1]??'00';
+        return '<span class="dash-money"><span class="dash-money-main">'.e($currency.$whole).'</span><span class="dash-money-dec">.'.e($dec).'</span></span>';
+    };
     $rangeOptions=[
         'this_month'=>'This Month',
         'last_month'=>'Last Month',
@@ -179,7 +186,7 @@ if($route==='dashboard'){
       <div class="cards-top">
         <div class="sales-card">
           <div class="card-head"><h3>▱ Sale</h3><?=$rangeForm('sale_range',$saleRange,'expense_range',$expenseRange)?></div>
-          <div class="big-money"><?=money($saleData['total'],$currency)?></div>
+          <div class="big-money"><?=$dashboardMoney((float)$saleData['total'])?></div>
           <div class="subtle">Total Sale (<?=e($saleRangeLabel)?>)</div>
           <div class="growth <?= $saleGrowth<0?'negative':'' ?>"><?=($saleGrowth>=0?'↑ ':'↓ ').number_format(abs($saleGrowth),2)?> % <span class="subtle">Growth vs previous period</span></div>
           <div class="chart dashboard-chart-wrap"><?= $chartSvg($saleData['values'],620,170,'#10b981') ?><div class="chart-baseline"></div></div>
@@ -187,7 +194,7 @@ if($route==='dashboard'){
         </div>
         <div class="expense-card">
           <div class="card-head"><h3>▤ Expenses</h3><?=$rangeForm('expense_range',$expenseRange,'sale_range',$saleRange)?></div>
-          <div class="big-money"><?=money($expenseData['total'],$currency)?></div>
+          <div class="big-money"><?=$dashboardMoney((float)$expenseData['total'])?></div>
           <div class="subtle">Total Expenses (<?=e($expenseRangeLabel)?>)</div>
           <div class="chart dashboard-chart-wrap expense-chart"><?= $chartSvg($expenseData['values'],460,150,'#10b981') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($expenseData))?></div>
@@ -196,27 +203,27 @@ if($route==='dashboard'){
       <div class="mid-cards">
         <div class="metric-card receivable-card">
           <div class="label" style="color:#16a34a">↓ You'll Receive</div>
-          <div class="value"><?=money((float)$receive,$currency)?></div>
+          <div class="value"><?=$dashboardMoney((float)$receive)?></div>
           <div class="party-balance-list">
             <?php $receivableRows=array_values(array_filter($partyBalanceRows,static fn($r)=>(float)$r['balance']>0)); $rShown=0; foreach($receivableRows as $pr): if($rShown>=4) break; $rShown++; ?>
-              <a class="party-balance-row" href="<?=e(url('parties?id='.(int)$pr['id']))?>"><span><?=e($pr['name'])?></span><strong><?=money((float)$pr['balance'],$currency)?></strong></a>
+              <a class="party-balance-row" href="<?=e(url('parties?id='.(int)$pr['id']))?>"><span><?=e($pr['name'])?></span><strong><?=$dashboardMoney((float)$pr['balance'])?></strong></a>
             <?php endforeach; ?>
             <?php $rMore=max(0,count($receivableRows)-$rShown); if($rMore>0): ?><div class="party-more">+ <?=$rMore?> More</div><?php elseif(!$rShown): ?><div class="empty">You don't have any pending amount to be received</div><?php endif; ?>
           </div>
         </div>
         <div class="metric-card payable-card">
           <div class="label" style="color:#ef4444">↑ You'll Pay</div>
-          <div class="value"><?=money((float)$pay,$currency)?></div>
+          <div class="value"><?=$dashboardMoney((float)$pay)?></div>
           <div class="party-balance-list">
             <?php $payableRows=array_values(array_filter($partyBalanceRows,static fn($r)=>(float)$r['balance']<0)); $pShown=0; foreach($payableRows as $pr): if($pShown>=4) break; $pShown++; ?>
-              <a class="party-balance-row" href="<?=e(url('parties?id='.(int)$pr['id']))?>"><span><?=e($pr['name'])?></span><strong class="payable-amount"><?=money(abs((float)$pr['balance']),$currency)?></strong></a>
+              <a class="party-balance-row" href="<?=e(url('parties?id='.(int)$pr['id']))?>"><span><?=e($pr['name'])?></span><strong class="payable-amount"><?=$dashboardMoney(abs((float)$pr['balance']))?></strong></a>
             <?php endforeach; ?>
             <?php $pMore=max(0,count($payableRows)-$pShown); if($pMore>0): ?><div class="party-more">+ <?=$pMore?> More</div><?php elseif(!$pShown): ?><div class="empty">You don't have any pending amount to be paid</div><?php endif; ?>
           </div>
         </div>
-        <div class="metric-card"><div class="label">🛒 Purchase <span class="subtle">This Month</span></div><div class="value"><?=money($purchase,$currency)?></div><div class="empty"><?= $purchase>0?'Purchase transactions entered this month.':'You have no purchased items entered for selected time.' ?></div></div>
+        <div class="metric-card"><div class="label">🛒 Purchase <span class="subtle">This Month</span></div><div class="value"><?=$dashboardMoney((float)$purchase)?></div><div class="empty"><?= $purchase>0?'Purchase transactions entered this month.':'You have no purchased items entered for selected time.' ?></div></div>
       </div>
-      <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Recent Transactions</h2><a href="<?=e(url('transactions'))?>">View all</a></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Total</th><th>Due</th></tr></thead><tbody><?php $st=db()->prepare('SELECT txn_date,document_no,txn_type,total,due FROM transactions WHERE company_id=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 8');$st->execute([$cid]);foreach($st as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['txn_type'])))?></td><td><?=money((float)$r['total'])?></td><td><?=money((float)$r['due'])?></td></tr><?php endforeach;if(!$st->rowCount()):?><tr><td colspan="5" class="subtle">No recent transactions.</td></tr><?php endif;?></tbody></table></div></div>
+      <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Recent Transactions</h2><a href="<?=e(url('transactions'))?>">View all</a></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Total</th><th>Due</th></tr></thead><tbody><?php $st=db()->prepare('SELECT txn_date,document_no,txn_type,total,due FROM transactions WHERE company_id=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 8');$st->execute([$cid]);foreach($st as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['txn_type'])))?></td><td><?=$dashboardMoney((float)$r['total'])?></td><td><?=$dashboardMoney((float)$r['due'])?></td></tr><?php endforeach;if(!$st->rowCount()):?><tr><td colspan="5" class="subtle">No recent transactions.</td></tr><?php endif;?></tbody></table></div></div>
       <?php
       $dashUpdates=[];
       try{
@@ -239,15 +246,15 @@ if($route==='dashboard'){
     <aside class="right-stack">
       <div class="privacy"><span>Privacy</span><button type="button" class="privacy-toggle" id="privacyToggle" aria-pressed="false"><span class="privacy-dot"></span><span class="privacy-state">Off</span></button></div>
       <div class="dashboard-sensitive-right dashboard-blur-target">
-        <div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=money($stockValue,$currency)?></div></div>
-        <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value" style="color:#10b981"><?=money($cash,$currency)?></div></a>
+        <div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
+        <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value" style="color:#10b981"><?=$dashboardMoney((float)$cash)?></div></a>
         <div class="right-head">Stock Inventory</div><div class="right-card low"><div class="title">Low Stocks</div><?php if($low):foreach($low as $l):?><div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span><?=e($l['name'])?></span><span style="color:#ef4444"><?=number_format((float)$l['stock'],0)?></span></div><?php endforeach;else:?><div class="subtle" style="margin-top:10px">No low stock items.</div><?php endif;?></div>
         <div class="right-head">Cash & Bank</div><div class="right-card"><div class="title">Bank Accounts</div><div class="value"><?=(int)db()->query('SELECT COUNT(*) FROM bank_accounts WHERE company_id='.(int)$cid)->fetchColumn()?></div></div>
         <div class="right-card"><div class="title">Loan Accounts</div><div class="value">0</div></div>
-        <div class="right-card"><div class="title">Sale</div><div class="value"><?=money($saleData['total'],$currency)?></div></div>
+        <div class="right-card"><div class="title">Sale</div><div class="value"><?=$dashboardMoney((float)$saleData['total'])?></div></div>
         <div class="right-card"><div class="title">Sale Orders</div><div class="value"><?php $st=db()->prepare('SELECT COUNT(*) FROM transactions WHERE company_id=? AND txn_type="sale_order" AND deleted_at IS NULL');$st->execute([$cid]);echo (int)$st->fetchColumn();?></div></div>
         <div class="right-card"><div class="title">Delivery Challan</div><div class="value"><?php $st=db()->prepare('SELECT COUNT(*) FROM transactions WHERE company_id=? AND txn_type="delivery_challan" AND deleted_at IS NULL');$st->execute([$cid]);echo (int)$st->fetchColumn();?></div></div>
-        <div class="right-card"><div class="title">Purchase</div><div class="value"><?=money($purchase,$currency)?></div></div>
+        <div class="right-card"><div class="title">Purchase</div><div class="value"><?=$dashboardMoney((float)$purchase)?></div></div>
       </div>
     </aside>
   </div>
