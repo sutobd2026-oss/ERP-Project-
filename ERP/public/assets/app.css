@@ -1253,3 +1253,23 @@ body:has(.purchase-entry-form) input[type="number"]::-webkit-outer-spin-button{m
 .entry-table th:nth-child(7),.entry-table td:nth-child(7){width:42px}
 .entry-table td:nth-child(2) .item-picker-cell{min-width:0}
 .entry-table td:nth-child(3) .qty{width:100%;min-width:0}
+
+/* Keep non-item transaction columns pinned to the top of tall item rows. */
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(3),
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(4),
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(5),
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(6){
+  vertical-align:top!important;
+  padding-top:7px!important;
+}
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(3) .qty,
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(5) .price,
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(6) .line-disc{
+  margin-top:0!important;
+  display:block;
+}
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(4) .unit-label,
+body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(6) .amount{
+  display:block;
+  padding-top:7px;
+}
