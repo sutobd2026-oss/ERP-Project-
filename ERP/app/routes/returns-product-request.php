@@ -411,7 +411,8 @@ function delivery_challan_new(): void {
       <div class="form-group"><label>Add Description</label><textarea name="notes" rows="3" placeholder="Optional delivery note"><?=e($editMode?(string)($editTx['notes']??''):'')?></textarea></div>
       <div class="form-footer" style="margin:0 -16px -16px"><a class="btn" href="<?=e(url('delivery-challans'))?>">Cancel</a><button type="submit" name="save_and_print" value="1" class="btn">Save and Print</button><button class="btn primary"><?= $editMode?'Update':'Save' ?></button></div>
     </form>
-$printCompany = ['name'=>(string)($u['company_name']??''),'phone'=>'','email'=>'','address'=>''];
+    <?php
+    $printCompany = ['name'=>(string)($u['company_name']??''),'phone'=>'','email'=>'','address'=>''];
     try{
         $pcs=$pdo->prepare('SELECT name,phone,email,address,logo_path FROM companies WHERE id=? LIMIT 1');
         $pcs->execute([$cid]);
