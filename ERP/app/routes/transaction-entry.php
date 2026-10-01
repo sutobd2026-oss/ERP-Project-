@@ -287,7 +287,7 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $iid=(int)$iid; $q=(float)($qtys[$i]??0); $p=(float)($prices[$i]??0); $d=max(0,(float)($discs[$i]??0)); if($iid<=0||$q<=0)continue;
             $rowKey=trim((string)($rowKeys[$i]??'')); if($rowKey==='')$rowKey='row-'.$i.'-'.bin2hex(random_bytes(4)); if(isset($rowKeySeen[$rowKey]))throw new RuntimeException('Duplicate bundle row key.'); $rowKeySeen[$rowKey]=true;
             $parentKey=trim((string)($parentKeys[$i]??'')); $isBundleChild=((int)($childFlags[$i]??0)===1);
-            if($isBundleChild&&!$isSale)throw new RuntimeException('Bundle free items are available only on sales.');
+            if($isBundleChild && $type!=='sale')throw new RuntimeException('Bundle free items are available only on sales.');
             $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1 LIMIT 1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');
             $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
         }
