@@ -1277,3 +1277,10 @@ body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(6) .amou
 
 /* Global font: Roboto */
 html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!important}
+
+/* Dashboard money formatting: keep decimals smaller and muted. */
+.dash-money{display:inline-flex;align-items:baseline;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dash-money-main{color:inherit;font-size:1em;font-weight:inherit}
+.dash-money-dec{font-size:.62em;color:#a7b0bc;font-weight:500;letter-spacing:.01em}
+.big-money .dash-money-dec{font-size:.6em}
+.metric-card .value .dash-money-dec,.right-card .value .dash-money-dec{font-size:.62em}
