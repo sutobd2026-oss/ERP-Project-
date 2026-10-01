@@ -1,0 +1,75 @@
+
+/* Suto Accounting v83 - definitive Cash transaction actions */
+.cash-action-v83{
+  width:54px!important;
+  min-width:54px!important;
+  position:relative!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+  overflow:visible!important;
+}
+.cash-action-button-v83{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:30px!important;
+  height:30px!important;
+  margin:0 auto!important;
+  padding:0!important;
+  border:1px solid #cfd8e3!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#334155!important;
+  cursor:pointer!important;
+  font-size:18px!important;
+  line-height:28px!important;
+  box-sizing:border-box!important;
+}
+.cash-action-button-v83:hover,
+.cash-action-button-v83[aria-expanded="true"]{
+  background:#eef4ff!important;
+  border-color:#bfd3ff!important;
+}
+.cash-action-menu-v83{
+  display:none!important;
+  position:fixed!important;
+  min-width:160px!important;
+  width:160px!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  border:1px solid #dbe3ee!important;
+  border-radius:8px!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.20)!important;
+  z-index:2147483647!important;
+}
+.cash-action-menu-v83.cash-open{
+  display:block!important;
+}
+.cash-action-menu-v83 a,
+.cash-action-menu-v83 button{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  display:block!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 11px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  text-align:left!important;
+  text-decoration:none!important;
+  font:inherit!important;
+  cursor:pointer!important;
+  white-space:nowrap!important;
+}
+.cash-action-menu-v83 a:hover,
+.cash-action-menu-v83 button:hover{
+  background:#f3f6fb!important;
+}
+.cash-action-menu-v83 form{margin:0!important;padding:0!important}

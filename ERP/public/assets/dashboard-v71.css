@@ -1,0 +1,17 @@
+
+/* Suto Accounting v71 - dashboard card links */
+.dashboard-card-link{
+  display:block;
+  text-decoration:none;
+  color:inherit;
+  cursor:pointer;
+}
+.dashboard-card-link:hover{
+  text-decoration:none;
+  color:inherit;
+  transform:translateY(-1px);
+}
+.dashboard-card-link:focus-visible{
+  outline:2px solid #2563eb;
+  outline-offset:2px;
+}

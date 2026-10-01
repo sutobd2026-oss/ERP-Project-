@@ -1,0 +1,8 @@
+
+/* Suto Accounting v58 - Item module next polish */
+.item-detail-barcode{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e0e6ed;border-radius:8px;background:#f8fafc;font-size:12px}
+.item-detail-barcode b{font-variant-numeric:tabular-nums;color:#334155}
+.item-master-actions form{margin:0}
+@media(max-width:700px){
+  .items-workspace{grid-template-columns:1fr}
+}

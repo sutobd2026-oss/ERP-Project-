@@ -1,0 +1,25 @@
+
+/* Suto Accounting v66 - transaction row action menu */
+.item-transactions .tx-more{width:48px;min-width:48px;text-align:center;position:relative;overflow:visible!important}
+.item-transactions .tx-action-trigger-v66{
+  width:32px;height:32px;padding:0;border:1px solid transparent;background:transparent;
+  border-radius:7px;cursor:pointer;font-size:18px;line-height:30px;color:#334155;
+}
+.item-transactions .tx-action-trigger-v66:hover,
+.item-transactions .tx-action-trigger-v66[aria-expanded="true"]{
+  background:#eef4ff;border-color:#d9e5ff;
+}
+.tx-action-menu-v66{
+  min-width:154px;padding:6px;background:#fff!important;color:#1f2937!important;
+  border:1px solid #dbe3ee;border-radius:9px;
+  box-shadow:0 14px 36px rgba(15,23,42,.18);
+}
+.tx-action-menu-v66 a,
+.tx-action-menu-v66 button{
+  display:block;width:100%;box-sizing:border-box;padding:9px 11px;margin:0;
+  border:0;border-radius:6px;background:#fff!important;color:#1f2937!important;
+  text-align:left;text-decoration:none;font:inherit;cursor:pointer;
+}
+.tx-action-menu-v66 a:hover,
+.tx-action-menu-v66 button:hover{background:#f3f6fb!important}
+.tx-action-menu-v66 form{margin:0}

@@ -1,0 +1,71 @@
+
+/* Suto Accounting v81 - native cash transaction menu */
+.cash-row-action-v81{
+  position:relative!important;
+  overflow:visible!important;
+}
+.cash-menu-v81{
+  position:relative!important;
+  display:inline-block!important;
+}
+.cash-menu-v81>summary{
+  list-style:none!important;
+}
+.cash-menu-v81>summary::-webkit-details-marker{
+  display:none!important;
+}
+.cash-dots-v81{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  margin:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+  border:1px solid #cfd8e3!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#334155!important;
+  cursor:pointer!important;
+  font-size:18px!important;
+  line-height:28px!important;
+}
+.cash-dots-v81:hover{
+  background:#eef4ff!important;
+  border-color:#bfd3ff!important;
+}
+.cash-menu-panel-v81{
+  position:absolute!important;
+  top:calc(100% + 6px)!important;
+  right:0!important;
+  z-index:99999!important;
+  display:block!important;
+  min-width:170px!important;
+  width:170px!important;
+  padding:5px!important;
+  box-sizing:border-box!important;
+  background:#fff!important;
+  border:1px solid #dbe3ee!important;
+  border-radius:8px!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.18)!important;
+}
+.cash-menu-panel-v81 a{
+  display:block!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 11px!important;
+  margin:0!important;
+  background:#fff!important;
+  border:0!important;
+  border-radius:6px!important;
+  color:#1f2937!important;
+  text-align:left!important;
+  text-decoration:none!important;
+  white-space:nowrap!important;
+}
+.cash-menu-panel-v81 a:hover{
+  background:#f3f6fb!important;
+}

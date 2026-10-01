@@ -1,0 +1,12 @@
+
+/* Suto Accounting v69 - Item completion polish */
+.item-ledger-head{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+.item-ledger-head .subtle{display:block;margin-top:3px}
+.ledger-summary{display:flex;gap:8px;align-items:center}
+.ledger-plus{color:#16803a;font-weight:700}
+.ledger-minus{color:#c62828;font-weight:700}
+.item-ledger-panel .panel-head{gap:12px;align-items:center}
+.item-ledger-panel .panel-head .input{min-width:220px}
+@media print{
+  .item-ledger-panel .panel-head .input,.item-ledger-panel .panel-head button,.page-title a{display:none!important}
+}

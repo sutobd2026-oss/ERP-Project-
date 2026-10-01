@@ -1,0 +1,58 @@
+
+/* Suto Accounting v80 - Cash row menu layout */
+.cash-row-action-v80{
+  width:54px!important;
+  min-width:54px!important;
+  text-align:center!important;
+  position:relative!important;
+  overflow:visible!important;
+}
+.cash-row-dots-v80{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  margin:0 auto!important;
+  border:1px solid #cfd8e3!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#334155!important;
+  cursor:pointer!important;
+  font-size:18px!important;
+  line-height:28px!important;
+}
+.cash-row-dots-v80:hover,
+.cash-row-dots-v80[aria-expanded="true"]{
+  background:#eef4ff!important;
+  border-color:#bfd3ff!important;
+}
+.cash-row-menu-v80{
+  display:none!important;
+  position:fixed!important;
+  min-width:170px!important;
+  padding:5px!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  border:1px solid #dbe3ee!important;
+  border-radius:8px!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.20)!important;
+  z-index:2147483647!important;
+}
+.cash-row-menu-v80.open{display:block!important}
+.cash-row-menu-v80 a{
+  display:block!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 11px!important;
+  margin:0!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  border-radius:6px!important;
+  text-decoration:none!important;
+  white-space:nowrap!important;
+}
+.cash-row-menu-v80 a:hover{background:#f3f6fb!important}

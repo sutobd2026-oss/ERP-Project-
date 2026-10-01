@@ -1,0 +1,121 @@
+<?php
+if($route==='dashboard'){
+    page_start('Home');
+    $cid=(int)$u['company_id'];
+    $month=date('Y-m');
+    $monthStart=$month.'-01';
+    $today=date('Y-m-d');
+    $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
+
+    $sumMonth=function(string $type)use($cid,$month){
+        $st=db()->prepare('SELECT COALESCE(SUM(total),0) FROM transactions WHERE company_id=? AND txn_type=? AND DATE_FORMAT(txn_date,"%Y-%m")=? AND deleted_at IS NULL');
+        $st->execute([$cid,$type,$month]);
+        return (float)$st->fetchColumn();
+    };
+    $sale=$sumMonth('sale');
+    $purchase=$sumMonth('purchase');
+    $expense=$sumMonth('expense');
+
+    // Month growth: compare current month-to-date with the same number of days in the previous month.
+    $dayOfMonth=(int)date('j');
+    $prevMonth=date('Y-m',strtotime($monthStart.' -1 month'));
+    $prevMonthStart=$prevMonth.'-01';
+    $prevMonthEnd=min((int)date('t',strtotime($prevMonthStart)),$dayOfMonth);
+    $prevMonthCutoff=$prevMonth.'-'.str_pad((string)$prevMonthEnd,2,'0',STR_PAD_LEFT);
+    $st=db()->prepare('SELECT COALESCE(SUM(total),0) FROM transactions WHERE company_id=? AND txn_type="sale" AND deleted_at IS NULL AND txn_date BETWEEN ? AND ?');
+    $st->execute([$cid,$prevMonthStart,$prevMonthCutoff]);
+    $prevSale=(float)$st->fetchColumn();
+    $saleGrowth=$prevSale>0?(($sale-$prevSale)/$prevSale*100):($sale>0?100:0);
+
+    // Daily sales/expense series for the current month.
+    $days=[];
+    $daysInMonth=(int)date('t',strtotime($monthStart));
+    for($d=1;$d<=$daysInMonth;$d++){
+        $days[]=sprintf('%s-%02d',$month,$d);
+    }
+    $series=function(string $type)use($cid,$monthStart,$daysInMonth){
+        $st=db()->prepare('SELECT DAY(txn_date) d, COALESCE(SUM(total),0) total FROM transactions WHERE company_id=? AND txn_type=? AND txn_date BETWEEN ? AND LAST_DAY(?) AND deleted_at IS NULL GROUP BY DAY(txn_date) ORDER BY DAY(txn_date)');
+        $st->execute([$cid,$type,$monthStart,$monthStart]);
+        $out=array_fill(1,$daysInMonth,0.0);
+        foreach($st as $r)$out[(int)$r['d']]=(float)$r['total'];
+        return $out;
+    };
+    $saleSeries=$series('sale');
+    $expenseSeries=$series('expense');
+
+    $sparkline=function(array $values,string $line='#10b981',string $fill='rgba(16,185,129,.12)',int $w=520,int $h=150):string{
+        $n=count($values); if($n<2)return '';
+        $max=max($values); $min=min($values); $range=$max-$min;
+        if($range<=0)$range=1;
+        $left=8;$right=8;$top=10;$bottom=24;
+        $pw=$w-$left-$right;$ph=$h-$top-$bottom;
+        $pts=[];
+        foreach($values as $i=>$v){
+            $x=$left+($n===1?0:($i/($n-1))*$pw);
+            $y=$top+($ph-(($v-$min)/$range)*$ph);
+            $pts[]=round($x,1).','.round($y,1);
+        }
+        $firstX=$left;$lastX=$left+$pw;$baseY=$top+$ph;
+        $poly=implode(' ',$pts);
+        $area=$firstX.','.$baseY.' '.$poly.' '.$lastX.','.$baseY;
+        $gradId='g'.substr(md5($line.$fill.$w.$h.implode(',',$values)),0,10);
+        return '<svg class="dashboard-chart-svg" viewBox="0 0 '.$w.' '.$h.'" preserveAspectRatio="none" aria-hidden="true">'
+          .'<defs><linearGradient id="'.$gradId.'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'.$line.'" stop-opacity="0.18"/><stop offset="100%" stop-color="'.$line.'" stop-opacity="0.02"/></linearGradient></defs>'
+          .'<polygon points="'.$area.'" fill="url(#'.$gradId.')"></polygon>'
+          .'<polyline points="'.$poly.'" fill="none" stroke="'.$line.'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></polyline>'
+          .'</svg>';
+    };
+
+    $st=db()->prepare('SELECT COALESCE(SUM(CASE WHEN txn_type="sale" THEN due WHEN txn_type="payment_in" THEN -total ELSE 0 END),0),COALESCE(SUM(CASE WHEN txn_type="purchase" THEN due WHEN txn_type="payment_out" THEN -total ELSE 0 END),0) FROM transactions WHERE company_id=? AND deleted_at IS NULL');
+    $st->execute([$cid]);
+    [$receive,$pay]=$st->fetch(PDO::FETCH_NUM);
+    $receive=max(0,(float)$receive);$pay=max(0,(float)$pay);
+    $cash=company_cash_balance($cid);
+
+    $st=db()->prepare('SELECT i.name, COALESCE(SUM(sm.quantity),0) stock FROM items i LEFT JOIN stock_movements sm ON sm.item_id=i.id AND sm.company_id=i.company_id WHERE i.company_id=? AND i.item_type="product" AND i.active=1 GROUP BY i.id HAVING stock<=i.low_stock_limit ORDER BY stock,i.name LIMIT 5');
+    $st->execute([$cid]);$low=$st->fetchAll();
+    $st=db()->prepare('SELECT COALESCE(SUM(COALESCE(sm.qty,0)*COALESCE(NULLIF(i.purchase_price,0),(SELECT ti.unit_price FROM transaction_items ti JOIN transactions pt ON pt.id=ti.transaction_id WHERE ti.item_id=i.id AND pt.company_id=i.company_id AND pt.txn_type="purchase" AND pt.deleted_at IS NULL ORDER BY pt.txn_date DESC,pt.id DESC,ti.id DESC LIMIT 1),0)),0) FROM items i LEFT JOIN (SELECT item_id,SUM(quantity) qty FROM stock_movements WHERE company_id=? GROUP BY item_id) sm ON sm.item_id=i.id WHERE i.company_id=? AND i.item_type="product" AND i.active=1');
+    $st->execute([$cid,$cid]);$stockValue=(float)$st->fetchColumn();
+
+    // Detail lists for the three lower cards.
+    $st=$pdo=db();
+    $st=$pdo->prepare('SELECT p.name,SUM(GREATEST(t.due,0)) amount FROM transactions t JOIN parties p ON p.id=t.party_id WHERE t.company_id=? AND t.deleted_at IS NULL AND t.txn_type="sale" AND t.due>0 GROUP BY p.id ORDER BY amount DESC LIMIT 3');
+    $st->execute([$cid]);$receiveList=$st->fetchAll();
+    $st=$pdo->prepare('SELECT p.name,SUM(GREATEST(t.due,0)) amount FROM transactions t JOIN parties p ON p.id=t.party_id WHERE t.company_id=? AND t.deleted_at IS NULL AND t.txn_type="purchase" AND t.due>0 GROUP BY p.id ORDER BY amount DESC LIMIT 3');
+    $st->execute([$cid]);$payList=$st->fetchAll();
+    $st=$pdo->prepare('SELECT ti.description name,SUM(ti.line_total) amount FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE t.company_id=? AND t.txn_type="purchase" AND t.deleted_at IS NULL AND DATE_FORMAT(t.txn_date,"%Y-%m")=? GROUP BY ti.description ORDER BY amount DESC LIMIT 3');
+    $st->execute([$cid,$month]);$purchaseList=$st->fetchAll();
+?>
+<div class="page-title"><div><h1>Home</h1><p>Business overview for <?=e($u['company_name'])?></p></div><a class="btn" href="<?=e(url('logout'))?>">Logout</a></div>
+<div class="dashboard-grid">
+<section>
+  <div class="cards-top">
+    <div class="sales-card dashboard-chart-card">
+      <div class="card-head"><h3>▱ Sale</h3><button class="range" type="button">This Month&nbsp;⌄</button></div>
+      <div class="dashboard-chart-main">
+        <div class="dashboard-chart-summary">
+          <div class="big-money"><?=money($sale,$currency)?></div>
+          <div class="subtle">Total Sale (<?=e(date('M'))?>)</div>
+          <div class="growth <?= $saleGrowth<0?'negative':'' ?>"><?=($saleGrowth>=0?'↑ ':'↓ ').number_format(abs($saleGrowth),2)?> % <span class="subtle">This Month Growth</span></div>
+        </div>
+        <div class="chart dashboard-chart-wrap"><?= $sparkline($saleSeries,'#10b981','rgba(16,185,129,.12)',620,170) ?><div class="chart-baseline"></div></div>
+      </div>
+      <div class="chart-report">Report: From <?=e(date('d M',strtotime($monthStart)))?> to <?=e(date('d M'))?></div>
+    </div>
+    <div class="expense-card dashboard-chart-card">
+      <div class="card-head"><h3>▣ Expenses</h3><button class="range" type="button">This Month&nbsp;⌄</button></div>
+      <div class="big-money"><?=money($expense,$currency)?></div>
+      <div class="chart dashboard-chart-wrap expense-chart"><?= $sparkline($expenseSeries,'#10b981','rgba(16,185,129,.10)',460,150) ?><div class="chart-baseline"></div></div>
+      <div class="chart-report">Report: From <?=e(date('d M',strtotime($monthStart)))?> to <?=e(date('d M'))?></div>
+    </div>
+  </div>
+  <div class="mid-cards">
+    <div class="metric-card dashboard-detail-card"><div class="label" style="color:#16a34a">↓ You'll Receive</div><div class="value"><?=money($receive,$currency)?></div><?php if($receiveList):foreach($receiveList as $r):?><div class="dashboard-detail-row"><span><?=e($r['name'])?></span><span><?=number_format((float)$r['amount'],0)?></span></div><?php endforeach; else:?><div class="empty">You don't have any pending amount to be received</div><?php endif; ?></div>
+    <div class="metric-card dashboard-detail-card"><div class="label" style="color:#ef4444">↑ You'll Pay</div><div class="value"><?=money($pay,$currency)?></div><?php if($payList):foreach($payList as $r):?><div class="dashboard-detail-row red"><span><?=e($r['name'])?></span><span><?=number_format((float)$r['amount'],0)?></span></div><?php endforeach; else:?><div class="empty">You don't have any pending amount to be paid</div><?php endif; ?></div>
+    <div class="metric-card dashboard-detail-card"><div class="label">🛒 Purchase <span class="subtle">This Month&nbsp;⌄</span></div><div class="value"><?=money($purchase,$currency)?></div><?php if($purchaseList):foreach($purchaseList as $r):?><div class="dashboard-detail-row"><span><?=e($r['name'])?></span><span><?=number_format((float)$r['amount'],0)?></span></div><?php endforeach; else:?><div class="empty">You have no purchased items entered for selected time.</div><?php endif; ?></div>
+  </div>
+  <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Recent Transactions</h2><a href="<?=e(url('sales'))?>">View all</a></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Total</th><th>Due</th></tr></thead><tbody><?php $st=$pdo->prepare('SELECT txn_date,document_no,txn_type,total,due FROM transactions WHERE company_id=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 8');$st->execute([$cid]);$recentCount=0;foreach($st as $r):$recentCount++;?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['txn_type'])))?></td><td><?=money((float)$r['total'])?></td><td><?=money((float)$r['due'])?></td></tr><?php endforeach;if(!$recentCount):?><tr><td colspan="5" class="subtle">No recent transactions.</td></tr><?php endif;?></tbody></table></div></div>
+</section>
+<aside class="right-stack"><div class="privacy"><span>Privacy</span><span>◯</span></div><div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=money($stockValue)?></div></div><a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value" style="color:#10b981"><?=money($cash)?></div></a><div class="right-head">Stock Inventory</div><div class="right-card low"><div class="title">Low Stocks</div><?php if($low):foreach($low as $l):?><div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span><?=e($l['name'])?></span><span style="color:#ef4444"><?=number_format((float)$l['stock'],0)?></span></div><?php endforeach;else:?><div class="subtle" style="margin-top:10px">No low stock items.</div><?php endif;?></div><div class="right-head">Cash & Bank</div><div class="right-card"><div class="title">Bank Accounts</div><div class="value"><?=(int)$pdo->query('SELECT COUNT(*) FROM bank_accounts WHERE company_id='.(int)$cid)->fetchColumn()?></div></div><div class="right-card"><div class="title">Loan Accounts</div><div class="value">0</div></div><div class="right-card"><div class="title">Sale</div><div class="value"><?=money($sale)?></div></div><div class="right-card"><div class="title">Sale Orders</div><div class="value"><?php $st=$pdo->prepare('SELECT COUNT(*) FROM transactions WHERE company_id=? AND txn_type="sale_order" AND deleted_at IS NULL');$st->execute([$cid]);echo (int)$st->fetchColumn();?></div></div><div class="right-card"><div class="title">Delivery Challan</div><div class="value"><?php $st=$pdo->prepare('SELECT COUNT(*) FROM transactions WHERE company_id=? AND txn_type="delivery_challan" AND deleted_at IS NULL');$st->execute([$cid]);echo (int)$st->fetchColumn();?></div></div><div class="right-card"><div class="title">Purchase</div><div class="value"><?=money($purchase)?></div></div></aside>
+</div><?php page_end();exit;
+}

@@ -1,0 +1,6 @@
+
+/* v62 - Item transaction document number column */
+.tx-doc-link{font-weight:600;text-decoration:none}
+.tx-doc-link:hover{text-decoration:underline}
+.item-transactions th:nth-child(2), .item-transactions td:nth-child(2){white-space:nowrap}
+.item-transactions th:nth-child(3), .item-transactions td:nth-child(3){white-space:nowrap}

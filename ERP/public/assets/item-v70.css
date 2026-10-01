@@ -1,0 +1,5 @@
+/* Suto Accounting v70 - Item QA polish */
+.item-ledger-head,.item-detail-barcode{box-sizing:border-box}
+.item-ledger-panel .table-wrap,.item-transactions .table-wrap{max-width:100%}
+.item-transactions .tx-action-trigger-v66:focus-visible,.item-master-actions button:focus-visible,.item-master-actions a:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+@media(max-width:640px){.item-ledger-panel .panel-head{align-items:stretch}.item-ledger-panel .panel-head>div{width:100%}.item-ledger-panel .panel-head .input{min-width:0!important;width:100%}}

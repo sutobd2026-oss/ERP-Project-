@@ -1,0 +1,37 @@
+
+/* v55: stock adjustment dialog and edit routing */
+.stock-adjust-dialog{width:min(960px,92vw);background:#fff;border-radius:8px;box-shadow:0 24px 70px rgba(25,42,65,.22);overflow:hidden;border:1px solid #e1e5ea}
+.stock-adjust-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #e5e7eb}
+.stock-adjust-head h2{margin:0;font-size:20px;font-weight:700;color:#243244}
+.stock-adjust-body{padding:18px 22px 10px}
+.stock-adjust-top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #e7eaee;padding-bottom:18px}
+.stock-item-label{margin-bottom:4px}
+.adjustment-date-wrap{min-width:170px}
+.stock-mode-switch{display:flex;align-items:center;gap:10px;margin:8px 0 18px;color:#9aa4b1;font-weight:600}
+.stock-mode{border:0;background:none;padding:4px 0;font:inherit;color:#8f99a7;cursor:pointer}
+.stock-mode.active{color:#1683ee}
+.switch-knob{width:38px;height:22px;border-radius:999px;background:#0d82ea;display:inline-block;position:relative}
+.switch-knob:after{content:"";position:absolute;width:16px;height:16px;top:3px;right:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.stock-adjust-dialog.reduce-mode .switch-knob{background:#ef5350}
+.stock-adjust-dialog.reduce-mode .switch-knob:after{right:auto;left:3px}
+.stock-adjust-grid{display:grid;grid-template-columns:1fr 170px 1.2fr 2fr;gap:14px;align-items:end}
+.stock-adjust-grid .details-field{min-width:0}
+.stock-adjust-grid input{width:100%;box-sizing:border-box}
+.stock-qty-input{font-variant-numeric:tabular-nums}
+.current-stock-strip{margin-top:14px;padding:10px 12px;background:#f7fafc;border:1px solid #edf0f4;border-radius:6px;display:flex;justify-content:space-between;color:#687585;font-size:13px}
+.current-stock-strip strong{color:#243244}
+.stock-adjust-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 22px;border-top:1px solid #e5e7eb;background:#fafbfc}
+.item-detail-top .adjust-btn{border:0;cursor:pointer}
+@media(max-width:900px){.stock-adjust-grid{grid-template-columns:1fr 1fr}.details-field{grid-column:1/-1}.stock-adjust-top{gap:14px;flex-direction:column}.adjustment-date-wrap{width:100%}}
+@media(max-width:620px){.stock-adjust-grid{grid-template-columns:1fr}.stock-mode-switch{flex-wrap:wrap}.stock-adjust-body,.stock-adjust-head,.stock-adjust-footer{padding-left:14px;padding-right:14px}}
+
+/* v55 background overlay fix */
+.modal-backdrop#adjustModal{background:rgba(17,24,39,.58)!important;backdrop-filter:blur(1.5px);}
+.modal-backdrop#adjustModal.show{display:flex!important;}
+.stock-adjust-dialog{position:relative;z-index:81;background:#fff;}
+
+/* v56: guaranteed visible modal backdrop even when ancestor styles override the backdrop background */
+.modal-backdrop#adjustModal{position:fixed!important;inset:0!important;display:none!important;align-items:center!important;justify-content:center!important;padding:24px!important;overflow:auto!important;background:transparent!important;z-index:9990!important;}
+.modal-backdrop#adjustModal.show{display:flex!important;}
+.modal-backdrop#adjustModal::before{content:"";position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0;}
+.modal-backdrop#adjustModal .stock-adjust-dialog{position:relative!important;z-index:1!important;width:min(960px,92vw);max-height:calc(100vh - 48px);overflow:auto;}

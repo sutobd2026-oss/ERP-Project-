@@ -1,0 +1,11 @@
+
+/* Suto Accounting v54 - Item module polish */
+.btn.small{padding:6px 10px;font-size:12px;border-radius:7px}
+.btn.danger{color:#b42318;border-color:#f1b5b1;background:#fff}
+.item-master-row .item-master-actions{width:34px;min-width:34px;display:flex;justify-content:flex-end;align-items:center}
+.item-master-row{grid-template-columns:minmax(0,1fr) 80px 34px}
+.item-master-row .item-master-qty{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.item-master-list{overflow-y:auto;overflow-x:hidden}
+.item-master-main{min-width:0}
+.item-master-name,.item-master-meta{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-ledger-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}

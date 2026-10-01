@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /logout
+Disallow: /platform-login
+Sitemap: https://sense.suto.bd/sitemap.xml

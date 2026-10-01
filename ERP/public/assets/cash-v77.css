@@ -1,0 +1,22 @@
+
+/* Suto Accounting v77 - Cash transaction 3-dot menu */
+.cash-row-actions{position:relative;display:inline-block}
+.cash-row-actions>summary{list-style:none}
+.cash-row-actions>summary::-webkit-details-marker{display:none}
+.cash-row-actions[open] .cash-row-dots{
+  background:#eef4ff;border-color:#cbdcfb;
+}
+.cash-row-menu{
+  position:absolute;right:0;top:calc(100% + 6px);z-index:1000;
+  min-width:150px;padding:5px;
+  background:#fff!important;color:#1f2937!important;
+  border:1px solid #dbe3ee;border-radius:8px;
+  box-shadow:0 12px 30px rgba(15,23,42,.18);
+}
+.cash-row-menu a{
+  display:block;width:100%;box-sizing:border-box;
+  padding:9px 11px;border-radius:6px;
+  background:#fff!important;color:#1f2937!important;
+  text-decoration:none;
+}
+.cash-row-menu a:hover{background:#f3f6fb!important}

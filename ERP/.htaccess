@@ -1,0 +1,19 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Public SEO landing page at the subdomain root only.
+    RewriteRule ^$ landing.html [END]
+
+    # Serve public assets from /assets/... while keeping actual files in /public/assets/.
+    RewriteRule ^assets/(.+)$ public/assets/$1 [L]
+
+    # Never rewrite real files/directories.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # All application routes go to the ERP front controller.
+    RewriteRule ^ public/index.php [QSA,L]
+</IfModule>

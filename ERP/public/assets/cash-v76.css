@@ -1,0 +1,50 @@
+
+/* Suto Accounting v76 - Cash In Hand */
+.cash-page{padding:0}
+.cash-page-head{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  min-height:58px;padding:0 10px 8px 2px;
+}
+.cash-page-head h1{margin:0;font-size:20px;letter-spacing:.02em;font-weight:700;color:#202a36}
+.cash-current{margin-top:2px;font-size:16px;font-weight:600;color:#11b879}
+.cash-adjust-btn{border-radius:7px;padding:9px 16px}
+.cash-transactions-panel{border-radius:4px}
+.cash-panel-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 10px 12px 10px;
+}
+.cash-panel-head h2{margin:0;font-size:15px;letter-spacing:.02em}
+.cash-toolbar{display:flex;align-items:center;gap:10px}
+.cash-search-wrap{
+  display:flex;align-items:center;gap:6px;width:230px;height:34px;
+  border:1px solid #dfe4ea;border-radius:5px;background:#fff;padding:0 9px;color:#7c8796;
+}
+.cash-search-wrap input{border:0;outline:0;width:100%;font-size:13px}
+.cash-table-wrap{max-height:calc(100vh - 170px);overflow:auto}
+.cash-ledger-table{width:100%;min-width:760px;border-collapse:collapse}
+.cash-ledger-table th{
+  background:#fff;color:#657184;font-size:12px;font-weight:600;text-align:left;
+  padding:11px 10px;border-top:1px solid #e5e9ef;border-bottom:1px solid #dfe4ea;
+}
+.cash-ledger-table td{
+  padding:12px 10px;border-bottom:1px solid #eef1f4;font-size:13px;
+  background:#fff;vertical-align:middle;
+}
+.cash-ledger-table tbody tr:nth-child(even) td{background:#fafbfc}
+.cash-ledger-table tbody tr:hover td{background:#f2f8fd}
+.cash-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.cash-dot.in{background:#35d67d}
+.cash-dot.out{background:#e96b6b}
+.cash-in{color:#10b981;font-weight:600}
+.cash-out{color:#ef4444;font-weight:600}
+.cash-row-action{text-align:center;width:52px}
+.cash-row-dots{
+  width:30px;height:30px;border:1px solid transparent;border-radius:6px;
+  background:#fff;color:#334155;cursor:pointer;font-size:18px;line-height:28px;
+}
+.cash-row-dots:hover{background:#eef4ff;border-color:#cbdcfb}
+.cash-adjust-modal{max-width:520px}
+@media(max-width:700px){
+  .cash-page-head{align-items:flex-start}
+  .cash-search-wrap{width:180px}
+}

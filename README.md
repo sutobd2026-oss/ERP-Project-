@@ -1,5 +1,12 @@
 # Suto Accounting / Sense ERP
 
-Current ERP source snapshot. Private deployment credentials are intentionally excluded from the repository.
+Current application source snapshot from the working ERP project.
 
-See `ERP/config.example.php` for the configuration template.
+## Setup
+1. Copy `ERP/config.example.php` to `ERP/config.php`.
+2. Enter your private MySQL credentials in `ERP/config.php`.
+3. Configure the web server so `ERP/public/index.php` is the front controller.
+4. Keep `ERP/config.php` out of version control.
+
+## Source snapshot
+This repository snapshot intentionally excludes private database credentials and local backup files.

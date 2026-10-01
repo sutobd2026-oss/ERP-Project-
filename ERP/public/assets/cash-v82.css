@@ -1,0 +1,13 @@
+
+/* Suto Accounting v82 - Cash menu and actions */
+.cash-row-action-v81,.cash-row-action-v82{overflow:visible!important}
+.cash-row-menu-v81 form,.cash-row-menu-v82 form{margin:0!important}
+.cash-row-menu-v81 a,.cash-row-menu-v81 button,
+.cash-row-menu-v82 a,.cash-row-menu-v82 button{
+  display:block!important;width:100%!important;box-sizing:border-box!important;
+  padding:9px 11px!important;margin:0!important;border:0!important;border-radius:6px!important;
+  background:#fff!important;color:#1f2937!important;text-align:left!important;
+  text-decoration:none!important;cursor:pointer!important;white-space:nowrap!important;
+}
+.cash-row-menu-v81 a:hover,.cash-row-menu-v81 button:hover,
+.cash-row-menu-v82 a:hover,.cash-row-menu-v82 button:hover{background:#f3f6fb!important}

@@ -1,0 +1,18 @@
+
+/* Suto Accounting v67 - small Item module polish */
+.items-workspace,
+.item-master-list,
+.item-detail-panel{min-width:0}
+.item-master-list{overscroll-behavior:contain}
+.item-transactions{min-width:0}
+.item-transactions .table-wrap{overflow-x:auto}
+.item-transactions table{min-width:760px}
+.item-transactions .tx-action-trigger-v66{flex:0 0 auto}
+.item-transactions td,.item-transactions th{white-space:nowrap}
+.item-transactions td:nth-child(4){max-width:220px;overflow:hidden;text-overflow:ellipsis}
+@media print{
+  .item-master-list,.items-sidebar,.item-actions,.tx-more,
+  .item-transactions .panel-head input{display:none!important}
+  .item-transactions{width:100%!important}
+  .item-transactions table{min-width:0;width:100%}
+}

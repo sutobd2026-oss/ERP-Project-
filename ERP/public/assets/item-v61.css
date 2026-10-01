@@ -1,0 +1,11 @@
+
+/* v61 - Item transaction No. column */
+.item-transactions th:nth-child(2),
+.item-transactions td:nth-child(2){
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.item-transactions td:nth-child(2) a{
+  font-weight:600;
+  text-decoration:none;
+}

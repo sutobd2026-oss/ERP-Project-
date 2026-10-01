@@ -1,0 +1,8 @@
+
+/* v72 - item transaction menu */
+.item-transactions .tx-more{overflow:visible!important}
+.item-transactions .tx-action-menu-v72,
+.item-transactions .tx-action-menu-v72 a,
+.item-transactions .tx-action-menu-v72 button{background:#fff!important;color:#1f2937!important}
+.item-transactions .tx-action-menu-v72 a:hover,
+.item-transactions .tx-action-menu-v72 button:hover{background:#f3f6fb!important}
