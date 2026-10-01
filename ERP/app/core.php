@@ -757,8 +757,14 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
     sel.dispatchEvent(new Event('change',{bubbles:true}));
     applyItemLineMetadata(box,item);
     const row=box.closest('.sale-row');
-    if(row && document.body.dataset.txntype==='sale' && typeof window.syncBundleForRow==='function'){
-      try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
+    if(row && document.body.dataset.txntype==='sale'){
+      const directBundle=Array.isArray(item?.bundle_components)?item.bundle_components:[];
+      if(directBundle.length && typeof window.renderBundleChildrenForRow==='function'){
+        try{window.renderBundleChildrenForRow(row,directBundle);}
+        catch(err){console.error('Direct bundle row render failed:',err);}
+      }else if(typeof window.syncBundleForRow==='function'){
+        try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
+      }
     }
     return opt;
   }
