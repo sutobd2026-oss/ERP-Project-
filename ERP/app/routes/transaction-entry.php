@@ -79,15 +79,15 @@ if(in_array($route,['sale-new','purchase-new'],true)){
     </div>
   </div>
   <div class="form-footer txn-form-footer">
+    <div class="txn-footer-actions">
+      <a class="btn" href="<?=e(url($isSale?'sales':'purchase'))?>">Cancel</a>
+      <?php if($isSale): ?><button type="submit" name="save_and_print" value="1" class="btn">Save and Print</button><?php endif; ?>
+      <button type="submit" class="btn primary"><?= $editTx?'Update':'Save' ?></button>
+    </div>
     <div class="txn-footer-summary">
       <span class="txn-footer-total">Total <b id="grandTotal"><?=money((float)($editTx['total']??0))?></b></span>
       <span>Paid <b id="paidPreview"><?=money((float)($editTx['paid']??0))?></b></span>
       <span>Due <b id="duePreview"><?=money((float)($editTx['due']??0))?></b></span>
-    </div>
-    <div class="txn-footer-actions">
-      <?php if($isSale): ?><button type="submit" name="save_and_print" value="1" class="btn">Save and Print</button><?php endif; ?>
-      <a class="btn" href="<?=e(url($isSale?'sales':'purchase'))?>">Cancel</a>
-      <button type="submit" class="btn primary"><?= $editTx?'Update':'Save' ?></button>
     </div>
   </div>
 </div>
@@ -163,13 +163,13 @@ function addRow(type){
 .bundle-child-row{background:#fbfdff}.bundle-child-row td{border-top:0}.bundle-child-label{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid #e3e9f0;border-radius:6px;background:#f8fbff}.bundle-child-label span:last-child,.bundle-free-label{font-size:11px;font-weight:800;color:#0f8a5a;text-transform:uppercase}.bundle-child-row .row-remove-btn{color:#c0392b}
 .item-line-meta{margin-top:6px;padding:6px 7px;border:1px solid #e5ebf2;border-radius:7px;background:#fbfdff}.item-line-meta-grid{display:flex;flex-direction:row;gap:6px;align-items:end;width:100%;flex-wrap:nowrap}.item-line-meta-grid>div{min-width:0}.item-line-meta-grid>div:first-child{flex:1 1 auto;min-width:0}.item-line-meta-grid>div:last-child{flex:0 0 110px;width:110px}.item-line-meta label{white-space:nowrap}.item-line-meta label{display:block;font-size:9px;font-weight:700;color:#728096;text-transform:uppercase;letter-spacing:.03em;margin:0 0 3px}.item-line-meta input,.item-line-meta textarea{width:100%;box-sizing:border-box;border:1px solid #dce4ed;border-radius:5px;background:#fff;color:#334155;padding:5px 6px;font-size:10px;line-height:1.25;min-height:28px}.item-line-meta textarea{resize:vertical;min-height:30px}.item-line-meta input[readonly],.item-line-meta textarea[readonly]{background:#f7f9fc;color:#64748b}.item-line-description{background:#fffef8!important}.item-line-meta input:focus,.item-line-meta textarea:focus{outline:none;border-color:#7aaee8;box-shadow:0 0 0 2px rgba(122,174,232,.12)}
 .transaction-form.txn-compact{padding-bottom:78px}
-.txn-form-footer{position:fixed!important;left:235px;right:0;bottom:0;z-index:55;margin:0!important;min-height:64px;padding:10px 18px!important;box-shadow:0 -4px 14px rgba(20,33,48,.10);align-items:center;justify-content:space-between!important;gap:16px}
-.txn-footer-summary{display:flex;align-items:center;gap:18px;min-width:0;color:#667385;font-size:12px}
+.txn-form-footer{position:fixed!important;left:235px;right:0;bottom:0;z-index:55;margin:0!important;min-height:64px;padding:10px 18px!important;box-shadow:0 -4px 14px rgba(20,33,48,.10);align-items:center;justify-content:flex-end!important;gap:16px}
+.txn-footer-summary{display:flex;align-items:center;gap:18px;min-width:0;color:#667385;font-size:12px;order:2}
 .txn-footer-summary>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .txn-footer-summary b{color:#27313f;font-size:13px;font-weight:700}
 .txn-footer-summary .txn-footer-total{color:#526276}
 .txn-footer-summary .txn-footer-total b{font-size:18px}
-.txn-footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex:none}
+.txn-footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:0;flex:none;order:1}
 @media(max-width:1180px){
   .txn-form-footer{left:215px}
 }
