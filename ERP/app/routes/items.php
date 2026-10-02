@@ -516,52 +516,32 @@ page_start('Items');
             <button type="button" class="icon-more" aria-label="More">⋮</button>
           </div>
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
-          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="senseItemSearchNow(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
+          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" autocomplete="off" oninput="senseItemsLiveSearch(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
           <script>
-          window.senseItemSearchNow=function(input){
+          window.senseItemsLiveSearch=function(input){
             const list=document.getElementById('itemListBody');
             if(!list)return;
-            const q=String(input.value||'').toLowerCase().trim();
-            list._senseAllRows=list._senseAllRows||[...list.querySelectorAll('.item-master-row')];
-            const all=list._senseAllRows;
-            function render(ids){
-              const allowed=ids?new Set(ids.map(String)):null;
-              all.forEach(function(row){
-                const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
-                const show=!q || (allowed ? allowed.has(String(row.dataset.itemId||'')) : hay.indexOf(q)!==-1);
-                row._senseShow=show;
+            if(!list._senseItemTemplates){
+              list._senseItemTemplates=[...list.querySelectorAll('.item-master-row')].map(function(row){
+                return {id:String(row.dataset.itemId||''),name:String(row.dataset.name||'').toLowerCase(),html:row.outerHTML};
               });
-              while(list.firstChild)list.removeChild(list.firstChild);
-              all.forEach(function(row){if(row._senseShow)list.appendChild(row);});
             }
-            clearTimeout(window.__senseItemSearchTimer);
-            render(null);
-            if(!q)return;
-            window.__senseItemSearchTimer=setTimeout(async function(){
-              try{
-                const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
-                u.searchParams.set('q',q);
-                const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
-                const data=await res.json();
-                if(!data?.ok||!Array.isArray(data.items))return;
-                render(data.items.map(function(x){return x.id;}));
-              }catch(_){}
-            },80);
-          };          </script>
-
-          <script>
-          window.itemLiveFilter=window.itemLiveFilter||function(input){
-            clearTimeout(input._itemTimer);
-            input._itemTimer=setTimeout(async function(){
-              const list=document.getElementById('itemListBody');
-              if(!list)return;
-              const q=(input.value||'').toLowerCase().trim();
-              const rows=[...list.querySelectorAll('.item-master-row')];
-              if(!q){rows.forEach(r=>r.style.display='');return;}
-              rows.forEach(function(row){
-                const txt=(row.dataset.name||row.textContent||'').toLowerCase();
-                row.style.display=txt.indexOf(q)!==-1?'':'none';
-              });
+            const templates=list._senseItemTemplates;
+            const q=String(input.value||'').toLowerCase().trim();
+            function paint(rows){
+              list.innerHTML=rows.map(function(x){return x.html;}).join('');
+              if(!rows.length && q){
+                list.innerHTML='<div class="item-empty sense-search-empty-row">No matching items found.</div>';
+              }
+            }
+            if(!q){
+              paint(templates);
+              return;
+            }
+            const local=templates.filter(function(x){return x.name.indexOf(q)!==-1;});
+            paint(local);
+            clearTimeout(window.__senseItemsSearchTimer);
+            window.__senseItemsSearchTimer=setTimeout(async function(){
               try{
                 const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
                 u.searchParams.set('q',q);
@@ -569,47 +549,13 @@ page_start('Items');
                 const data=await res.json();
                 if(!data?.ok||!Array.isArray(data.items))return;
                 const ids=new Set(data.items.map(function(x){return String(x.id);}));
-                [...list.querySelectorAll('.item-master-row')].forEach(function(row){
-                  row.style.display=ids.has(String(row.dataset.itemId||''))?'':'none';
-                });
-              }catch(e){}
-            },60);
-          };
-          document.addEventListener('DOMContentLoaded',function(){
-            const input=document.getElementById('itemSearch');
-            const list=document.getElementById('itemListBody');
-            if(!input||!list)return;
-            let timer=0,seq=0;
-            const rows=()=>Array.from(list.querySelectorAll('.item-master-row'));
-            function localFilter(q,ids){
-              const qq=(q||'').toLowerCase().trim();
-              rows().forEach(function(row){
-                const text=(row.dataset.name||'').toLowerCase();
-                const id=String(row.dataset.itemId||'');
-                const match=!qq || (ids ? ids.has(id) : text.indexOf(qq)!==-1);
-                row.style.display=match?'':'none';
-              });
-            }
-            async function search(){
-              const q=input.value.trim();
-              if(!q){localFilter('');return;}
-              const my=++seq;
-              localFilter(q,null);
-              try{
-                const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
-                u.searchParams.set('q',q);
-                const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
-                const data=await res.json();
-                if(my!==seq)return;
-                const ids=new Set(Array.isArray(data?.items)?data.items.map(x=>String(x.id)):[]);
-                localFilter(q,ids);
+                const exact=templates.filter(function(x){return ids.has(x.id);});
+                paint(exact);
               }catch(_){}
-            }
-            input.removeAttribute('oninput');
-            input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,80);});
-            input.addEventListener('keydown',function(e){if(e.key==='Enter')e.preventDefault();});
-          });
+            },80);
+          };
           </script>
+
           <div id="itemListBody" class="item-master-list">
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
               <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-item-id="<?=e((string)$r['id'])?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
