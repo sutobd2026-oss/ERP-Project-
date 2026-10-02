@@ -552,11 +552,11 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
     <div class="modal-backdrop" id="itemModal" onclick="if(event.target===this)closeModal('itemModal')"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group">
 <label>Category</label>
 <div class="item-category-dropdown" id="itemCategoryDropdown">
-  <button type="button" class="item-category-trigger" onclick="toggleItemCategoryDropdown(event)">
+  <button type="button" class="item-category-trigger" onclick="window.toggleItemCategoryDropdown(event)">
     <span class="item-category-trigger-text" id="itemCategoryTriggerText">Select Category</span><span class="item-category-chevron">⌄</span>
   </button>
   <div class="item-category-menu" id="itemCategoryMenu">
-    <button type="button" class="item-category-add-new" onclick="openModal('categoryModal');closeItemCategoryDropdown()">＋ <span>Add New Category</span></button>
+    <button type="button" class="item-category-add-new" onclick="openModal('categoryModal');window.closeItemCategoryDropdown()">＋ <span>Add New Category</span></button>
     <div class="item-category-options">
       <?php foreach($catRows as $c): if($edit && ($edit['item_type']??'product')!==$c['type']) continue; $checked=in_array((int)$c['id'],$editCategoryIds,true); ?>
         <label class="item-category-option" data-category-type="<?=e($c['type'])?>">
@@ -877,28 +877,28 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 <script>
-function toggleItemCategoryDropdown(e){if(e)e.stopPropagation();document.getElementById('itemCategoryDropdown')?.classList.toggle('open');}
-function closeItemCategoryDropdown(){document.getElementById('itemCategoryDropdown')?.classList.remove('open');}
-function updateItemCategoryTrigger(){
+window.toggleItemCategoryDropdown=function(e){if(e)e.stopPropagation();var root=document.getElementById('itemCategoryDropdown');if(root)root.classList.toggle('open');};
+window.closeItemCategoryDropdown=function(){var root=document.getElementById('itemCategoryDropdown');if(root)root.classList.remove('open');};
+window.updateItemCategoryTrigger=function(){
   const root=document.getElementById('itemCategoryDropdown'), out=document.getElementById('itemCategoryTriggerText');
   if(!root||!out)return;
   const names=[...root.querySelectorAll('input[name="category_ids[]"]:checked')].map(function(x){return x.nextElementSibling?.textContent.trim()||''}).filter(Boolean);
   out.textContent=names.length?names.join(', '):'Select Category';
 }
-function filterItemCategoryChoices(){
+window.filterItemCategoryChoices=function(){
   const type=document.querySelector('#itemModal input[name="item_type"]:checked')?.value||'product';
   document.querySelectorAll('#itemModal .item-category-option').forEach(function(el){
     const show=el.dataset.categoryType===type;
     el.style.display=show?'flex':'none';
     if(!show){const cb=el.querySelector('input');if(cb)cb.checked=false;}
   });
-  updateItemCategoryTrigger();
-}
+  window.updateItemCategoryTrigger();
+};
 document.addEventListener('click',function(e){
   const root=document.getElementById('itemCategoryDropdown');
-  if(root && !root.contains(e.target))closeItemCategoryDropdown();
+  if(root && !root.contains(e.target))window.closeItemCategoryDropdown();
 });
-document.addEventListener('DOMContentLoaded',function(){filterItemCategoryChoices();updateItemCategoryTrigger();});
+document.addEventListener('DOMContentLoaded',function(){window.filterItemCategoryChoices();window.updateItemCategoryTrigger();});
 </script>
 <?php render_inline_creation_modals(); page_end(); exit; }
 
