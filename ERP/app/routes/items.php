@@ -601,11 +601,14 @@ page_start('Items');
               <button type="button" class="btn primary adjust-btn" onclick="openModal('adjustModal')">☷ ADJUST ITEM</button>
             </div>
             </div>
-            <div class="item-price-grid">
+            <div class="item-price-grid item-info-grid-v236">
               <div><span>SALE PRICE:</span> <b><?=money((float)$selected['sale_price'])?></b></div>
               <div class="stock-right"><span>STOCK QUANTITY:</span> <b class="<?=((float)$selected['current_stock']<0)?'negative-value':'positive-value'?>"><?= $selected['item_type']==='service' ? '—' : qty((float)$selected['current_stock']) ?></b></div>
               <div><span>PURCHASE PRICE:</span> <b><?=money((float)$selected['purchase_price'])?></b></div>
               <div class="stock-right"><span>STOCK VALUE:</span> <b><?=money($selected['item_type']==='service'?0:(float)$selected['purchase_price']*(float)$selected['current_stock'])?></b></div>
+              <div class="item-inline-meta-v236"><span>DESCRIPTION</span><p><?=trim((string)($selected['description']??''))!==''?nl2br(e((string)$selected['description'])):'—'?></p></div>
+              <div class="item-inline-meta-v236"><span>WARRANTY</span><p><?=e(trim((string)($selected['warranty']??''))!==''?(string)$selected['warranty']:'—')?></p></div>
+              <div class="item-inline-meta-v236"><span>LOCATION</span><p><?=e(trim((string)($selected['location']??''))!==''?(string)$selected['location']:'—')?></p></div>
             </div>
           </div>
           <?php if($selected && $selected['item_type']==='product'): ?>
@@ -620,14 +623,6 @@ page_start('Items');
             <?php else: ?>
               <div class="subtle item-note-empty-v234">No note added for this item.</div>
             <?php endif; ?>
-          </div>
-          <div class="item-meta-card panel">
-            <div class="panel-head"><div><h2>ITEM DETAILS</h2><span class="subtle">Description, warranty and location</span></div></div>
-            <div class="item-meta-grid-v235">
-              <div><span>DESCRIPTION</span><p><?=trim((string)($selected['description']??''))!==''?nl2br(e((string)$selected['description'])):'—'?></p></div>
-              <div><span>WARRANTY</span><p><?=e(trim((string)($selected['warranty']??''))!==''?(string)$selected['warranty']:'—')?></p></div>
-              <div><span>LOCATION</span><p><?=e(trim((string)($selected['location']??''))!==''?(string)$selected['location']:'—')?></p></div>
-            </div>
           </div>
           <div class="item-transactions panel">
             <div class="panel-head"><h2>TRANSACTIONS</h2><div class="tx-tools"><input class="input" id="itemTxSearch" placeholder="⌕ Search"><span class="export-icon">▣</span></div></div>
