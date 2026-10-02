@@ -310,10 +310,48 @@ if($route==='parties'){
           </form>
           <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm();openModal('partyModal')">⊕ Add Party <span>＋</span></a>
         </div>
+        <script>
+        (function(){
+          const input=document.getElementById('partyListSearchForm')?.querySelector('.party-search-input-v111');
+          const list=document.querySelector('.party-list-v110');
+          if(!input||!list)return;
+          let timer=0,seq=0;
+          function rows(){return Array.from(list.querySelectorAll('.party-list-row-v110'));}
+          function localFilter(q,ids){
+            const qq=(q||'').toLowerCase().trim();
+            rows().forEach(function(row){
+              const link=row.querySelector('.party-row-link-v111');
+              const id=String(row.dataset.partyId||'');
+              const text=(row.dataset.partySearch||link?.textContent||'').toLowerCase();
+              const match=!qq || (!ids ? text.indexOf(qq)!==-1 : ids.has(id));
+              row.style.display=match?'':'none';
+            });
+          }
+          async function search(){
+            const q=input.value.trim();
+            if(!q){localFilter('');return;}
+            const my=++seq;
+            localFilter(q,null);
+            try{
+              const u=new URL('<?=e(url('party-search-api'))?>',location.origin);
+              u.searchParams.set('q',q);
+              u.searchParams.set('role','<?=e($type==='all'?'all':($type==='labels'?'customer':$type))?>');
+              const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+              const data=await res.json();
+              if(my!==seq)return;
+              if(data&&data.ok&&Array.isArray(data.items)){
+                const ids=new Set(data.items.map(x=>String(x.id)));
+                localFilter(q,ids);
+              }
+            }catch(_){}
+          }
+          input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,120);});
+        })();
+        </script>
         <div class="party-list-head-v110"><span>PARTY</span><span>AMOUNT</span></div>
         <div class="party-list-v110">
           <?php foreach($rows as $r): $rb=(float)$r['opening_balance']+(float)$r['calculated_balance']; $href=$partyUrl(['id'=>(int)$r['id']]); ?>
-            <div class="party-list-row-v110 <?=((int)$r['id']===$selectedId?'active':'')?>">
+            <div class="party-list-row-v110 <?=((int)$r['id']===$selectedId?'active':'')?>" data-party-id="<?=e((string)$r['id'])?>" data-party-search="<?=e(strtolower($r['name'].' '.$r['phone'].' '.$r['email']))?>">
               <a class="party-row-link-v111" href="<?=e($href)?>">
                 <span class="party-avatar-v110">@</span>
                 <span class="party-main-v110"><span class="party-name-row-v203"><b><?=e($r['name'])?></b><span class="party-status-pills-v203"><?php if((int)($r['note_count']??0)>0): ?><span class="party-status-pill-v203 note"><?=((int)$r['note_count'])?> Note<?=((int)$r['note_count'])===1?'':'s'?></span><?php endif; ?><?php if(in_array('customer',$r['roles']??[],true)): ?><?php $rc=(int)($r['public_review_count']??0); if($rc>0): ?><span class="party-status-pill-v203 review">★ <?=$rc?> Review<?=($rc===1?'':'s')?></span><?php endif; ?><?php endif; ?></span></span><small><?=e($r['phone'])?></small><?php if(in_array('customer',$r['roles']??[],true) && !empty($r['customer_label_names'])): ?><span class="party-customer-labels-v203"><?php foreach($r['customer_label_names'] as $cln): ?><span class="party-customer-label-v203"><?=e($cln)?></span><?php endforeach; ?></span><?php endif; ?></span>
