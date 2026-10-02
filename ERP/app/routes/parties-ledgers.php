@@ -318,7 +318,7 @@ if($route==='parties'){
           const rows=[...list.querySelectorAll('.party-list-row-v110')];
           rows.forEach(function(row){
             const hay=String(row.dataset.partySearch||row.textContent||'').toLowerCase();
-            row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+            row.classList.toggle('sense-live-filter-hidden',!!q && hay.indexOf(q)===-1);
           });
           clearTimeout(window.__sensePartySearchTimer);
           if(!q)return;
@@ -331,11 +331,12 @@ if($route==='parties'){
               const data=await res.json();
               if(!data?.ok||!Array.isArray(data.items))return;
               const ids=new Set(data.items.map(function(x){return String(x.id);}));
-              rows.forEach(function(row){row.style.display=ids.has(String(row.dataset.partyId||''))?'':'none';});
+              rows.forEach(function(row){
+                row.classList.toggle('sense-live-filter-hidden',!ids.has(String(row.dataset.partyId||'')));
+              });
             }catch(_){}
           },80);
-        };
-        </script>
+        };        </script>
 
         <script>
         window.partyLiveFilter=window.partyLiveFilter||function(input){
