@@ -1372,3 +1372,16 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .party-main-v110>small{
   margin-top:2px!important;
 }
+
+/* Customer label picker/manager */
+.customer-label-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.customer-label-choices{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0;padding:4px 0}
+.customer-label-choice{display:inline-flex!important;align-items:center!important;gap:5px!important;padding:5px 8px!important;border:1px solid #dbe4ec!important;border-radius:14px!important;background:#f8fbfd!important;font-size:12px!important;color:#334155!important;cursor:pointer!important}
+.customer-label-choice input{margin:0!important}
+.customer-label-choice:has(input:checked){background:#e8f4ff!important;border-color:#8fc5f2!important;color:#146fae!important}
+.customer-label-manager-list{display:flex;flex-direction:column;gap:7px}
+.customer-label-manager-row{display:flex;align-items:center;gap:8px}
+.customer-label-manager-row form:first-child{display:flex;align-items:center;gap:6px;flex:1}
+.customer-label-manager-row input[name="label_name"]{flex:1;min-width:0}
+.party-customer-labels-v203{display:flex;align-items:center;gap:4px;flex:0 0 auto;min-width:0;overflow:hidden}
+.party-customer-label-v203{display:inline-flex;align-items:center;max-width:110px;padding:2px 6px;border-radius:9px;background:#eef7ff;color:#2a6f9f;border:1px solid #d4e8f6;font-size:8px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
