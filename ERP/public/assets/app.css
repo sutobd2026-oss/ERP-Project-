@@ -1445,3 +1445,30 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   background:#d5ebfa;
   color:#176ea8;
 }
+
+/* Multi-category item picker */
+.item-category-picker{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  min-height:38px;
+  padding:2px 0;
+}
+.item-category-option{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 9px;
+  border:1px solid #d9e2ea;
+  border-radius:14px;
+  background:#f8fbfd;
+  color:#334155;
+  font-size:12px;
+  cursor:pointer;
+}
+.item-category-option input{margin:0}
+.item-category-option:has(input:checked){
+  background:#eaf5ff;
+  border-color:#8fc6eb;
+  color:#176ea8;
+}
