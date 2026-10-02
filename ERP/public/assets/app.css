@@ -1694,10 +1694,17 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   font-size:12px!important;
 }
 .item-info-value-v237 b{
-  color:#1f2937!important;
+  color:#00a67a!important;
   font-size:14px!important;
   font-variant-numeric:tabular-nums!important;
+  font-weight:600!important;
 }
+.item-info-value-v237 span{
+  color:#2f3a47!important;
+  font-size:11px!important;
+  font-weight:500!important;
+}
+
 .item-info-value-v237.stock-right{
   text-align:right!important;
 }
