@@ -114,16 +114,18 @@ function ensureNextTxnRow(row,txType){
   if(row.dataset.autoNextRowCreated==='1')return;
   const mainRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');
   if(!mainRows.length||mainRows[mainRows.length-1]!==row)return;
-  const addButton=[...document.querySelectorAll('#entryRows + .entry-actions button, .entry-actions button')].find(btn=>String(btn.getAttribute('onclick')||'').includes("addRow('"+txType+"')"));
-  if(addButton){
-    row.dataset.autoNextRowCreated='1';
-    addButton.click();
-    return;
-  }
-  if(typeof addRow==='function'){
-    row.dataset.autoNextRowCreated='1';
-    addRow(txType);
-  }
+  row.dataset.autoNextRowCreated='1';
+  const create=()=>{
+    const latestRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');
+    if(!latestRows.length||latestRows[latestRows.length-1]!==row)return;
+    const addButton=[...document.querySelectorAll('#entryRows + .entry-actions button, .entry-actions button')].find(btn=>String(btn.getAttribute('onclick')||'').includes("addRow('"+txType+"')"));
+    if(addButton){addButton.click();return;}
+    if(typeof addRow==='function')addRow(txType);
+  };
+  // Wait until the current live-search click/change cycle is complete.
+  // This keeps the first automatically-created row completely idle and
+  // prevents its search AJAX from firing during the parent selection event.
+  window.setTimeout(create,0);
 }
 function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));qs('.serial-number-input',row)?.addEventListener('input',()=>renderSerialMeta(row));qs('.serial-trigger-btn',row)?.addEventListener('click',()=>openSerialModal(row));renderSerialMeta(row);}
