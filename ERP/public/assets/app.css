@@ -1572,3 +1572,16 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+
+/* Category detail: items belonging to selected category. */
+.category-items-panel-v204 .category-item-link-v204{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  color:inherit;
+  text-decoration:none;
+}
+.category-items-panel-v204 .category-item-link-v204 strong{color:#334155}
+.category-items-panel-v204 .category-item-link-v204 small{font-size:10px;color:#94a3b8}
+.category-items-panel-v204 .category-item-link-v204:hover strong{color:#1683ea}
+.category-stock-negative-v204{color:#ef4444!important}
