@@ -175,48 +175,240 @@ function sense_read_xlsx_rows(string $path): array {
     }
     return $rows;
 }
-function sense_item_import_review(PDO $pdo,int $cid,array $rowsData): array {
+function sense_item_import_field_defs(): array {
+    return [
+        'name'=>'Item Name','type'=>'Type','code'=>'Code','barcode'=>'Barcode','category'=>'Category','unit'=>'Unit',
+        'sale'=>'Sale Price','wholesale'=>'Wholesale Price','min_wholesale_qty'=>'Minimum Wholesale Qty',
+        'purchase'=>'Purchase Price','opening'=>'Opening Stock','low_stock'=>'Low Stock Limit'
+    ];
+}
+function sense_item_import_norm(string $s): string {
+    $s=strtolower(trim($s));
+    $s=preg_replace('/[^a-z0-9]+/',' ',$s);
+    return trim(preg_replace('/\s+/',' ',$s));
+}
+function sense_item_import_col_letter(int $n): string {
+    $n++; $out='';
+    while($n>0){$n--; $out=chr(65+($n%26)).$out; $n=intdiv($n,26);}
+    return $out;
+}
+function sense_item_import_default_mapping(array $header): array {
+    $defs=sense_item_import_field_defs(); $map=[];
+    $aliases=[
+      'name'=>['item name','item','name','product name','service name'],
+      'type'=>['type','item type','product type'],
+      'code'=>['code','item code','sku'],
+      'barcode'=>['barcode','bar code','ean','upc'],
+      'category'=>['category','categories','item category'],
+      'unit'=>['unit','units'],
+      'sale'=>['sale price','selling price','selling price per unit','price','sales price'],
+      'wholesale'=>['wholesale price','wholesale'],
+      'min_wholesale_qty'=>['minimum wholesale qty','minimum wholesale quantity','min wholesale qty','min wholesale quantity'],
+      'purchase'=>['purchase price','buy price','cost price'],
+      'opening'=>['opening stock','opening qty','opening quantity','initial stock'],
+      'low_stock'=>['low stock limit','low stock','reorder level','minimum stock']
+    ];
+    $norm=array_map(fn($v)=>sense_item_import_norm((string)$v),$header);
+    foreach($defs as $key=>$label){
+        $map[$key]=-1;
+        foreach($aliases[$key]??[sense_item_import_norm($label)] as $a){
+            $a=sense_item_import_norm($a);
+            $idx=array_search($a,$norm,true);
+            if($idx!==false){$map[$key]=(int)$idx;break;}
+        }
+    }
+    return $map;
+}
+function sense_item_import_review(PDO $pdo,int $cid,array $rowsData,?array $mapping=null): array {
     $rows=[]; $errors=[]; $seenCodes=[]; $seenBarcodes=[]; $line=1;
-    if($rowsData)$header=array_shift($rowsData);
-    foreach($rowsData as $r){
-        $line++; $name=trim((string)($r[0]??'')); if($name==='')continue;
-        $type=strtolower(trim((string)($r[1]??'product'))); if(!in_array($type,['product','service'],true))$type='product';
-        $code=trim((string)($r[2]??'')); $barcode=trim((string)($r[3]??'')); $category=trim((string)($r[4]??'')); $unit=trim((string)($r[5]??''));
-        $sale=(float)($r[6]??0);$wh=(float)($r[7]??0);$minWh=(float)($r[8]??0);$buy=(float)($r[9]??0);$opening=$type==='product'?(float)($r[10]??0):0;$low=$type==='product'?(float)($r[11]??0):0;
+    $header=$rowsData[0]??[];
+    $data=array_slice($rowsData,1);
+    $mapping=$mapping??sense_item_import_default_mapping($header);
+    $get=function(array $r,string $key)use($mapping){
+        $idx=(int)($mapping[$key]??-1);
+        return $idx>=0?trim((string)($r[$idx]??'')):'';
+    };
+    foreach($data as $r){
+        $line++;
+        $name=$get($r,'name');
+        if($name==='')continue;
+        $type=strtolower($get($r,'type'));
+        if(!in_array($type,['product','service'],true))$type='product';
+        $code=$get($r,'code'); $barcode=$get($r,'barcode'); $category=$get($r,'category'); $unit=$get($r,'unit');
+        $sale=(float)($get($r,'sale')!==''?$get($r,'sale'):0);
+        $wh=(float)($get($r,'wholesale')!==''?$get($r,'wholesale'):0);
+        $minWh=(float)($get($r,'min_wholesale_qty')!==''?$get($r,'min_wholesale_qty'):0);
+        $buy=(float)($get($r,'purchase')!==''?$get($r,'purchase'):0);
+        $opening=$type==='product'?(float)($get($r,'opening')!==''?$get($r,'opening'):0):0;
+        $low=$type==='product'?(float)($get($r,'low_stock')!==''?$get($r,'low_stock'):0):0;
         $issues=[];
-        if($code!==''){ $k=strtolower($code); if(isset($seenCodes[$k]))$issues[]='Duplicate code in file'; $seenCodes[$k]=true; $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND code=? AND active=1 LIMIT 1');$st->execute([$cid,$code]);if($st->fetchColumn())$issues[]='Code already exists'; }
-        if($barcode!==''){ $k=strtolower($barcode); if(isset($seenBarcodes[$k]))$issues[]='Duplicate barcode in file'; $seenBarcodes[$k]=true; $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND barcode=? AND active=1 LIMIT 1');$st->execute([$cid,$barcode]);if($st->fetchColumn())$issues[]='Barcode already exists'; }
-        if($category!==''){ $st=$pdo->prepare('SELECT type FROM categories WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$category]);if(($ct=$st->fetchColumn())!==false&&$ct!==$type)$issues[]='Category type mismatch'; }
+        if($code!==''){
+            $k=strtolower($code);
+            if(isset($seenCodes[$k]))$issues[]='Duplicate code in file';
+            $seenCodes[$k]=true;
+            $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND code=? AND active=1 LIMIT 1');
+            $st->execute([$cid,$code]);
+            if($st->fetchColumn())$issues[]='Code already exists';
+        }
+        if($barcode!==''){
+            $k=strtolower($barcode);
+            if(isset($seenBarcodes[$k]))$issues[]='Duplicate barcode in file';
+            $seenBarcodes[$k]=true;
+            $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND barcode=? AND active=1 LIMIT 1');
+            $st->execute([$cid,$barcode]);
+            if($st->fetchColumn())$issues[]='Barcode already exists';
+        }
+        if($category!==''){
+            $st=$pdo->prepare('SELECT type FROM categories WHERE company_id=? AND name=? LIMIT 1');
+            $st->execute([$cid,$category]);
+            if(($ct=$st->fetchColumn())!==false&&$ct!==$type)$issues[]='Category type mismatch';
+        }
         $rows[]=['line'=>$line,'name'=>$name,'type'=>$type,'code'=>$code,'barcode'=>$barcode,'category'=>$category,'unit'=>$unit,'sale'=>$sale,'wholesale'=>$wh,'min_wholesale_qty'=>$minWh,'purchase'=>$buy,'opening'=>$opening,'low_stock'=>$low,'issues'=>$issues];
         if($issues)$errors[]='Line '.$line.': '.implode(', ',$issues);
     }
-    return [$rows,$errors];
+    return [$rows,$errors,$mapping,$header];
 }
 if($route==='import-items'){
-    $u=require_login();$cid=(int)$u['company_id'];$pdo=db();
+    $u=require_login(); $cid=(int)$u['company_id']; $pdo=db();
+    $renderReview=function(array $rowsData,array $mapping,array $reviewRows,array $errors,string $token) {
+        $header=$rowsData[0]??[]; $defs=sense_item_import_field_defs();
+        page_start('Review Item Import'); ?>
+        <div class="page-title">
+          <div><h1>Review Item Import</h1><p>Review the rows below. Nothing has been added yet.</p></div>
+          <a class="btn" href="<?=e(url('import-items'))?>">Cancel</a>
+        </div>
+
+        <form method="post" class="panel" style="margin-bottom:12px">
+          <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+          <input type="hidden" name="import_action" value="remap">
+          <input type="hidden" name="token" value="<?=e($token)?>">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <strong>Column Mapping</strong>
+            <span class="subtle">Select which file column should fill each Sense field. Extra columns can be ignored.</span>
+          </div>
+          <div class="grid3" style="margin-top:12px">
+            <?php foreach($defs as $key=>$label): ?>
+              <div class="form-group">
+                <label><?=e($label)?></label>
+                <select name="map[<?=e($key)?>]">
+                  <option value="-1">— Ignore / Empty —</option>
+                  <?php foreach($header as $ci=>$h): ?>
+                    <option value="<?=$ci?>" <?=((int)($mapping[$key]??-1)===(int)$ci)?'selected':''?>>
+                      <?=e((string)$h)?> (Column <?=e(sense_item_import_col_letter((int)$ci))?>)
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="form-footer"><button class="btn primary" type="submit">Apply Column Mapping</button></div>
+        </form>
+
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <strong><?=count($reviewRows)?> item(s) found</strong>
+            <span class="subtle"><?=count($errors)?count($errors).' issue(s) found':'Ready to import'?></span>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;max-height:62vh;overflow:auto">
+            <table>
+              <thead><tr><th>LINE</th><th>ITEM</th><th>TYPE</th><th>CODE</th><th>BARCODE</th><th>CATEGORY</th><th>UNIT</th><th>SALE PRICE</th><th>PURCHASE PRICE</th><th>OPENING STOCK</th><th>STATUS</th></tr></thead>
+              <tbody>
+                <?php foreach($reviewRows as $r): ?>
+                  <tr>
+                    <td><?=e((string)$r['line'])?></td>
+                    <td><?=e($r['name'])?></td>
+                    <td><?=e(ucfirst($r['type']))?></td>
+                    <td><?=e($r['code'])?></td>
+                    <td><?=e($r['barcode'])?></td>
+                    <td><?=e($r['category'])?></td>
+                    <td><?=e($r['unit'])?></td>
+                    <td><?=money($r['sale'])?></td>
+                    <td><?=money($r['purchase'])?></td>
+                    <td><?=qty($r['opening'])?></td>
+                    <td><?php if($r['issues']): ?><span style="color:#dc2626;font-weight:700"><?=e(implode('; ',$r['issues']))?></span><?php else: ?><span style="color:#059669;font-weight:700">Ready</span><?php endif; ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <?php if($errors): ?>
+            <div class="panel" style="margin-top:12px;border-color:#fecaca;background:#fff7f7">
+              <strong style="color:#b91c1c">Import cannot be confirmed until the issues are fixed.</strong>
+              <div style="margin-top:8px;color:#7f1d1d"><?php foreach($errors as $er): ?><div><?=e($er)?></div><?php endforeach; ?></div>
+            </div>
+          <?php endif; ?>
+          <div class="form-footer" style="margin-top:12px">
+            <a class="btn" href="<?=e(url('import-items'))?>">Cancel</a>
+            <?php if(!$errors): ?>
+              <form method="post">
+                <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                <input type="hidden" name="import_action" value="confirm">
+                <input type="hidden" name="token" value="<?=e($token)?>">
+                <button class="btn primary" type="submit">Confirm &amp; Add <?=count($reviewRows)?> Items</button>
+              </form>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php page_end(); exit;
+    };
+
     if($_SERVER['REQUEST_METHOD']==='POST'){
-        check_csrf(); $action=(string)($_POST['import_action']??'preview');
-        if($action==='confirm'){
-            $token=(string)($_POST['token']??''); $payload=$_SESSION['item_import_preview'][$token]??null;
-            if(!is_array($payload)) { flash('error','Import review expired. Please upload the file again.'); redirect('import-items'); }
+        check_csrf();
+        $action=(string)($_POST['import_action']??'preview');
+
+        if(in_array($action,['confirm','remap'],true)){
+            $token=(string)($_POST['token']??'');
+            $payload=$_SESSION['item_import_preview'][$token]??null;
+            if(!is_array($payload)||!isset($payload['rows'])){
+                flash('error','Import review expired. Please upload the file again.');
+                redirect('import-items');
+            }
+            $rowsData=$payload['rows'];
+            $mapping=$payload['mapping']??sense_item_import_default_mapping($rowsData[0]??[]);
+
+            if($action==='remap'){
+                $header=$rowsData[0]??[]; $cols=count($header);
+                $defs=sense_item_import_field_defs();
+                foreach($defs as $key=>$label){
+                    $v=isset($_POST['map'][$key])?(int)$_POST['map'][$key]:-1;
+                    $mapping[$key]=($v>=0&&$v<$cols)?$v:-1;
+                }
+                $_SESSION['item_import_preview'][$token]=['rows'=>$rowsData,'mapping'=>$mapping];
+                [$reviewRows,$errors,$mapping,$header]=sense_item_import_review($pdo,$cid,$rowsData,$mapping);
+                $renderReview($rowsData,$mapping,$reviewRows,$errors,$token);
+            }
+
             unset($_SESSION['item_import_preview'][$token]);
             try{
-                [$reviewRows,$errors]=sense_item_import_review($pdo,$cid,$payload);
+                [$reviewRows,$errors,$mapping,$header]=sense_item_import_review($pdo,$cid,$rowsData,$mapping);
                 if($errors)throw new RuntimeException('Please fix the highlighted rows before confirming the import.');
-                $pdo->beginTransaction();$count=0;
+                $pdo->beginTransaction(); $count=0;
                 foreach($reviewRows as $r){
-                    $catId=null;$unitId=null;
-                    if($r['category']!==''){$st=$pdo->prepare('SELECT id,type FROM categories WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$r['category']]);$cat=$st->fetch();if($cat&&$cat['type']!==$r['type'])throw new RuntimeException('Category type mismatch on line '.$r['line']);if($cat)$catId=(int)$cat['id'];else{$pdo->prepare('INSERT INTO categories(company_id,name,type) VALUES(?,?,?)')->execute([$cid,$r['category'],$r['type']]);$catId=(int)$pdo->lastInsertId();}}
-                    if($r['unit']!==''){$st=$pdo->prepare('SELECT id FROM units WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$r['unit']]);$un=$st->fetch();if($un)$unitId=(int)$un['id'];else{$pdo->prepare('INSERT INTO units(company_id,name,symbol) VALUES(?,?,?)')->execute([$cid,$r['unit'],$r['unit']]);$unitId=(int)$pdo->lastInsertId();}}
+                    $catId=null; $unitId=null;
+                    if($r['category']!==''){
+                        $st=$pdo->prepare('SELECT id,type FROM categories WHERE company_id=? AND name=? LIMIT 1');
+                        $st->execute([$cid,$r['category']]); $cat=$st->fetch();
+                        if($cat&&$cat['type']!==$r['type'])throw new RuntimeException('Category type mismatch on line '.$r['line']);
+                        if($cat)$catId=(int)$cat['id']; else{$pdo->prepare('INSERT INTO categories(company_id,name,type) VALUES(?,?,?)')->execute([$cid,$r['category'],$r['type']]);$catId=(int)$pdo->lastInsertId();}
+                    }
+                    if($r['unit']!==''){
+                        $st=$pdo->prepare('SELECT id FROM units WHERE company_id=? AND name=? LIMIT 1');
+                        $st->execute([$cid,$r['unit']]); $un=$st->fetch();
+                        if($un)$unitId=(int)$un['id']; else{$pdo->prepare('INSERT INTO units(company_id,name,symbol) VALUES(?,?,?)')->execute([$cid,$r['unit'],$r['unit']]);$unitId=(int)$pdo->lastInsertId();}
+                    }
                     $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$r['type'],$r['name'],$r['code']?:null,$r['barcode']?:null,$catId,$unitId,$r['sale'],$r['wholesale'],$r['min_wholesale_qty'],$r['purchase'],$r['opening'],$r['low_stock']]);
                     $id=(int)$pdo->lastInsertId();
                     if($r['type']==='product'&&abs($r['opening'])>0.0001)$pdo->prepare('INSERT INTO stock_movements(company_id,item_id,movement_date,quantity,unit_price,movement_type,note) VALUES(?,?,?,?,?,?,?)')->execute([$cid,$id,date('Y-m-d'),$r['opening'],$r['purchase'],'opening_stock','Opening Stock']);
                     $count++; audit('import','item',$id,['name'=>$r['name'],'line'=>$r['line']]);
                 }
                 $pdo->commit(); flash('success',$count.' items imported successfully.');
-            }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}
+            }catch(Throwable $e){
+                if($pdo->inTransaction())$pdo->rollBack();
+                flash('error','Import failed: '.$e->getMessage());
+            }
             redirect('import-items');
         }
+
         $upload=$_FILES['csv']??[];
         if(empty($upload['tmp_name'])||($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK){flash('error','Choose a valid CSV or XLSX file.');redirect('import-items');}
         $ext=strtolower(pathinfo((string)($upload['name']??''),PATHINFO_EXTENSION));
@@ -224,30 +416,40 @@ if($route==='import-items'){
         try{
             $rowsData=[];
             if($ext==='xlsx')$rowsData=sense_read_xlsx_rows((string)$upload['tmp_name']);
-            else{$fh=fopen($upload['tmp_name'],'r');if(!$fh)throw new RuntimeException('Unable to read CSV file.');while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;fclose($fh);}
+            else{
+                $fh=fopen($upload['tmp_name'],'r'); if(!$fh)throw new RuntimeException('Unable to read CSV file.');
+                while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;
+                fclose($fh);
+            }
             if(count($rowsData)<1)throw new RuntimeException('The file is empty.');
-            [$reviewRows,$errors]=sense_item_import_review($pdo,$cid,$rowsData);
-            $token=bin2hex(random_bytes(16)); $_SESSION['item_import_preview'][$token]=$rowsData;
-            ?>
-            <?php page_start('Review Item Import'); ?>
-            <div class="page-title"><div><h1>Review Item Import</h1><p>Review the rows below. Nothing has been added yet.</p></div><a class="btn" href="<?=e(url('import-items'))?>">Cancel</a></div>
-            <div class="panel">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><strong><?=count($reviewRows)?> item(s) found</strong><span class="subtle"><?=count($errors)?count($errors).' issue(s) found':'Ready to import'?></span></div>
-              <div class="table-wrap" style="margin-top:12px;max-height:62vh;overflow:auto"><table><thead><tr><th>LINE</th><th>ITEM</th><th>TYPE</th><th>CODE</th><th>BARCODE</th><th>CATEGORY</th><th>UNIT</th><th>SALE PRICE</th><th>PURCHASE PRICE</th><th>OPENING STOCK</th><th>STATUS</th></tr></thead><tbody>
-              <?php foreach($reviewRows as $r): ?><tr>
-                <td><?=e((string)$r['line'])?></td><td><?=e($r['name'])?></td><td><?=e(ucfirst($r['type']))?></td><td><?=e($r['code'])?></td><td><?=e($r['barcode'])?></td><td><?=e($r['category'])?></td><td><?=e($r['unit'])?></td><td><?=money($r['sale'])?></td><td><?=money($r['purchase'])?></td><td><?=qty($r['opening'])?></td>
-                <td><?php if($r['issues']): ?><span style="color:#dc2626;font-weight:700"><?=e(implode('; ',$r['issues']))?></span><?php else: ?><span style="color:#059669;font-weight:700">Ready</span><?php endif; ?></td>
-              </tr><?php endforeach; ?></tbody></table></div>
-              <?php if($errors): ?><div class="panel" style="margin-top:12px;border-color:#fecaca;background:#fff7f7"><strong style="color:#b91c1c">Import cannot be confirmed until the issues are fixed.</strong><div style="margin-top:8px;color:#7f1d1d"><?php foreach($errors as $er): ?><div><?=e($er)?></div><?php endforeach; ?></div></div><?php endif; ?>
-              <div class="form-footer" style="margin-top:12px"><a class="btn" href="<?=e(url('import-items'))?>">Cancel</a><?php if(!$errors): ?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="import_action" value="confirm"><input type="hidden" name="token" value="<?=e($token)?>"><button class="btn primary" type="submit">Confirm &amp; Add <?=count($reviewRows)?> Items</button></form><?php endif; ?></div>
-            </div>
-            <?php page_end();exit;
-        }catch(Throwable $e){flash('error','Could not read the file: '.$e->getMessage());redirect('import-items');}
+            [$reviewRows,$errors,$mapping,$header]=sense_item_import_review($pdo,$cid,$rowsData);
+            $token=bin2hex(random_bytes(16));
+            $_SESSION['item_import_preview'][$token]=['rows'=>$rowsData,'mapping'=>$mapping];
+            $renderReview($rowsData,$mapping,$reviewRows,$errors,$token);
+        }catch(Throwable $e){
+            flash('error','Could not read the file: '.$e->getMessage());
+            redirect('import-items');
+        }
     }
+
     page_start('Import Items'); ?>
-    <div class="page-title"><div><h1>Import Items</h1><p>Import products/services from CSV or XLSX.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a><a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a></div></div>
-    <div class="panel"><p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Use the same column order as the template: Item Name, Type, Code, Barcode, Category, Unit, Sale Price, Wholesale Price, Minimum Wholesale Qty, Purchase Price, Opening Stock, Low Stock Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="import_action" value="preview"><div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="btn primary">Upload &amp; Review</button></form></div>
-    <?php page_end();exit;
+    <div class="page-title">
+      <div><h1>Import Items</h1><p>Import products/services from CSV or XLSX.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a>
+        <a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Upload your file, then match its columns to Sense fields before importing.</p>
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+        <input type="hidden" name="import_action" value="preview">
+        <div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div>
+        <button class="btn primary">Upload &amp; Review</button>
+      </form>
+    </div>
+    <?php page_end(); exit;
 }
 if($route==='import-parties'){
     $u=require_login();$cid=(int)$u['company_id'];if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();if(empty($_FILES['csv']['tmp_name'])){flash('error','Choose a CSV file.');redirect('import-parties');} $fh=fopen($_FILES['csv']['tmp_name'],'r');$header=fgetcsv($fh);$count=0;$pdo=db();try{$pdo->beginTransaction();while(($r=fgetcsv($fh))!==false){$name=trim($r[0]??'');$phone=preg_replace('/\D+/','',$r[1]??'');if($name==='' || !preg_match('/^(013|014|015|016|017|018|019)\d{8}$/',$phone))continue;$rawRoles=trim($r[3]??'customer');$roleMap=['customer','supplier','investor','lender','borrower','employee','other'];$roles=array_values(array_unique(array_intersect($roleMap,array_filter(array_map('trim',preg_split('/[,|]+/',$rawRoles))))));if(!$roles){$roles=['customer'];} $ptype=in_array('customer',$roles,true)&&in_array('supplier',$roles,true)?'both':(in_array('supplier',$roles,true)?'supplier':'customer');$pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,trim($r[2]??'')?:null,$ptype,trim($r[4]??'')?:null,(float)($r[5]??0),'receivable',(float)($r[6]??0)]);$pid=(int)$pdo->lastInsertId();$pri=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)');foreach($roles as $rr)$pri->execute([$pid,$rr]);$count++;audit('import','party',$pid,['name'=>$name,'phone'=>$phone,'roles'=>$roles]);} $pdo->commit();flash('success',$count.' parties imported.');}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}redirect('import-parties');}
