@@ -304,14 +304,14 @@ if($route==='parties'){
       <aside class="parties-sidebar-v110">
         <div class="party-import-card-v110"><a href="<?=e(url('import-parties'))?>"><span class="party-import-icon">↥</span><span><b>Import Parties</b><small>Use contacts from your Phone or Gmail to create parties.</small></span><span class="party-import-arrow">›</span></a></div>
         <div class="party-list-tools-v110 party-tools-v111-search">
-          <form class="party-list-search-v110 party-search-always-v111" method="get" id="partyListSearchForm">
+          <form class="party-list-search-v110 party-search-always-v111" method="get" id="partyListSearchForm" onsubmit="return false;">
             <input type="hidden" name="type" value="<?=e($type)?>"><?php if($selectedId):?><input type="hidden" name="id" value="<?=$selectedId?>"><?php endif;?>
             <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off">
           </form>
           <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm();openModal('partyModal')">⊕ Add Party <span>＋</span></a>
         </div>
         <script>
-        (function(){
+        document.addEventListener('DOMContentLoaded',function(){
           const input=document.getElementById('partyListSearchForm')?.querySelector('.party-search-input-v111');
           const list=document.querySelector('.party-list-v110');
           if(!input||!list)return;
@@ -323,7 +323,7 @@ if($route==='parties'){
               const link=row.querySelector('.party-row-link-v111');
               const id=String(row.dataset.partyId||'');
               const text=(row.dataset.partySearch||link?.textContent||'').toLowerCase();
-              const match=!qq || (!ids ? text.indexOf(qq)!==-1 : ids.has(id));
+              const match=!qq || (ids ? ids.has(id) : text.indexOf(qq)!==-1);
               row.style.display=match?'':'none';
             });
           }
@@ -339,14 +339,13 @@ if($route==='parties'){
               const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
               const data=await res.json();
               if(my!==seq)return;
-              if(data&&data.ok&&Array.isArray(data.items)){
-                const ids=new Set(data.items.map(x=>String(x.id)));
-                localFilter(q,ids);
-              }
+              const ids=new Set(Array.isArray(data?.items)?data.items.map(x=>String(x.id)):[]);
+              localFilter(q,ids);
             }catch(_){}
           }
-          input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,120);});
-        })();
+          input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,80);});
+          input.addEventListener('keydown',function(e){if(e.key==='Enter')e.preventDefault();});
+        });
         </script>
         <div class="party-list-head-v110"><span>PARTY</span><span>AMOUNT</span></div>
         <div class="party-list-v110">
