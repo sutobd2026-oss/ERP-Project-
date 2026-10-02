@@ -376,16 +376,83 @@ page_start('Items');
               </div>
             </aside>
             <section class="item-detail-area">
+              <?php
+                $selectedCategory=null; $categoryItems=[];
+                if($selectedCatId>0){
+                    $cs=$pdo->prepare('SELECT id,name,type FROM categories WHERE id=? AND company_id=? LIMIT 1');
+                    $cs->execute([$selectedCatId,$cid]); $selectedCategory=$cs->fetch()?:null;
+                    if($selectedCategory){
+                        $isql='SELECT i.id,i.name,i.code,i.item_type,i.sale_price,i.purchase_price,u.symbol unit_symbol,
+                               COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm
+                                         WHERE sm.company_id=i.company_id AND sm.item_id=i.id
+                                           AND (sm.transaction_id IS NULL OR EXISTS(
+                                               SELECT 1 FROM transactions st
+                                               WHERE st.id=sm.transaction_id AND st.company_id=sm.company_id AND st.deleted_at IS NULL
+                                           ))),0) current_stock
+                               FROM item_categories ic
+                               JOIN items i ON i.id=ic.item_id AND i.company_id=? AND i.active=1
+                               LEFT JOIN units u ON u.id=i.unit_id
+                               WHERE ic.category_id=?
+                               ORDER BY i.name ASC';
+                        $ist=$pdo->prepare($isql); $ist->execute([$cid,$selectedCatId]); $categoryItems=$ist->fetchAll();
+                    }
+                }
+              ?>
               <div class="item-detail-card panel">
-                <div class="item-detail-top"><div><h2>CATEGORIES</h2><div class="item-subline">Manage product and service categories</div></div><button class="btn primary" onclick="openModal('categoryModal')">⊕ Add Category</button></div>
+                <div class="item-detail-top">
+                  <div>
+                    <h2><?= $selectedCategory ? e($selectedCategory['name']) : 'CATEGORIES' ?></h2>
+                    <div class="item-subline">
+                      <?= $selectedCategory ? 'Items in this category' : 'Manage product and service categories' ?>
+                    </div>
+                  </div>
+                  <button class="btn primary" onclick="openModal('categoryModal')">⊕ Add Category</button>
+                </div>
               </div>
-              <div class="panel" style="margin-top:8px"><div class="panel-head"><h2>Category List</h2><span class="subtle"><?=count($catRows)?> total</span></div><div class="table-wrap"><table><thead><tr><th>NAME</th><th>TYPE</th><th>ACTION</th></tr></thead><tbody>
-                <?php foreach($catRows as $c): ?>
-                  <tr class="<?=($selectedCatId===(int)$c['id'])?'selected-row-v233':''?>"><td><strong><?=e($c['name'])?></strong></td><td><?=e(ucfirst($c['type']))?></td><td><button type="button" class="btn small" onclick="openCategoryEdit(<?= (int)$c['id']?>,<?=json_encode($c['name'])?>,<?=json_encode($c['type'])?>)">Edit</button> <form method="post" style="display:inline" onsubmit="return confirm('Delete this category?')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_category"><input type="hidden" name="id" value="<?=$c['id']?>"><button class="btn small danger" type="submit">Delete</button></form></td></tr>
-                <?php endforeach; if(!$catRows): ?><tr><td colspan="3" class="subtle">No categories yet.</td></tr><?php endif; ?>
-              </tbody></table></div></div>
-            </section>
-          </div>
+
+              <?php if($selectedCategory): ?>
+                <div class="panel category-items-panel-v204" style="margin-top:8px">
+                  <div class="panel-head">
+                    <h2>Items in <?=e($selectedCategory['name'])?></h2>
+                    <span class="subtle"><?=count($categoryItems)?> item<?=count($categoryItems)===1?'':'s'?></span>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>ITEM</th><th>TYPE</th><th>STOCK</th><th>SALE PRICE</th><th>UNIT</th></tr>
+                      </thead>
+                      <tbody>
+                        <?php if($categoryItems): foreach($categoryItems as $ci): ?>
+                          <tr>
+                            <td>
+                              <a class="category-item-link-v204" href="<?=e(url('items?tab='.($ci['item_type']==='service'?'services':'products').'&view='.(int)$ci['id']))?>">
+                                <strong><?=e($ci['name'])?></strong>
+                                <?php if(!empty($ci['code'])): ?><small><?=e($ci['code'])?></small><?php endif; ?>
+                              </a>
+                            </td>
+                            <td><?=e(ucfirst($ci['item_type']))?></td>
+                            <td class="<?=((float)$ci['current_stock']<0)?'category-stock-negative-v204':''?>"><?= $ci['item_type']==='service'?'—':e(qty((float)$ci['current_stock'])) ?></td>
+                            <td><?=e(money((float)$ci['sale_price']))?></td>
+                            <td><?=e($ci['unit_symbol']??'—')?></td>
+                          </tr>
+                        <?php endforeach; else: ?>
+                          <tr><td colspan="5" class="subtle" style="padding:24px">No items are assigned to this category yet.</td></tr>
+                        <?php endif; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              <?php else: ?>
+                <div class="panel" style="margin-top:8px">
+                  <div class="panel-head"><h2>Category List</h2><span class="subtle"><?=count($catRows)?> total</span></div>
+                  <div class="table-wrap"><table><thead><tr><th>NAME</th><th>TYPE</th><th>ACTION</th></tr></thead><tbody>
+                    <?php foreach($catRows as $c): ?>
+                      <tr><td><strong><?=e($c['name'])?></strong></td><td><?=e(ucfirst($c['type']))?></td><td><button type="button" class="btn small" onclick="openCategoryEdit(<?= (int)$c['id']?>,<?=json_encode($c['name'])?>,<?=json_encode($c['type'])?>)">Edit</button> <form method="post" style="display:inline" onsubmit="return confirm('Delete this category?')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_category"><input type="hidden" name="id" value="<?=$c['id']?>"><button class="btn small danger" type="submit">Delete</button></form></td></tr>
+                    <?php endforeach; if(!$catRows): ?><tr><td colspan="3" class="subtle">No categories yet.</td></tr><?php endif; ?>
+                  </tbody></table></div>
+                </div>
+              <?php endif; ?>
+            </section>          </div>
         </div>
         <div class="modal-backdrop" id="categoryModal" onclick="if(event.target===this)closeModal('categoryModal')"><div class="modal"><div class="modal-head"><h2>Add Category</h2><button class="close" type="button" onclick="closeModal('categoryModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_category"><div class="grid2"><div class="form-group"><label>Category Name*</label><input name="name" required></div><div class="form-group"><label>Type</label><select name="type"><option value="product">Product</option><option value="service">Service</option></select></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('categoryModal')">Cancel</button><button class="btn primary">Save</button></div></form></div></div>
         <div class="modal-backdrop" id="categoryEditModal" onclick="if(event.target===this)closeModal('categoryEditModal')"><div class="modal"><div class="modal-head"><h2>Edit Category</h2><button class="close" type="button" onclick="closeModal('categoryEditModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="edit_category"><input type="hidden" name="id" id="categoryEditId"><div class="grid2"><div class="form-group"><label>Category Name*</label><input name="name" id="categoryEditName" required></div><div class="form-group"><label>Type</label><select name="type" id="categoryEditType"><option value="product">Product</option><option value="service">Service</option></select></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('categoryEditModal')">Cancel</button><button class="btn primary">Update</button></div></form></div></div>
