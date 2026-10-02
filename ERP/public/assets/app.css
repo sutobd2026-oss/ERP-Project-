@@ -1332,3 +1332,43 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .transaction-form .item-search-clear{
   display:none!important;
 }
+
+/* Parties: keep note/review badges on the same line as the party name. */
+.party-name-row-v203{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  white-space:nowrap!important;
+}
+.party-name-row-v203 b{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.party-name-row-v203 .party-status-pills-v203{
+  display:flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  flex:0 0 auto!important;
+}
+.party-status-pill-v203{
+  display:inline-flex!important;
+  align-items:center!important;
+  white-space:nowrap!important;
+  font-size:9px!important;
+  line-height:16px!important;
+  padding:0 5px!important;
+  border-radius:9px!important;
+}
+.party-status-pill-v203.note{
+  color:#7b5b00!important;
+  background:#fff6db!important;
+}
+.party-status-pill-v203.review{
+  color:#8a5b00!important;
+  background:#fff4cc!important;
+}
+.party-main-v110>small{
+  margin-top:2px!important;
+}
