@@ -1675,3 +1675,14 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   .item-inline-meta-row-v237{grid-column:auto!important;gap:12px!important}
   .item-info-value-v237.stock-right{text-align:left!important}
 }
+
+/* Item note: inline with location, visually emphasized in red. */
+.item-inline-meta-row-v237 .item-note-inline-v238{
+  color:#dc2626!important;
+}
+.item-inline-meta-row-v237 .item-note-inline-v238 strong{
+  color:#dc2626!important;
+}
+.item-inline-meta-row-v237 .item-note-inline-v238{
+  white-space:normal!important;
+}
