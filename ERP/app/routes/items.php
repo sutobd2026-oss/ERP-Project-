@@ -598,6 +598,7 @@ page_start('Items');
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <?php if(!empty($selected['barcode'])): ?><span class="subtle">Barcode: <b><?=e($selected['barcode'])?></b></span><?php endif; ?>
               <a class="btn" href="<?=e(url('item-ledger?item='.(int)$selected['id']))?>">ITEM STOCK LEDGER</a>
+              <?php if($selected['item_type']==='product'): ?><button type="button" class="btn primary" onclick="openModal('itemBundleModal')">Manage Bundle</button><?php endif; ?>
               <button type="button" class="btn" onclick="openModal('itemNoteModal')"><?=trim((string)($selected['item_note']??''))!==''?'Edit Note':'+ Add Note'?></button>
               <button type="button" class="btn primary adjust-btn" onclick="openModal('adjustModal')">☷ ADJUST ITEM</button>
             </div>
@@ -615,9 +616,9 @@ page_start('Items');
               <div class="item-info-value-v237 stock-right"><span>STOCK VALUE:</span> <b><?=money($selected['item_type']==='service'?0:(float)$selected['purchase_price']*(float)$selected['current_stock'])?></b></div>
             </div>
           </div>
-          <?php if($selected && $selected['item_type']==='product'): ?>
-          <div class="panel item-bundle-card" style="margin-top:10px"><div class="panel-head"><div><h2>BUNDLE / INCLUDED FREE ITEMS</h2><span class="subtle">Included items are free on the sale invoice and reduce their own stock when supplied.</span></div><button type="button" class="btn primary small-btn" onclick="openModal('itemBundleModal')">Manage Bundle</button></div>
-            <?php if(!empty($selected['bundle_components'])): ?><div class="table-wrap"><table><thead><tr><th>FREE ITEM</th><th style="width:120px">QTY</th></tr></thead><tbody><?php foreach($selected['bundle_components'] as $bc): ?><tr><td>└─ <?=e($bc['name'])?></td><td><?=e(qty((float)$bc['quantity']).' '.($bc['unit_symbol']??''))?></td></tr><?php endforeach; ?></tbody></table></div><?php else: ?><div class="subtle" style="padding:12px 0">No included free items configured.</div><?php endif; ?>
+          <?php if($selected && $selected['item_type']==='product' && !empty($selected['bundle_components'])): ?>
+          <div class="panel item-bundle-card" style="margin-top:10px"><div class="panel-head"><div><h2>BUNDLE / INCLUDED FREE ITEMS</h2><span class="subtle">Included items are free on the sale invoice and reduce their own stock when supplied.</span></div></div>
+            <div class="table-wrap"><table><thead><tr><th>FREE ITEM</th><th style="width:120px">QTY</th></tr></thead><tbody><?php foreach($selected['bundle_components'] as $bc): ?><tr><td>└─ <?=e($bc['name'])?></td><td><?=e(qty((float)$bc['quantity']).' '.($bc['unit_symbol']??''))?></td></tr><?php endforeach; ?></tbody></table></div>
           </div>
           <?php endif; ?>
           <div class="item-transactions panel">
