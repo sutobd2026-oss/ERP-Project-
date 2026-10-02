@@ -379,7 +379,7 @@ function delivery_challan_new(): void {
         if(!$editTx){ flash('error','Delivery Challan not found.'); redirect('delivery-challans'); }
         $lk=$pdo->prepare('SELECT tl.to_transaction_id FROM transaction_links tl WHERE tl.company_id=? AND tl.from_transaction_id=? AND tl.relation_type="challan_to_sale" LIMIT 1');$lk->execute([$cid,$editId]);
         if($lk->fetchColumn() && !$previewMode){ flash('error','Converted Delivery Challan cannot be edited.'); redirect('delivery-challans'); }
-        $iq=$pdo->prepare('SELECT ti.*,i.name item_name FROM transaction_items ti JOIN items i ON i.id=ti.item_id WHERE ti.transaction_id=? ORDER BY ti.id');$iq->execute([$editId]);$editLines=$iq->fetchAll();
+        $iq=$pdo->prepare('SELECT ti.*,i.name item_name,u.symbol unit_symbol FROM transaction_items ti JOIN items i ON i.id=ti.item_id LEFT JOIN units u ON u.id=i.unit_id WHERE ti.transaction_id=? ORDER BY ti.id');$iq->execute([$editId]);$editLines=$iq->fetchAll();
         $pq=$pdo->prepare('SELECT * FROM payment_lines WHERE transaction_id=? ORDER BY id');$pq->execute([$editId]);$editPayments=$pq->fetchAll();
         $editMode=true;
     }
@@ -411,11 +411,44 @@ function delivery_challan_new(): void {
         <div class="form-group"><label>Challan Number</label><input name="document_no" value="<?=e($editMode?(string)$editTx['document_no']:'')?>" placeholder="Auto: DC-01"></div>
         <div class="form-group"><label>Challan Date*</label><input type="date" name="txn_date" value="<?=e($editMode?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div>
       </div>
-      <div class="entry-table"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
-        <?php $renderLines=$editMode&&$editLines?$editLines:[null]; foreach($renderLines as $idx=>$ln): $liId=(int)($ln['item_id']??0); $liName=(string)($ln['item_name']??''); $liQty=(float)($ln['qty']??1); $liPrice=(float)($ln['unit_price']??0); $liDisc=(float)($ln['discount']??0); $liUnit=(string)($unitSymbols[$liId]??''); ?>
-        <tr><td><?=($idx+1)?></td><td><div class="item-picker-cell"><?php item_search_field($liId,$liName,'','sale'); ?><select name="item_id[]" class="dc-item item-source-select"><option value="">Select item</option><?php if($liId>0): ?><option value="<?=$liId?>" data-price="<?=e((string)$liPrice)?>" data-unit="<?=e($liUnit)?>" selected><?=e($liName)?></option><?php endif; ?></select></div></td><td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>"></td><td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td><td><input type="number" class="dc-price" name="price[]" step="1" min="0" value="<?=e((string)$liPrice)?>"><input type="hidden" name="discount[]" value="<?=e((string)$liDisc)?>"></td><td class="dc-amt" data-discount="<?=e((string)$liDisc)?>">৳<?=number_format(max(0,$liQty*$liPrice-$liDisc),2,'.',',')?></td><td><button type="button" class="row-remove-btn dc-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button></td></tr>
+      <div class="entry-table"><table><thead><tr><th></th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
+        <?php $renderLines=$editMode&&$editLines?$editLines:[null]; foreach($renderLines as $idx=>$ln):
+          $liId=(int)($ln['item_id']??0);
+          $liName=(string)($ln['item_name']??'');
+          $liQty=(float)($ln['qty']??1);
+          $liPrice=(float)($ln['unit_price']??0);
+          $liDisc=(float)($ln['discount']??0);
+          $liUnit=(string)($ln['unit_symbol']??'');
+          $childParentId=(int)($ln['bundle_parent_transaction_item_id']??0);
+          $isChild=$childParentId>0;
+          $rowKey=$ln?'tx-ti-'.(int)$ln['id']:'dc-new-'.bin2hex(random_bytes(5));
+          $parentKey=$isChild?'tx-ti-'.$childParentId:'';
+        ?>
+        <tr class="<?= $isChild?'dc-bundle-child-row':'' ?>" data-bundle-child="<?= $isChild?'1':'0' ?>" data-bundle-parent-key="<?=e($parentKey)?>" data-bundle-row-key="<?=e($rowKey)?>">
+          <td class="txn-row-index-cell">
+            <button type="button" class="row-remove-btn txn-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>
+            <span class="txn-row-number"><?=($idx+1)?></span>
+          </td>
+          <td>
+            <input type="hidden" name="bundle_row_key[]" value="<?=e($rowKey)?>">
+            <input type="hidden" name="bundle_parent_key[]" value="<?=e($parentKey)?>">
+            <input type="hidden" name="bundle_child[]" value="<?= $isChild?'1':'0'?>">
+            <div class="item-picker-cell">
+              <?php if($isChild): ?>
+                <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div>
+              <?php else: ?>
+                <?php item_search_field($liId,$liName,'','sale'); ?>
+              <?php endif; ?>
+            </div>
+          </td>
+          <td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>></td>
+          <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
+          <td><input type="number" class="dc-price" name="price[]" step="1" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
+          <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
+          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>">৳<?=number_format(max(0,$liQty*$liPrice-$liDisc),2,'.',',')?></td>
+        </tr>
         <?php endforeach; ?>
-      </tbody></table></div>
+      </tbody></tbody></table></div>
       <div id="dcItemStatus" class="subtle" style="margin-top:8px"></div>
       <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="dcAddRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#dcRows','delivery')">+ Add Product</button></div><span class="dc-items-total"><b>Items Total</b> <strong id="dcSubtotal">৳0.00</strong></span></div>
       <div class="dc-summary-grid">
@@ -713,19 +746,117 @@ function delivery_challan_new(): void {
 
     <script>
     function dcFmt(v){return '৳'+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-    let dcItemOptions=[];
-    function dcPopulateSelect(sel){ return sel; }
+    function dcMakeRowKey(){return 'dc-row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}
+    function dcGetBundle(row){
+      const sel=row?.querySelector('.dc-item');
+      if(!sel||!sel.value)return [];
+      try{
+        const raw=sel.selectedOptions?.[0]?.dataset?.bundle || row?.dataset?.bundleJson || '[]';
+        return (JSON.parse(raw||'[]')||[]).map(function(c){return {
+          item_id:Number(c.item_id||c.component_item_id||0),
+          name:String(c.name||''),
+          quantity:Number(c.quantity||1),
+          unit_symbol:String(c.unit_symbol||'')
+        };}).filter(function(c){return c.item_id>0;});
+      }catch(e){return [];}
+    }
+    function dcRemoveBundleChildren(parentKey){
+      if(!parentKey)return;
+      document.querySelectorAll('#dcRows .dc-bundle-child-row').forEach(function(r){
+        if(String(r.dataset.bundleParentKey||'')===String(parentKey)) r.remove();
+      });
+    }
+    function dcRenumberRows(){
+      document.querySelectorAll('#dcRows tr').forEach(function(r,i){
+        const n=r.querySelector('.txn-row-number'); if(n)n.textContent=String(i+1);
+      });
+    }
+    function dcCreateBundleChildRow(parentRow,component,parentKey){
+      const tr=document.createElement('tr');
+      tr.className='dc-bundle-child-row';
+      tr.dataset.bundleChild='1';
+      tr.dataset.bundleParentKey=String(parentKey);
+      tr.dataset.bundleRowKey=dcMakeRowKey();
+      const parentQty=Math.max(0,parseFloat(parentRow.querySelector('.dc-qty')?.value||0)||0);
+      const totalQty=parentQty*Math.max(0,parseFloat(component.quantity||1)||1);
+      const esc=function(v){return String(v||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});};
+      const name=esc(component.name),unit=esc(component.unit_symbol),itemId=Number(component.item_id||0);
+      tr.innerHTML=
+        '<td class="txn-row-index-cell"><button type="button" class="row-remove-btn txn-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button><span class="txn-row-number"></span></td>'+
+        '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
+        '<td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly></td>'+
+        '<td class="dc-unit">'+unit+'</td>'+
+        '<td><input type="number" class="dc-price" name="price[]" step="1" min="0" value="0" readonly></td>'+
+        '<td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="0" readonly></td>'+
+        '<td class="dc-amt" data-discount="0">৳0.00</td>';
+      return tr;
+    }
+    function dcRenderBundleChildren(parentRow,components){
+      const body=document.getElementById('dcRows'); if(!body)return;
+      const parentKey=parentRow.querySelector('input[name="bundle_row_key[]"]')?.value||parentRow.dataset.bundleRowKey||'';
+      if(!parentKey)return;
+      dcRemoveBundleChildren(parentKey);
+      parentRow.dataset.bundleJson=JSON.stringify(components||[]);
+      if(!(components||[]).length){dcRenumberRows();return;}
+      let anchor=parentRow;
+      components.forEach(function(component){
+        const child=dcCreateBundleChildRow(parentRow,component,parentKey);
+        anchor.parentNode.insertBefore(child,anchor.nextSibling);
+        anchor=child;
+      });
+      dcRenumberRows();
+    }
+    function dcUpdateBundleQuantities(parentRow){
+      const parentKey=parentRow.querySelector('input[name="bundle_row_key[]"]')?.value||parentRow.dataset.bundleRowKey||'';
+      if(!parentKey)return;
+      const parentQty=Math.max(0,parseFloat(parentRow.querySelector('.dc-qty')?.value||0)||0);
+      const factorMap={};
+      dcGetBundle(parentRow).forEach(function(c){factorMap[String(c.item_id)]=Number(c.quantity||1);});
+      document.querySelectorAll('#dcRows .dc-bundle-child-row').forEach(function(r){
+        if(String(r.dataset.bundleParentKey||'')!==String(parentKey))return;
+        const id=r.querySelector('input[name="item_id[]"]')?.value||'';
+        const q=r.querySelector('.dc-qty'); if(q)q.value=String(parentQty*(factorMap[String(id)]||1));
+      });
+    }
+    function dcSyncBundleForRow(row){
+      if(!row || row.dataset.bundleChild==='1')return;
+      const itemId=Number(row.querySelector('.dc-item')?.value||0); if(!itemId)return;
+      const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';
+      if(!parentKey)return;
+      let list=dcGetBundle(row);
+      if(list.length){
+        row.dataset.bundleFetchedItem=String(itemId);
+        dcRenderBundleChildren(row,list);
+        return;
+      }
+      const api=(window.SutoBundleComponentsConfig||{}).url;
+      if(!api)return;
+      if(row.dataset.bundleFetchPending===String(itemId))return;
+      row.dataset.bundleFetchPending=String(itemId);
+      const u=new URL(api,location.origin);u.searchParams.set('item_id',String(itemId));
+      fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}})
+        .then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));return data;});})
+        .then(function(data){
+          row.dataset.bundleFetchPending='';
+          row.dataset.bundleFetchedItem=String(itemId);
+          const current=row.querySelector('.dc-item'); if(!current||Number(current.value||0)!==itemId)return;
+          const comps=Array.isArray(data.items)?data.items:[];
+          row.dataset.bundleJson=JSON.stringify(comps);
+          dcRenderBundleChildren(row,comps);
+        })
+        .catch(function(err){row.dataset.bundleFetchPending='';console.error('Delivery Bundle sync failed:',err);});
+    }
     function dcSetPrice(el){
       const o=el?.selectedOptions?.[0],r=el?.closest('tr'); if(!r)return;
       r.querySelector('.dc-price').value=o?.dataset.price||0;
       r.querySelector('.dc-unit').textContent=o?.dataset.unit||'—';
       const body=document.getElementById('dcRows');
       const rows=body?.querySelectorAll('tr');
-      if(body && rows && rows.length && r===rows[rows.length-1] && el.value){
-        dcAddRow();
-      }
+      if(body && rows && rows.length && r===rows[rows.length-1] && el.value){dcAddRow();}
+      dcSyncBundleForRow(r);
       dcRecalc();
     }
+
     function dcAdvanceTotal(){
       let sum=0;
       document.querySelectorAll('#dcAdvanceRows .dc-advance-amt').forEach(function(inp){
@@ -814,6 +945,7 @@ function delivery_challan_new(): void {
     document.addEventListener('change',e=>{if(e.target.matches('.dc-item'))dcSetPrice(e.target); if(e.target.closest('#dcRows'))dcRecalc();});
     if(window.SutoInitItemSearch) window.SutoInitItemSearch(document.getElementById('dcRows'));
     dcRecalc();
+    <script>window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};</script>
     </script>
     <?php render_inline_creation_modals(); page_end();
 }
