@@ -315,12 +315,20 @@ if($route==='parties'){
           const list=document.querySelector('.party-list-v110');
           if(!list)return;
           const q=String(input.value||'').toLowerCase().trim();
-          const rows=[...list.querySelectorAll('.party-list-row-v110')];
-          rows.forEach(function(row){
-            const hay=String(row.dataset.partySearch||row.textContent||'').toLowerCase();
-            row.classList.toggle('sense-live-filter-hidden',!!q && hay.indexOf(q)===-1);
-          });
+          list._senseAllRows=list._senseAllRows||[...list.querySelectorAll('.party-list-row-v110')];
+          const all=list._senseAllRows;
+          function render(ids){
+            const allowed=ids?new Set(ids.map(String)):null;
+            all.forEach(function(row){
+              const hay=String(row.dataset.partySearch||row.textContent||'').toLowerCase();
+              const show=!q || (allowed ? allowed.has(String(row.dataset.partyId||'')) : hay.indexOf(q)!==-1);
+              row._senseShow=show;
+            });
+            while(list.firstChild)list.removeChild(list.firstChild);
+            all.forEach(function(row){if(row._senseShow)list.appendChild(row);});
+          }
           clearTimeout(window.__sensePartySearchTimer);
+          render(null);
           if(!q)return;
           window.__sensePartySearchTimer=setTimeout(async function(){
             try{
@@ -330,10 +338,7 @@ if($route==='parties'){
               const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
               const data=await res.json();
               if(!data?.ok||!Array.isArray(data.items))return;
-              const ids=new Set(data.items.map(function(x){return String(x.id);}));
-              rows.forEach(function(row){
-                row.classList.toggle('sense-live-filter-hidden',!ids.has(String(row.dataset.partyId||'')));
-              });
+              render(data.items.map(function(x){return x.id;}));
             }catch(_){}
           },80);
         };        </script>
