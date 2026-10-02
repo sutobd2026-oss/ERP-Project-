@@ -4,6 +4,11 @@ if($route==='dashboard'){
     page_start('Home');
     $cid=(int)$u['company_id'];
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
+    echo '<style>
+      .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
+      .dashboard-cash-link .cash-negative-value{color:#ef4444!important}
+      .dashboard-cash-link.cash-negative-warning .title:after{content:" ⚠";color:#ef4444;font-size:12px;margin-left:4px}
+    </style>';
     $dashboardMoney=function(float $amount)use($currency):string{
         $formatted=number_format($amount,2,'.',',');
         $parts=explode('.',$formatted);
@@ -247,7 +252,7 @@ if($route==='dashboard'){
       <div class="privacy"><span>Privacy</span><button type="button" class="privacy-toggle" id="privacyToggle" aria-pressed="false"><span class="privacy-dot"></span><span class="privacy-state">Off</span></button></div>
       <div class="dashboard-sensitive-right dashboard-blur-target">
         <div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
-        <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value" style="color:#10b981"><?=$dashboardMoney((float)$cash)?></div></a>
+        <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link <?=((float)$cash<0)?'cash-negative-warning':''?>"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value cash-in-hand-value <?=((float)$cash<0)?'cash-negative-value':''?>"><?=$dashboardMoney((float)$cash)?></div></a>
         <div class="right-head">Stock Inventory</div><div class="right-card low"><div class="title">Low Stocks</div><?php if($low):foreach($low as $l):?><div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span><?=e($l['name'])?></span><span style="color:#ef4444"><?=number_format((float)$l['stock'],0)?></span></div><?php endforeach;else:?><div class="subtle" style="margin-top:10px">No low stock items.</div><?php endif;?></div>
         <div class="right-head">Cash & Bank</div><div class="right-card"><div class="title">Bank Accounts</div><div class="value"><?=(int)db()->query('SELECT COUNT(*) FROM bank_accounts WHERE company_id='.(int)$cid)->fetchColumn()?></div></div>
         <div class="right-card"><div class="title">Loan Accounts</div><div class="value">0</div></div>
