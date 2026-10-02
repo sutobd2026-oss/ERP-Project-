@@ -1585,3 +1585,6 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .category-items-panel-v204 .category-item-link-v204 small{font-size:10px;color:#94a3b8}
 .category-items-panel-v204 .category-item-link-v204:hover strong{color:#1683ea}
 .category-stock-negative-v204{color:#ef4444!important}
+
+/* Reliable live filtering for master lists. */
+.sense-live-filter-hidden{display:none!important}
