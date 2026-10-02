@@ -1383,8 +1383,8 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .customer-label-manager-row{display:flex;align-items:center;gap:8px}
 .customer-label-manager-row form:first-child{display:flex;align-items:center;gap:6px;flex:1}
 .customer-label-manager-row input[name="label_name"]{flex:1;min-width:0}
-.party-customer-labels-v203{display:flex;align-items:center;gap:4px;flex:0 0 auto;min-width:0;overflow:hidden}
-.party-customer-label-v203{display:inline-flex;align-items:center;max-width:110px;padding:2px 6px;border-radius:9px;background:#eef7ff;color:#2a6f9f;border:1px solid #d4e8f6;font-size:8px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.party-customer-labels-v203{display:flex!important;align-items:center!important;gap:5px!important;flex-wrap:wrap!important;min-width:0!important;margin-top:2px!important;overflow:visible!important}
+.party-customer-label-v203{display:inline-flex!important;align-items:center!important;max-width:140px;padding:2px 7px;border-radius:9px;background:#eef7ff;color:#2a6f9f;border:1px solid #d4e8f6;font-size:8px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Customer Labels browser tab */
 .party-label-browser-v204{
