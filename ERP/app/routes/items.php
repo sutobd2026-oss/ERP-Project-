@@ -516,8 +516,33 @@ page_start('Items');
             <button type="button" class="icon-more" aria-label="More">⋮</button>
           </div>
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
-          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="filterItems()"></div>
+          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="itemLiveFilter(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
           <script>
+          window.itemLiveFilter=window.itemLiveFilter||function(input){
+            clearTimeout(input._itemTimer);
+            input._itemTimer=setTimeout(async function(){
+              const list=document.getElementById('itemListBody');
+              if(!list)return;
+              const q=(input.value||'').toLowerCase().trim();
+              const rows=[...list.querySelectorAll('.item-master-row')];
+              if(!q){rows.forEach(r=>r.style.display='');return;}
+              rows.forEach(function(row){
+                const txt=(row.dataset.name||row.textContent||'').toLowerCase();
+                row.style.display=txt.indexOf(q)!==-1?'':'none';
+              });
+              try{
+                const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
+                u.searchParams.set('q',q);
+                const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+                const data=await res.json();
+                if(!data?.ok||!Array.isArray(data.items))return;
+                const ids=new Set(data.items.map(function(x){return String(x.id);}));
+                [...list.querySelectorAll('.item-master-row')].forEach(function(row){
+                  row.style.display=ids.has(String(row.dataset.itemId||''))?'':'none';
+                });
+              }catch(e){}
+            },60);
+          };
           document.addEventListener('DOMContentLoaded',function(){
             const input=document.getElementById('itemSearch');
             const list=document.getElementById('itemListBody');
