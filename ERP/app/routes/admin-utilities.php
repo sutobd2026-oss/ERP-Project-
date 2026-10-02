@@ -109,17 +109,105 @@ if($route==='export-items'){
                      ))),0) current_stock FROM items i LEFT JOIN categories c ON c.id=i.category_id LEFT JOIN units u ON u.id=i.unit_id WHERE i.company_id=? AND i.active=1 ORDER BY i.name');$rows->execute([$cid]);$rows=$rows->fetchAll();$fp=fopen('php://temp','w+');fputcsv($fp,['Item Name','Type','Code','Barcode','Category','Unit','Sale Price','Wholesale Price','Minimum Wholesale Qty','Purchase Price','Opening Stock','Low Stock Limit','Current Stock']);foreach($rows as $r)fputcsv($fp,$r);rewind($fp);header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="suto-items-'.date('Ymd-His').'.csv"');fpassthru($fp);exit;
 }
 
+if($route==='__xlsx_helpers_never_route__'){ exit; }
+function sense_read_xlsx_rows(string $path): array {
+    if(!class_exists('ZipArchive')) throw new RuntimeException('XLSX import requires the PHP Zip extension.');
+    if(!class_exists('SimpleXMLElement')) throw new RuntimeException('XLSX import requires PHP SimpleXML.');
+    $zip=new ZipArchive();
+    if($zip->open($path)!==true) throw new RuntimeException('Unable to open XLSX file.');
+    $shared=[];
+    $ss=$zip->getFromName('xl/sharedStrings.xml');
+    if($ss!==false){
+        $xml=new SimpleXMLElement($ss);
+        $ns=$xml->getNamespaces(true);
+        foreach($xml->si as $si){
+            $texts=[];
+            foreach($si->xpath('.//a:t')?:[] as $t) $texts[]=(string)$t;
+            if(!$texts){
+                foreach($si->xpath('.//t')?:[] as $t) $texts[]=(string)$t;
+            }
+            $shared[] = implode('', $texts);
+        }
+    }
+    $workbook=$zip->getFromName('xl/workbook.xml');
+    $rels=$zip->getFromName('xl/_rels/workbook.xml.rels');
+    if($workbook===false || $rels===false){$zip->close();throw new RuntimeException('Invalid XLSX workbook.');}
+    $wb=new SimpleXMLElement($workbook);
+    $rn=$wb->getNamespaces(true);
+    $sheet=$wb->sheets->sheet[0]??null;
+    if(!$sheet){$zip->close();throw new RuntimeException('XLSX workbook has no worksheets.');}
+    $rid=(string)$sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships')->id;
+    $relxml=new SimpleXMLElement($rels);
+    $target='';
+    foreach($relxml->Relationship as $rel){
+        if((string)$rel['Id']===$rid){$target=(string)$rel['Target'];break;}
+    }
+    if($target===''){ $zip->close();throw new RuntimeException('Could not resolve the first worksheet.');}
+    $target=ltrim(str_replace('..','',str_replace('\\','/',$target)),'/');
+    if(!str_starts_with($target,'xl/')) $target='xl/'.$target;
+    $sheetXml=$zip->getFromName($target);
+    if($sheetXml===false){
+        $sheetXml=$zip->getFromName('xl/worksheets/sheet1.xml');
+    }
+    if($sheetXml===false){$zip->close();throw new RuntimeException('Worksheet data is missing from XLSX.');}
+    $sx=new SimpleXMLElement($sheetXml);
+    $rows=[];
+    $colIndex=function(string $ref): int {
+        if(!preg_match('/^([A-Z]+)/i',$ref,$m)) return 0;
+        $n=0;
+        foreach(str_split(strtoupper($m[1])) as $ch) $n=$n*26+(ord($ch)-64);
+        return $n-1;
+    };
+    foreach($sx->sheetData->row as $row){
+        $vals=[];
+        foreach($row->c as $cell){
+            $idx=$colIndex((string)$cell['r']);
+            $type=(string)$cell['t'];
+            $value='';
+            if($type==='s'){
+                $si=(int)($cell->v??0); $value=$shared[$si]??'';
+            }elseif($type==='inlineStr'){
+                $parts=[];
+                foreach($cell->is->xpath('.//t')?:[] as $t) $parts[]=(string)$t;
+                $value=implode('', $parts);
+            }else{
+                $value=(string)($cell->v??'');
+            }
+            $vals[$idx]=$value;
+        }
+        if($vals){
+            $max=max(array_keys($vals)); $out=array_fill(0,$max+1,'');
+            foreach($vals as $k=>$v)$out[$k]=$v;
+            $rows[]=$out;
+        }
+    }
+    $zip->close();
+    return $rows;
+}
 if($route==='import-items'){
     $u=require_login();$cid=(int)$u['company_id'];$pdo=db();
     if($_SERVER['REQUEST_METHOD']==='POST'){
         check_csrf();
-        if(empty($_FILES['csv']['tmp_name'])){flash('error','Choose a CSV file.');redirect('import-items');}
-        $fh=fopen($_FILES['csv']['tmp_name'],'r'); if(!$fh){flash('error','Unable to read CSV file.');redirect('import-items');}
-        $header=fgetcsv($fh);
+        $upload=$_FILES['csv']??[];
+        if(empty($upload['tmp_name']) || ($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK){flash('error','Choose a valid CSV or XLSX file.');redirect('import-items');}
+        $ext=strtolower(pathinfo((string)($upload['name']??''),PATHINFO_EXTENSION));
+        if(!in_array($ext,['csv','xlsx'],true)){flash('error','Only .CSV and .XLSX files are supported.');redirect('import-items');}
+        $rowsData=[];
+        try{
+            if($ext==='xlsx'){
+                $rowsData=sense_read_xlsx_rows((string)$upload['tmp_name']);
+            }else{
+                $fh=fopen($upload['tmp_name'],'r'); if(!$fh)throw new RuntimeException('Unable to read CSV file.');
+                while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;
+                fclose($fh);
+            }
+        }catch(Throwable $e){flash('error','Could not read the file: '.$e->getMessage());redirect('import-items');}
+        if(count($rowsData)<1){flash('error','The file is empty.');redirect('import-items');}
+        $header=array_shift($rowsData);
         $count=0;$skipped=0;$errors=[];$line=1;
         try{
             $pdo->beginTransaction();
-            while(($r=fgetcsv($fh))!==false){
+            foreach($rowsData as $r){
                 $line++;
                 $name=trim($r[0]??''); if($name===''){ $skipped++; continue; }
                 $type=in_array(strtolower(trim($r[1]??'product')),['product','service'],true)?strtolower(trim($r[1])):'product';
@@ -160,7 +248,7 @@ if($route==='import-items'){
         }
         redirect('import-items');
     }
-    page_start('Import Items'); ?><div class="page-title"><div><h1>Import Items</h1><p>Import products/services from CSV.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a><a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a></div></div><div class="panel"><p class="subtle">CSV columns: Item Name, Type, Code, Barcode, Category, Unit, Sale Price, Wholesale Price, Minimum Wholesale Qty, Purchase Price, Opening Stock, Low Stock Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>CSV file</label><input type="file" name="csv" accept=".csv,text/csv" required></div><button class="btn primary">Import Items</button></form></div><?php page_end();exit;
+    page_start('Import Items'); ?><div class="page-title"><div><h1>Import Items</h1><p>Import products/services from CSV or XLSX.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a><a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a></div></div><div class="panel"><p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Use the same column order as the template: Item Name, Type, Code, Barcode, Category, Unit, Sale Price, Wholesale Price, Minimum Wholesale Qty, Purchase Price, Opening Stock, Low Stock Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="btn primary">Import Items</button></form></div><?php page_end();exit;
 }
 if($route==='import-parties'){
     $u=require_login();$cid=(int)$u['company_id'];if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();if(empty($_FILES['csv']['tmp_name'])){flash('error','Choose a CSV file.');redirect('import-parties');} $fh=fopen($_FILES['csv']['tmp_name'],'r');$header=fgetcsv($fh);$count=0;$pdo=db();try{$pdo->beginTransaction();while(($r=fgetcsv($fh))!==false){$name=trim($r[0]??'');$phone=preg_replace('/\D+/','',$r[1]??'');if($name==='' || !preg_match('/^(013|014|015|016|017|018|019)\d{8}$/',$phone))continue;$rawRoles=trim($r[3]??'customer');$roleMap=['customer','supplier','investor','lender','borrower','employee','other'];$roles=array_values(array_unique(array_intersect($roleMap,array_filter(array_map('trim',preg_split('/[,|]+/',$rawRoles))))));if(!$roles){$roles=['customer'];} $ptype=in_array('customer',$roles,true)&&in_array('supplier',$roles,true)?'both':(in_array('supplier',$roles,true)?'supplier':'customer');$pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,trim($r[2]??'')?:null,$ptype,trim($r[4]??'')?:null,(float)($r[5]??0),'receivable',(float)($r[6]??0)]);$pid=(int)$pdo->lastInsertId();$pri=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)');foreach($roles as $rr)$pri->execute([$pid,$rr]);$count++;audit('import','party',$pid,['name'=>$name,'phone'=>$phone,'roles'=>$roles]);} $pdo->commit();flash('success',$count.' parties imported.');}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}redirect('import-parties');}
