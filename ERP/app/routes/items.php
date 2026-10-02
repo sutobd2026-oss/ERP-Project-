@@ -596,7 +596,7 @@ page_start('Items');
             <div class="item-detail-top">
               <div><h2><?=e($selected['name'])?> <span class="item-share">↗</span></h2><div class="item-subline"><?=e($selected['code']?:($selected['barcode']?:''))?></div></div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <?php if(empty($selected['barcode'])): ?><form method="post" style="display:inline"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="generate_barcode"><input type="hidden" name="item_id" value="<?=$selected['id']?>"><button class="btn" type="submit">▦ GENERATE BARCODE</button></form><?php else: ?><span class="subtle">Barcode: <b><?=e($selected['barcode'])?></b></span><?php endif; ?>
+              <?php if(!empty($selected['barcode'])): ?><span class="subtle">Barcode: <b><?=e($selected['barcode'])?></b></span><?php endif; ?>
               <a class="btn" href="<?=e(url('item-ledger?item='.(int)$selected['id']))?>">ITEM STOCK LEDGER</a>
               <button type="button" class="btn primary adjust-btn" onclick="openModal('adjustModal')">☷ ADJUST ITEM</button>
             </div>
