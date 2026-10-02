@@ -686,7 +686,17 @@ function delivery_challan_new(): void {
     function dcFmt(v){return '৳'+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
     let dcItemOptions=[];
     function dcPopulateSelect(sel){ return sel; }
-    function dcSetPrice(el){const o=el?.selectedOptions?.[0],r=el?.closest('tr'); if(!r)return; r.querySelector('.dc-price').value=o?.dataset.price||0; r.querySelector('.dc-unit').textContent=o?.dataset.unit||'—'; dcRecalc();}
+    function dcSetPrice(el){
+      const o=el?.selectedOptions?.[0],r=el?.closest('tr'); if(!r)return;
+      r.querySelector('.dc-price').value=o?.dataset.price||0;
+      r.querySelector('.dc-unit').textContent=o?.dataset.unit||'—';
+      const body=document.getElementById('dcRows');
+      const rows=body?.querySelectorAll('tr');
+      if(body && rows && rows.length && r===rows[rows.length-1] && el.value){
+        dcAddRow();
+      }
+      dcRecalc();
+    }
     function dcAdvanceTotal(){
       let sum=0;
       document.querySelectorAll('#dcAdvanceRows .dc-advance-amt').forEach(function(inp){
