@@ -412,8 +412,8 @@ function delivery_challan_new(): void {
       </div>
       <div class="form-footer dc-form-footer" style="margin:0 -16px -16px">
         <div class="dc-footer-actions">
-          <a class="btn" href="<?=e(url('delivery-challans'))?>">Cancel</a>
           <span class="dc-footer-cod">COD: <strong id="dcCodFooter">৳0.00</strong></span>
+          <a class="btn" href="<?=e(url('delivery-challans'))?>">Cancel</a>
           <button type="submit" name="save_and_print" value="1" class="btn">Save and Print</button>
           <button class="btn primary"><?= $editMode?'Update':'Save' ?></button>
         </div>
