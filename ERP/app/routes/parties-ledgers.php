@@ -162,6 +162,7 @@ if($route==='parties'){
     }
     $q=trim($_GET['q']??'');
     $type=$_GET['type']??'all';
+    $labelId=(int)($_GET['label_id']??0);
     $selectedId=(int)($_GET['id']??0);
     $editRequested=(int)($_GET['edit']??0);
     if($editRequested>0)$selectedId=$editRequested;
@@ -176,7 +177,10 @@ if($route==='parties'){
       FROM parties p WHERE p.company_id=? AND p.deleted_at IS NULL';
     $params=[$cid];
     if($q!==''){$sql.=' AND (p.name LIKE ? OR p.phone LIKE ? OR p.email LIKE ?)';$like='%'.$q.'%';array_push($params,$like,$like,$like);}
-    if(in_array($type,$validRoles,true)){$sql.=' AND EXISTS(SELECT 1 FROM party_roles fr WHERE fr.party_id=p.id AND fr.role=?)';$params[]=$type;}
+    if($type==='labels' && $labelId>0){
+        $sql.=' AND EXISTS(SELECT 1 FROM party_customer_labels fcl WHERE fcl.party_id=p.id AND fcl.label_id=? AND EXISTS(SELECT 1 FROM customer_labels fcn WHERE fcn.id=fcl.label_id AND fcn.company_id=p.company_id))';
+        $params[]=$labelId;
+    }elseif(in_array($type,$validRoles,true)){$sql.=' AND EXISTS(SELECT 1 FROM party_roles fr WHERE fr.party_id=p.id AND fr.role=?)';$params[]=$type;}
     if($type==='both'){$sql.=' AND EXISTS(SELECT 1 FROM party_roles fc WHERE fc.party_id=p.id AND fc.role="customer") AND EXISTS(SELECT 1 FROM party_roles fs WHERE fs.party_id=p.id AND fs.role="supplier")';}
     $sql.=' ORDER BY p.name ASC';
     $st=db()->prepare($sql);$st->execute($params);$rows=$st->fetchAll();
@@ -246,7 +250,7 @@ if($route==='parties'){
         $txSql.=' ORDER BY t.txn_date DESC,t.id DESC LIMIT 200';
         $txs=db()->prepare($txSql);$txs->execute($txParams);$transactions=$txs->fetchAll();
     }
-    $partyUrl=function($extra=[])use($type,$q){$base=['type'=>$type];if($q!=='')$base['q']=$q;return url('parties?'.http_build_query(array_merge($base,$extra)));};
+    $partyUrl=function($extra=[])use($type,$q,$labelId){$base=['type'=>$type];if($q!=='')$base['q']=$q;if($type==='labels'&&$labelId>0)$base['label_id']=$labelId;return url('parties?'.http_build_query(array_merge($base,$extra)));};
     $partyNotes=[]; $partyReviews=[]; $partyReviewLoadError=''; $selectedReviewPhone=''; $selectedVerifiedTransaction=null; $selectedHasPublicReview=false;
     if($selected){
         try{
@@ -272,11 +276,30 @@ if($route==='parties'){
     ?>
     <div class="parties-tabs-v110">
       <?php $tabs=[
-        'all'=>'All Party','customer'=>'Customer','supplier'=>'Supplier','investor'=>'Investor','lender'=>'Lender','borrower'=>'Borrower','employee'=>'Employee','other'=>'Other'
+        'all'=>'All Party','customer'=>'Customer','supplier'=>'Supplier','investor'=>'Investor','lender'=>'Lender','borrower'=>'Borrower','employee'=>'Employee','other'=>'Other','labels'=>'Labels'
       ]; foreach($tabs as $tv=>$tl): ?>
-        <a class="parties-tab-v110 <?=$type===$tv?'active':''?>" href="<?=e($partyUrl(['type'=>$tv,'id'=>$selectedId]))?>"><?=e($tl)?></a>
+        <a class="parties-tab-v110 <?=$type===$tv?'active':''?>" href="<?=e($partyUrl(['type'=>$tv,'id'=>0,'label_id'=>($tv==='labels'?$labelId:0)]))?>"><?=e($tl)?></a>
       <?php endforeach; ?>
     </div>
+    <?php if($type==='labels'): ?>
+      <div class="party-label-browser-v204">
+        <div class="party-label-browser-title">Customer Labels</div>
+        <div class="party-label-browser-list">
+          <?php if($customerLabels): foreach($customerLabels as $cl): ?>
+            <a class="party-label-browser-chip <?=$labelId===(int)$cl['id']?'active':''?>" href="<?=e($partyUrl(['label_id'=>(int)$cl['id'],'id'=>0]))?>">
+              <span><?=e($cl['name'])?></span>
+              <?php
+                $lc=0;
+                try{$lsq=db()->prepare('SELECT COUNT(*) FROM party_customer_labels pcl JOIN parties pp ON pp.id=pcl.party_id AND pp.company_id=? AND pp.deleted_at IS NULL WHERE pcl.label_id=?');$lsq->execute([$cid,(int)$cl['id']]);$lc=(int)$lsq->fetchColumn();}catch(Throwable $e){}
+              ?>
+              <b><?=$lc?></b>
+            </a>
+          <?php endforeach; else: ?>
+            <span class="subtle">No customer labels created yet.</span>
+          <?php endif; ?>
+        </div>
+      </div>
+    <?php endif; ?>
     <div class="parties-layout-v110">
       <aside class="parties-sidebar-v110">
         <div class="party-import-card-v110"><a href="<?=e(url('import-parties'))?>"><span class="party-import-icon">↥</span><span><b>Import Parties</b><small>Use contacts from your Phone or Gmail to create parties.</small></span><span class="party-import-arrow">›</span></a></div>
