@@ -1284,3 +1284,40 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .dash-money-dec{font-size:.62em;color:#a7b0bc;font-weight:500;letter-spacing:.01em}
 .big-money .dash-money-dec{font-size:.6em}
 .metric-card .value .dash-money-dec,.right-card .value .dash-money-dec{font-size:.62em}
+
+/* Transaction row controls: remove button sits directly above its row number. */
+.entry-table .txn-row-index-cell{
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  padding:4px 4px!important;
+  vertical-align:top!important;
+  text-align:center!important;
+}
+.entry-table .txn-row-remove{
+  display:block!important;
+  width:24px!important;
+  height:24px!important;
+  margin:0 auto 4px!important;
+  padding:0!important;
+  border:1px solid #cfd8e3!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#64748b!important;
+  font-size:16px!important;
+  line-height:22px!important;
+  cursor:pointer!important;
+}
+.entry-table .txn-row-remove:hover{
+  color:#dc2626!important;
+  border-color:#fca5a5!important;
+}
+.entry-table .txn-row-number{
+  display:block!important;
+  font-size:12px!important;
+  line-height:16px!important;
+  color:#526276!important;
+}
+.transaction-form .item-search-clear{
+  display:none!important;
+}
