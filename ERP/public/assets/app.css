@@ -1385,3 +1385,63 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .customer-label-manager-row input[name="label_name"]{flex:1;min-width:0}
 .party-customer-labels-v203{display:flex;align-items:center;gap:4px;flex:0 0 auto;min-width:0;overflow:hidden}
 .party-customer-label-v203{display:inline-flex;align-items:center;max-width:110px;padding:2px 6px;border-radius:9px;background:#eef7ff;color:#2a6f9f;border:1px solid #d4e8f6;font-size:8px;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Customer Labels browser tab */
+.party-label-browser-v204{
+  margin:10px 0 12px;
+  padding:10px 14px;
+  border:1px solid #dfe7ee;
+  border-radius:8px;
+  background:#fbfdff;
+}
+.party-label-browser-title{
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#667789;
+  margin-bottom:8px;
+}
+.party-label-browser-list{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+}
+.party-label-browser-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 10px;
+  border:1px solid #d8e3ec;
+  border-radius:16px;
+  background:#fff;
+  color:#334155;
+  text-decoration:none!important;
+  font-size:12px;
+}
+.party-label-browser-chip b{
+  min-width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  padding:0 4px;
+  border-radius:9px;
+  background:#eef4f8;
+  color:#64748b;
+  font-size:10px;
+}
+.party-label-browser-chip:hover{
+  border-color:#9cc7e7;
+  background:#f5fbff;
+}
+.party-label-browser-chip.active{
+  border-color:#6fb4e8;
+  background:#eaf5ff;
+  color:#176ea8;
+  box-shadow:0 0 0 1px rgba(111,180,232,.15);
+}
+.party-label-browser-chip.active b{
+  background:#d5ebfa;
+  color:#176ea8;
+}
