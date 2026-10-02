@@ -525,7 +525,7 @@ page_start('Items');
             const rows=[...list.querySelectorAll('.item-master-row')];
             rows.forEach(function(row){
               const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
-              row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+              if(!q||hay.indexOf(q)!==-1)row.style.removeProperty('display');else row.style.setProperty('display','none','important');
             });
             clearTimeout(window.__senseItemSearchTimer);
             if(!q)return;
