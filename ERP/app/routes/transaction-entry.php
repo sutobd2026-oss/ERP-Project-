@@ -323,6 +323,35 @@ function duplicateTxnRow(btn){
 @media(max-width:1180px){.sale-invoice-ui .entry-top{grid-template-columns:minmax(0,1fr) 155px 175px!important}.sale-invoice-ui .txn-form-footer{left:215px!important}}
 @media(max-width:850px){.sale-invoice-page-title{margin:6px 0!important}.sale-invoice-ui .entry-top{grid-template-columns:1fr!important}.sale-invoice-ui .sale-adjustments{grid-template-columns:1fr!important}.sale-invoice-ui .txn-form-footer{left:0!important;min-height:86px!important}.sale-invoice-ui .txn-footer-actions{flex-wrap:wrap}.sale-invoice-ui .entry-table{overflow:auto!important}.sale-invoice-ui .entry-table table{min-width:900px!important}}
 </style><style>
+/* Final sale invoice table alignment override */
+.sale-invoice-ui .entry-table table{width:100%!important;table-layout:fixed!important}
+.sale-invoice-ui .entry-table th:nth-child(1),.sale-invoice-ui .entry-table td:nth-child(1){width:4%!important}
+.sale-invoice-ui .entry-table th:nth-child(2),.sale-invoice-ui .entry-table td:nth-child(2){width:37%!important}
+.sale-invoice-ui .entry-table th:nth-child(3),.sale-invoice-ui .entry-table td:nth-child(3){width:8%!important}
+.sale-invoice-ui .entry-table th:nth-child(4),.sale-invoice-ui .entry-table td:nth-child(4){width:8%!important}
+.sale-invoice-ui .entry-table th:nth-child(5),.sale-invoice-ui .entry-table td:nth-child(5){width:13%!important}
+.sale-invoice-ui .entry-table th:nth-child(6),.sale-invoice-ui .entry-table td:nth-child(6){width:12%!important}
+.sale-invoice-ui .entry-table th:nth-child(7),.sale-invoice-ui .entry-table td:nth-child(7){width:11%!important;overflow:visible!important}
+.sale-invoice-ui .entry-table th:nth-child(8),.sale-invoice-ui .entry-table td:nth-child(8){width:7%!important}
+.sale-invoice-ui .entry-table td:nth-child(7) .amount,
+.sale-invoice-ui .amount{
+  display:block!important;
+  width:auto!important;
+  min-width:72px!important;
+  max-width:none!important;
+  height:34px!important;
+  line-height:34px!important;
+  padding:0 4px!important;
+  margin:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  text-align:right!important;
+  flex:none!important;
+  box-sizing:border-box!important;
+}
+.sale-invoice-ui .txn-row-actions-cell{white-space:nowrap!important;text-align:center!important}
+.sale-invoice-ui .txn-action-btn{width:28px!important;height:28px!important;padding:0!important;margin:0 1px!important}
 
 .bundle-child-row{background:#fbfdff}.bundle-child-row td{border-top:0}.bundle-child-label{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid #e3e9f0;border-radius:6px;background:#f8fbff}.bundle-child-label span:last-child,.bundle-free-label{font-size:11px;font-weight:800;color:#0f8a5a;text-transform:uppercase}.bundle-child-row .row-remove-btn{color:#c0392b}
 .item-line-meta{margin-top:6px;padding:6px 7px;border:1px solid #e5ebf2;border-radius:7px;background:#fbfdff}.item-line-meta-grid{display:flex;flex-direction:row;gap:6px;align-items:end;width:100%;flex-wrap:nowrap}.item-line-meta-grid>div{min-width:0}.item-line-meta-grid>div:first-child{flex:1 1 auto;min-width:0}.item-line-meta-grid>div:last-child{flex:0 0 110px;width:110px}.item-line-meta label{display:none}.item-line-meta input,.item-line-meta textarea{width:100%;box-sizing:border-box;border:1px solid #dce4ed;border-radius:5px;background:#fff;color:#334155;padding:5px 6px;font-size:10px;line-height:1.25;min-height:28px}.item-line-meta textarea{resize:vertical;min-height:30px}.item-line-meta input[readonly],.item-line-meta textarea[readonly]{background:#f7f9fc;color:#64748b}.item-line-description{background:#fffef8!important}.item-line-meta input:focus,.item-line-meta textarea:focus{outline:none;border-color:#7aaee8;box-shadow:0 0 0 2px rgba(122,174,232,.12)}
