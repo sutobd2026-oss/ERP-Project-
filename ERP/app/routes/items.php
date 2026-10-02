@@ -518,7 +518,7 @@ page_start('Items');
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
           <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="filterItems()"></div>
           <script>
-          (function(){
+          document.addEventListener('DOMContentLoaded',function(){
             const input=document.getElementById('itemSearch');
             const list=document.getElementById('itemListBody');
             if(!input||!list)return;
@@ -529,7 +529,7 @@ page_start('Items');
               rows().forEach(function(row){
                 const text=(row.dataset.name||'').toLowerCase();
                 const id=String(row.dataset.itemId||'');
-                const match=!qq || (!ids ? text.indexOf(qq)!==-1 : ids.has(id));
+                const match=!qq || (ids ? ids.has(id) : text.indexOf(qq)!==-1);
                 row.style.display=match?'':'none';
               });
             }
@@ -544,14 +544,14 @@ page_start('Items');
                 const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
                 const data=await res.json();
                 if(my!==seq)return;
-                if(data&&data.ok&&Array.isArray(data.items)){
-                  const ids=new Set(data.items.map(x=>String(x.id)));
-                  localFilter(q,ids);
-                }
+                const ids=new Set(Array.isArray(data?.items)?data.items.map(x=>String(x.id)):[]);
+                localFilter(q,ids);
               }catch(_){}
             }
-            input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,120);});
-          })();
+            input.removeAttribute('oninput');
+            input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,80);});
+            input.addEventListener('keydown',function(e){if(e.key==='Enter')e.preventDefault();});
+          });
           </script>
           <div id="itemListBody" class="item-master-list">
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
