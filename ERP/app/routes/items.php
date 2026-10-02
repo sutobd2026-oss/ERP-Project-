@@ -601,14 +601,16 @@ page_start('Items');
               <button type="button" class="btn primary adjust-btn" onclick="openModal('adjustModal')">☷ ADJUST ITEM</button>
             </div>
             </div>
-            <div class="item-price-grid item-info-grid-v236">
-              <div><span>SALE PRICE:</span> <b><?=money((float)$selected['sale_price'])?></b></div>
-              <div class="stock-right"><span>STOCK QUANTITY:</span> <b class="<?=((float)$selected['current_stock']<0)?'negative-value':'positive-value'?>"><?= $selected['item_type']==='service' ? '—' : qty((float)$selected['current_stock']) ?></b></div>
-              <div><span>PURCHASE PRICE:</span> <b><?=money((float)$selected['purchase_price'])?></b></div>
-              <div class="stock-right"><span>STOCK VALUE:</span> <b><?=money($selected['item_type']==='service'?0:(float)$selected['purchase_price']*(float)$selected['current_stock'])?></b></div>
-              <div class="item-inline-meta-v236"><span>DESCRIPTION</span><p><?=trim((string)($selected['description']??''))!==''?nl2br(e((string)$selected['description'])):'—'?></p></div>
-              <div class="item-inline-meta-v236"><span>WARRANTY</span><p><?=e(trim((string)($selected['warranty']??''))!==''?(string)$selected['warranty']:'—')?></p></div>
-              <div class="item-inline-meta-v236"><span>LOCATION</span><p><?=e(trim((string)($selected['location']??''))!==''?(string)$selected['location']:'—')?></p></div>
+            <div class="item-price-grid item-info-grid-v237">
+              <div class="item-inline-meta-row-v237">
+                <span><strong>DESCRIPTION:</strong> <?=trim((string)($selected['description']??''))!==''?nl2br(e((string)$selected['description'])):'—'?></span>
+                <span><strong>WARRANTY:</strong> <?=e(trim((string)($selected['warranty']??''))!==''?(string)$selected['warranty']:'—')?></span>
+                <span><strong>LOCATION:</strong> <?=e(trim((string)($selected['location']??''))!==''?(string)$selected['location']:'—')?></span>
+              </div>
+              <div class="item-info-value-v237"><span>SALE PRICE:</span> <b><?=money((float)$selected['sale_price'])?></b></div>
+              <div class="item-info-value-v237 stock-right"><span>STOCK QUANTITY:</span> <b class="<?=((float)$selected['current_stock']<0)?'negative-value':'positive-value'?>"><?= $selected['item_type']==='service' ? '—' : qty((float)$selected['current_stock']) ?></b></div>
+              <div class="item-info-value-v237"><span>PURCHASE PRICE:</span> <b><?=money((float)$selected['purchase_price'])?></b></div>
+              <div class="item-info-value-v237 stock-right"><span>STOCK VALUE:</span> <b><?=money($selected['item_type']==='service'?0:(float)$selected['purchase_price']*(float)$selected['current_stock'])?></b></div>
             </div>
           </div>
           <?php if($selected && $selected['item_type']==='product'): ?>
