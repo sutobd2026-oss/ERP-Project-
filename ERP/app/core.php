@@ -841,7 +841,7 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
     const rows=[...list.querySelectorAll(isParty?'.party-list-row-v110':'.item-master-row')];
     rows.forEach(function(row){
       const hay=String((isParty?row.dataset.partySearch:row.dataset.name)||row.textContent||'').toLowerCase();
-      row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+      if(!q || hay.indexOf(q)!==-1) row.style.removeProperty('display'); else row.style.setProperty('display','none','important');
     });
   }
   document.addEventListener('input',function(e){liveFilterMasterLists(e.target);},true);
