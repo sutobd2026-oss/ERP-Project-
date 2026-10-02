@@ -110,146 +110,144 @@ if($route==='export-items'){
 }
 
 if($route==='__xlsx_helpers_never_route__'){ exit; }
+function sense_zip_u16(string $s,int $o): int { $a=unpack('v',substr($s,$o,2)); return (int)$a[1]; }
+function sense_zip_u32(string $s,int $o): int { $a=unpack('V',substr($s,$o,4)); return (int)$a[1]; }
+function sense_xlsx_zip_entry(string $path,string $wanted): string|false {
+    $fh=@fopen($path,'rb'); if(!$fh) return false;
+    $size=filesize($path); $tailLen=min($size,65557); fseek($fh,$size-$tailLen); $tail=fread($fh,$tailLen); $pos=strrpos($tail,"\x50\x4b\x05\x06");
+    if($pos===false){fclose($fh);return false;}
+    $eocd=substr($tail,$pos,22);
+    if(strlen($eocd)<22){fclose($fh);return false;}
+    $cdSize=sense_zip_u32($eocd,12); $cdOffset=sense_zip_u32($eocd,16);
+    fseek($fh,$cdOffset); $cd=fread($fh,$cdSize); $p=0; $found=null;
+    while($p+46<=strlen($cd)){
+        if(substr($cd,$p,4)!=="\x50\x4b\x01\x02") break;
+        $nameLen=sense_zip_u16($cd,$p+28); $extraLen=sense_zip_u16($cd,$p+30); $commentLen=sense_zip_u16($cd,$p+32);
+        $method=sense_zip_u16($cd,$p+10); $compSize=sense_zip_u32($cd,$p+20); $uncompSize=sense_zip_u32($cd,$p+24); $localOffset=sense_zip_u32($cd,$p+42);
+        $name=substr($cd,$p+46,$nameLen);
+        if($name===$wanted){$found=[$method,$compSize,$uncompSize,$localOffset];break;}
+        $p+=46+$nameLen+$extraLen+$commentLen;
+    }
+    if(!$found){fclose($fh);return false;}
+    [$method,$compSize,$uncompSize,$localOffset]=$found;
+    fseek($fh,$localOffset); $lh=fread($fh,30);
+    if(strlen($lh)<30||substr($lh,0,4)!=="\x50\x4b\x03\x04"){fclose($fh);return false;}
+    $nameLen=sense_zip_u16($lh,26); $extraLen=sense_zip_u16($lh,28); fseek($fh,$localOffset+30+$nameLen+$extraLen); $data=$compSize?fread($fh,$compSize):'';
+    fclose($fh);
+    if($method===0) return $data;
+    if($method===8){$out=@gzinflate($data); if($out===false)throw new RuntimeException('Unable to decompress XLSX data.'); return $out;}
+    throw new RuntimeException('This XLSX uses an unsupported compression method.');
+}
 function sense_read_xlsx_rows(string $path): array {
-    if(!class_exists('ZipArchive')) throw new RuntimeException('XLSX import requires the PHP Zip extension.');
-    if(!class_exists('SimpleXMLElement')) throw new RuntimeException('XLSX import requires PHP SimpleXML.');
-    $zip=new ZipArchive();
-    if($zip->open($path)!==true) throw new RuntimeException('Unable to open XLSX file.');
-    $shared=[];
-    $ss=$zip->getFromName('xl/sharedStrings.xml');
+    if(!class_exists('SimpleXMLElement') || !function_exists('gzinflate')) throw new RuntimeException('XLSX import needs PHP SimpleXML and zlib support.');
+    $shared=[]; $ss=sense_xlsx_zip_entry($path,'xl/sharedStrings.xml');
     if($ss!==false){
-        $xml=new SimpleXMLElement($ss);
-        $mainNs='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-        $main=$xml->children($mainNs);
+        $xml=new SimpleXMLElement($ss); $mainNs='http://schemas.openxmlformats.org/spreadsheetml/2006/main'; $main=$xml->children($mainNs);
         foreach($main->si as $si){
-            $parts=[];
-            foreach($si->children($mainNs)->t as $t) $parts[]=(string)$t;
-            foreach($si->children($mainNs)->r as $run){
-                foreach($run->children($mainNs)->t as $t) $parts[]=(string)$t;
-            }
+            $parts=[]; foreach($si->children($mainNs)->t as $t)$parts[]=(string)$t;
+            foreach($si->children($mainNs)->r as $run)foreach($run->children($mainNs)->t as $t)$parts[]=(string)$t;
             $shared[]=implode('',$parts);
         }
     }
-    $workbook=$zip->getFromName('xl/workbook.xml');
-    $rels=$zip->getFromName('xl/_rels/workbook.xml.rels');
-    if($workbook===false || $rels===false){$zip->close();throw new RuntimeException('Invalid XLSX workbook.');}
-    $wb=new SimpleXMLElement($workbook);
-    $rn=$wb->getNamespaces(true);
-    $sheet=$wb->sheets->sheet[0]??null;
-    if(!$sheet){$zip->close();throw new RuntimeException('XLSX workbook has no worksheets.');}
+    $workbook=sense_xlsx_zip_entry($path,'xl/workbook.xml'); $rels=sense_xlsx_zip_entry($path,'xl/_rels/workbook.xml.rels');
+    if($workbook===false||$rels===false)throw new RuntimeException('Invalid XLSX workbook.');
+    $wb=new SimpleXMLElement($workbook); $sheet=$wb->sheets->sheet[0]??null;
+    if(!$sheet)throw new RuntimeException('XLSX workbook has no worksheets.');
     $rid=(string)$sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships')->id;
-    $relxml=new SimpleXMLElement($rels);
-    $target='';
-    foreach($relxml->Relationship as $rel){
-        if((string)$rel['Id']===$rid){$target=(string)$rel['Target'];break;}
-    }
-    if($target===''){ $zip->close();throw new RuntimeException('Could not resolve the first worksheet.');}
-    $target=ltrim(str_replace('..','',str_replace('\\','/',$target)),'/');
-    if(!str_starts_with($target,'xl/')) $target='xl/'.$target;
-    $sheetXml=$zip->getFromName($target);
-    if($sheetXml===false){
-        $sheetXml=$zip->getFromName('xl/worksheets/sheet1.xml');
-    }
-    if($sheetXml===false){$zip->close();throw new RuntimeException('Worksheet data is missing from XLSX.');}
-    $sx=new SimpleXMLElement($sheetXml);
-    $rows=[];
-    $colIndex=function(string $ref): int {
-        if(!preg_match('/^([A-Z]+)/i',$ref,$m)) return 0;
-        $n=0;
-        foreach(str_split(strtoupper($m[1])) as $ch) $n=$n*26+(ord($ch)-64);
-        return $n-1;
-    };
+    $relxml=new SimpleXMLElement($rels); $target='';
+    foreach($relxml->Relationship as $rel){if((string)$rel['Id']===$rid){$target=(string)$rel['Target'];break;}}
+    if($target==='')throw new RuntimeException('Could not resolve the first worksheet.');
+    $target=ltrim(str_replace('..','',str_replace('\\','/',$target)),'/'); if(!str_starts_with($target,'xl/'))$target='xl/'.$target;
+    $sheetXml=sense_xlsx_zip_entry($path,$target); if($sheetXml===false)$sheetXml=sense_xlsx_zip_entry($path,'xl/worksheets/sheet1.xml');
+    if($sheetXml===false)throw new RuntimeException('Worksheet data is missing from XLSX.');
+    $sx=new SimpleXMLElement($sheetXml); $rows=[];
+    $colIndex=function(string $ref): int {if(!preg_match('/^([A-Z]+)/i',$ref,$m))return 0;$n=0;foreach(str_split(strtoupper($m[1])) as $ch)$n=$n*26+(ord($ch)-64);return $n-1;};
     foreach($sx->sheetData->row as $row){
         $vals=[];
         foreach($row->c as $cell){
-            $idx=$colIndex((string)$cell['r']);
-            $type=(string)$cell['t'];
-            $value='';
-            if($type==='s'){
-                $si=(int)($cell->v??0); $value=$shared[$si]??'';
-            }elseif($type==='inlineStr'){
-                $parts=[];
-                foreach($cell->is->xpath('.//t')?:[] as $t) $parts[]=(string)$t;
-                $value=implode('', $parts);
-            }else{
-                $value=(string)($cell->v??'');
-            }
+            $idx=$colIndex((string)$cell['r']); $type=(string)$cell['t']; $value='';
+            if($type==='s'){$si=(int)($cell->v??0);$value=$shared[$si]??'';}
+            elseif($type==='inlineStr'){ $parts=[]; foreach($cell->is->xpath('.//t')?:[] as $t)$parts[]=(string)$t; $value=implode('',$parts); }
+            else $value=(string)($cell->v??'');
             $vals[$idx]=$value;
         }
-        if($vals){
-            $max=max(array_keys($vals)); $out=array_fill(0,$max+1,'');
-            foreach($vals as $k=>$v)$out[$k]=$v;
-            $rows[]=$out;
-        }
+        if($vals){$max=max(array_keys($vals));$out=array_fill(0,$max+1,'');foreach($vals as $k=>$v)$out[$k]=$v;$rows[]=$out;}
     }
-    $zip->close();
     return $rows;
+}
+function sense_item_import_review(PDO $pdo,int $cid,array $rowsData): array {
+    $rows=[]; $errors=[]; $seenCodes=[]; $seenBarcodes=[]; $line=1;
+    if($rowsData)$header=array_shift($rowsData);
+    foreach($rowsData as $r){
+        $line++; $name=trim((string)($r[0]??'')); if($name==='')continue;
+        $type=strtolower(trim((string)($r[1]??'product'))); if(!in_array($type,['product','service'],true))$type='product';
+        $code=trim((string)($r[2]??'')); $barcode=trim((string)($r[3]??'')); $category=trim((string)($r[4]??'')); $unit=trim((string)($r[5]??''));
+        $sale=(float)($r[6]??0);$wh=(float)($r[7]??0);$minWh=(float)($r[8]??0);$buy=(float)($r[9]??0);$opening=$type==='product'?(float)($r[10]??0):0;$low=$type==='product'?(float)($r[11]??0):0;
+        $issues=[];
+        if($code!==''){ $k=strtolower($code); if(isset($seenCodes[$k]))$issues[]='Duplicate code in file'; $seenCodes[$k]=true; $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND code=? AND active=1 LIMIT 1');$st->execute([$cid,$code]);if($st->fetchColumn())$issues[]='Code already exists'; }
+        if($barcode!==''){ $k=strtolower($barcode); if(isset($seenBarcodes[$k]))$issues[]='Duplicate barcode in file'; $seenBarcodes[$k]=true; $st=$pdo->prepare('SELECT 1 FROM items WHERE company_id=? AND barcode=? AND active=1 LIMIT 1');$st->execute([$cid,$barcode]);if($st->fetchColumn())$issues[]='Barcode already exists'; }
+        if($category!==''){ $st=$pdo->prepare('SELECT type FROM categories WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$category]);if(($ct=$st->fetchColumn())!==false&&$ct!==$type)$issues[]='Category type mismatch'; }
+        $rows[]=['line'=>$line,'name'=>$name,'type'=>$type,'code'=>$code,'barcode'=>$barcode,'category'=>$category,'unit'=>$unit,'sale'=>$sale,'wholesale'=>$wh,'min_wholesale_qty'=>$minWh,'purchase'=>$buy,'opening'=>$opening,'low_stock'=>$low,'issues'=>$issues];
+        if($issues)$errors[]='Line '.$line.': '.implode(', ',$issues);
+    }
+    return [$rows,$errors];
 }
 if($route==='import-items'){
     $u=require_login();$cid=(int)$u['company_id'];$pdo=db();
     if($_SERVER['REQUEST_METHOD']==='POST'){
-        check_csrf();
+        check_csrf(); $action=(string)($_POST['import_action']??'preview');
+        if($action==='confirm'){
+            $token=(string)($_POST['token']??''); $payload=$_SESSION['item_import_preview'][$token]??null;
+            if(!is_array($payload)) { flash('error','Import review expired. Please upload the file again.'); redirect('import-items'); }
+            unset($_SESSION['item_import_preview'][$token]);
+            try{
+                [$reviewRows,$errors]=sense_item_import_review($pdo,$cid,$payload);
+                if($errors)throw new RuntimeException('Please fix the highlighted rows before confirming the import.');
+                $pdo->beginTransaction();$count=0;
+                foreach($reviewRows as $r){
+                    $catId=null;$unitId=null;
+                    if($r['category']!==''){$st=$pdo->prepare('SELECT id,type FROM categories WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$r['category']]);$cat=$st->fetch();if($cat&&$cat['type']!==$r['type'])throw new RuntimeException('Category type mismatch on line '.$r['line']);if($cat)$catId=(int)$cat['id'];else{$pdo->prepare('INSERT INTO categories(company_id,name,type) VALUES(?,?,?)')->execute([$cid,$r['category'],$r['type']]);$catId=(int)$pdo->lastInsertId();}}
+                    if($r['unit']!==''){$st=$pdo->prepare('SELECT id FROM units WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$r['unit']]);$un=$st->fetch();if($un)$unitId=(int)$un['id'];else{$pdo->prepare('INSERT INTO units(company_id,name,symbol) VALUES(?,?,?)')->execute([$cid,$r['unit'],$r['unit']]);$unitId=(int)$pdo->lastInsertId();}}
+                    $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$r['type'],$r['name'],$r['code']?:null,$r['barcode']?:null,$catId,$unitId,$r['sale'],$r['wholesale'],$r['min_wholesale_qty'],$r['purchase'],$r['opening'],$r['low_stock']]);
+                    $id=(int)$pdo->lastInsertId();
+                    if($r['type']==='product'&&abs($r['opening'])>0.0001)$pdo->prepare('INSERT INTO stock_movements(company_id,item_id,movement_date,quantity,unit_price,movement_type,note) VALUES(?,?,?,?,?,?,?)')->execute([$cid,$id,date('Y-m-d'),$r['opening'],$r['purchase'],'opening_stock','Opening Stock']);
+                    $count++; audit('import','item',$id,['name'=>$r['name'],'line'=>$r['line']]);
+                }
+                $pdo->commit(); flash('success',$count.' items imported successfully.');
+            }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}
+            redirect('import-items');
+        }
         $upload=$_FILES['csv']??[];
-        if(empty($upload['tmp_name']) || ($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK){flash('error','Choose a valid CSV or XLSX file.');redirect('import-items');}
+        if(empty($upload['tmp_name'])||($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK){flash('error','Choose a valid CSV or XLSX file.');redirect('import-items');}
         $ext=strtolower(pathinfo((string)($upload['name']??''),PATHINFO_EXTENSION));
         if(!in_array($ext,['csv','xlsx'],true)){flash('error','Only .CSV and .XLSX files are supported.');redirect('import-items');}
-        $rowsData=[];
         try{
-            if($ext==='xlsx'){
-                $rowsData=sense_read_xlsx_rows((string)$upload['tmp_name']);
-            }else{
-                $fh=fopen($upload['tmp_name'],'r'); if(!$fh)throw new RuntimeException('Unable to read CSV file.');
-                while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;
-                fclose($fh);
-            }
+            $rowsData=[];
+            if($ext==='xlsx')$rowsData=sense_read_xlsx_rows((string)$upload['tmp_name']);
+            else{$fh=fopen($upload['tmp_name'],'r');if(!$fh)throw new RuntimeException('Unable to read CSV file.');while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;fclose($fh);}
+            if(count($rowsData)<1)throw new RuntimeException('The file is empty.');
+            [$reviewRows,$errors]=sense_item_import_review($pdo,$cid,$rowsData);
+            $token=bin2hex(random_bytes(16)); $_SESSION['item_import_preview'][$token]=$rowsData;
+            ?>
+            <?php page_start('Review Item Import'); ?>
+            <div class="page-title"><div><h1>Review Item Import</h1><p>Review the rows below. Nothing has been added yet.</p></div><a class="btn" href="<?=e(url('import-items'))?>">Cancel</a></div>
+            <div class="panel">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><strong><?=count($reviewRows)?> item(s) found</strong><span class="subtle"><?=count($errors)?count($errors).' issue(s) found':'Ready to import'?></span></div>
+              <div class="table-wrap" style="margin-top:12px;max-height:62vh;overflow:auto"><table><thead><tr><th>LINE</th><th>ITEM</th><th>TYPE</th><th>CODE</th><th>BARCODE</th><th>CATEGORY</th><th>UNIT</th><th>SALE PRICE</th><th>PURCHASE PRICE</th><th>OPENING STOCK</th><th>STATUS</th></tr></thead><tbody>
+              <?php foreach($reviewRows as $r): ?><tr>
+                <td><?=e((string)$r['line'])?></td><td><?=e($r['name'])?></td><td><?=e(ucfirst($r['type']))?></td><td><?=e($r['code'])?></td><td><?=e($r['barcode'])?></td><td><?=e($r['category'])?></td><td><?=e($r['unit'])?></td><td><?=money($r['sale'])?></td><td><?=money($r['purchase'])?></td><td><?=qty($r['opening'])?></td>
+                <td><?php if($r['issues']): ?><span style="color:#dc2626;font-weight:700"><?=e(implode('; ',$r['issues']))?></span><?php else: ?><span style="color:#059669;font-weight:700">Ready</span><?php endif; ?></td>
+              </tr><?php endforeach; ?></tbody></table></div>
+              <?php if($errors): ?><div class="panel" style="margin-top:12px;border-color:#fecaca;background:#fff7f7"><strong style="color:#b91c1c">Import cannot be confirmed until the issues are fixed.</strong><div style="margin-top:8px;color:#7f1d1d"><?php foreach($errors as $er): ?><div><?=e($er)?></div><?php endforeach; ?></div></div><?php endif; ?>
+              <div class="form-footer" style="margin-top:12px"><a class="btn" href="<?=e(url('import-items'))?>">Cancel</a><?php if(!$errors): ?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="import_action" value="confirm"><input type="hidden" name="token" value="<?=e($token)?>"><button class="btn primary" type="submit">Confirm &amp; Add <?=count($reviewRows)?> Items</button></form><?php endif; ?></div>
+            </div>
+            <?php page_end();exit;
         }catch(Throwable $e){flash('error','Could not read the file: '.$e->getMessage());redirect('import-items');}
-        if(count($rowsData)<1){flash('error','The file is empty.');redirect('import-items');}
-        $header=array_shift($rowsData);
-        $count=0;$skipped=0;$errors=[];$line=1;
-        try{
-            $pdo->beginTransaction();
-            foreach($rowsData as $r){
-                $line++;
-                $name=trim($r[0]??''); if($name===''){ $skipped++; continue; }
-                $type=in_array(strtolower(trim($r[1]??'product')),['product','service'],true)?strtolower(trim($r[1])):'product';
-                $code=trim($r[2]??'')?:null; $barcode=trim($r[3]??'')?:null;
-                $categoryName=trim($r[4]??''); $unitName=trim($r[5]??'');
-                $sale=(float)($r[6]??0); $wh=(float)($r[7]??0); $minWh=(float)($r[8]??0);
-                $buy=(float)($r[9]??0); $opening=$type==='product'?(float)($r[10]??0):0; $low=$type==='product'?(float)($r[11]??0):0;
-                $catId=null; $unitId=null;
-                if($categoryName!==''){
-                    $st=$pdo->prepare('SELECT id,type FROM categories WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$categoryName]);$cat=$st->fetch();
-                    if($cat && $cat['type']!==$type){$errors[]="Line $line: category '$categoryName' belongs to {$cat['type']} items.";continue;}
-                    if($cat){$catId=(int)$cat['id'];}
-                    else{$pdo->prepare('INSERT INTO categories(company_id,name,type) VALUES(?,?,?)')->execute([$cid,$categoryName,$type]);$catId=(int)$pdo->lastInsertId();}
-                }
-                if($unitName!==''){
-                    $st=$pdo->prepare('SELECT id FROM units WHERE company_id=? AND name=? LIMIT 1');$st->execute([$cid,$unitName]);$unit=$st->fetch();
-                    if($unit)$unitId=(int)$unit['id']; else{$pdo->prepare('INSERT INTO units(company_id,name,symbol) VALUES(?,?,?)')->execute([$cid,$unitName,$unitName]);$unitId=(int)$pdo->lastInsertId();}
-                }
-                if($code!==null){$st=$pdo->prepare('SELECT id FROM items WHERE company_id=? AND code=? AND active=1 LIMIT 1');$st->execute([$cid,$code]);if($st->fetch()){$errors[]="Line $line: duplicate item code '$code'.";continue;}}
-                if($barcode!==null){$st=$pdo->prepare('SELECT id FROM items WHERE company_id=? AND barcode=? AND active=1 LIMIT 1');$st->execute([$cid,$barcode]);if($st->fetch()){$errors[]="Line $line: duplicate barcode '$barcode'.";continue;}}
-                $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-                    ->execute([$cid,$type,$name,$code,$barcode,$catId,$unitId,$sale,$wh,$minWh,$buy,$opening,$low]);
-                $id=(int)$pdo->lastInsertId();
-                if($type==='product' && abs($opening)>0.0001){
-                    $pdo->prepare('INSERT INTO stock_movements(company_id,item_id,movement_date,quantity,unit_price,movement_type,note) VALUES(?,?,?,?,?,?,?)')
-                        ->execute([$cid,$id,date('Y-m-d'),$opening,$buy,'opening_stock','Opening Stock']);
-                }
-                $count++; audit('import','item',$id,['name'=>$name,'line'=>$line]);
-            }
-            $pdo->commit();
-            $msg=$count.' items imported.';
-            if($skipped)$msg.=' '.$skipped.' blank line(s) skipped.';
-            flash($errors?'success':'success',$msg.($errors?' Some rows were skipped. Check import notes in Audit Log.':''));
-            foreach($errors as $err) audit('import_error','item',null,['message'=>$err]);
-        }catch(Throwable $e){
-            if($pdo->inTransaction())$pdo->rollBack();
-            flash('error','Import failed: '.$e->getMessage());
-        }
-        redirect('import-items');
     }
-    page_start('Import Items'); ?><div class="page-title"><div><h1>Import Items</h1><p>Import products/services from CSV or XLSX.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a><a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a></div></div><div class="panel"><p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Use the same column order as the template: Item Name, Type, Code, Barcode, Category, Unit, Sale Price, Wholesale Price, Minimum Wholesale Qty, Purchase Price, Opening Stock, Low Stock Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="btn primary">Import Items</button></form></div><?php page_end();exit;
+    page_start('Import Items'); ?>
+    <div class="page-title"><div><h1>Import Items</h1><p>Import products/services from CSV or XLSX.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="<?=e(url('export-items'))?>">Download current items CSV</a><a class="btn" href="<?=e(url('export-items').'?template=1')?>">CSV Template</a></div></div>
+    <div class="panel"><p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Use the same column order as the template: Item Name, Type, Code, Barcode, Category, Unit, Sale Price, Wholesale Price, Minimum Wholesale Qty, Purchase Price, Opening Stock, Low Stock Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="import_action" value="preview"><div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div><button class="btn primary">Upload &amp; Review</button></form></div>
+    <?php page_end();exit;
 }
 if($route==='import-parties'){
     $u=require_login();$cid=(int)$u['company_id'];if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();if(empty($_FILES['csv']['tmp_name'])){flash('error','Choose a CSV file.');redirect('import-parties');} $fh=fopen($_FILES['csv']['tmp_name'],'r');$header=fgetcsv($fh);$count=0;$pdo=db();try{$pdo->beginTransaction();while(($r=fgetcsv($fh))!==false){$name=trim($r[0]??'');$phone=preg_replace('/\D+/','',$r[1]??'');if($name==='' || !preg_match('/^(013|014|015|016|017|018|019)\d{8}$/',$phone))continue;$rawRoles=trim($r[3]??'customer');$roleMap=['customer','supplier','investor','lender','borrower','employee','other'];$roles=array_values(array_unique(array_intersect($roleMap,array_filter(array_map('trim',preg_split('/[,|]+/',$rawRoles))))));if(!$roles){$roles=['customer'];} $ptype=in_array('customer',$roles,true)&&in_array('supplier',$roles,true)?'both':(in_array('supplier',$roles,true)?'supplier':'customer');$pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,trim($r[2]??'')?:null,$ptype,trim($r[4]??'')?:null,(float)($r[5]??0),'receivable',(float)($r[6]??0)]);$pid=(int)$pdo->lastInsertId();$pri=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)');foreach($roles as $rr)$pri->execute([$pid,$rr]);$count++;audit('import','party',$pid,['name'=>$name,'phone'=>$phone,'roles'=>$roles]);} $pdo->commit();flash('success',$count.' parties imported.');}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}redirect('import-parties');}
