@@ -12,7 +12,35 @@ function addRow(type){const rows=qs('#entryRows');if(!rows)return;const first=qs
 function removeRow(btn){const rows=qsa('#entryRows .sale-row');if(rows.length<=1){const r=rows[0];qsa('select',r).forEach(x=>x.selectedIndex=0);qsa('input',r).forEach(x=>{if(x.classList.contains('qty'))x.value='1';else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';else if(x.classList.contains('item-search-input'))x.value='';});qs('.serial-number-input',r)&&(qs('.serial-number-input',r).value='');qs('.serial-entry-box',r)&&(qs('.serial-entry-box',r).hidden=true);qs('.item-search-clear',r)&&(qs('.item-search-clear',r).style.display='none');qs('.item-selected-summary',r)?.remove();const u=qs('.unit-label',r);if(u)u.textContent='—';qs('.amount',r).textContent=fmt(0)}else{btn.closest('.sale-row')?.remove();renumberRows();}recalc()}
 function addPayment(){const wrap=qs('#paymentRows');if(!wrap)return;const first=qs('.payment-line',wrap);const clone=first.cloneNode(true);qsa('input',clone).forEach(i=>i.value='');qsa('select',clone).forEach(s=>s.selectedIndex=0);const acct=qs('.pay-account',clone);if(acct){acct.style.display='none';acct.name='pay_account[]'}const cd=qs('.pay-cheque-date',clone);if(cd){cd.style.display='none';cd.value=''}wrap.appendChild(clone);bindPaymentLine(clone);recalc()}
 function togglePaymentFields(sel){const row=sel&&sel.closest('.payment-line,.std-payment-row,.std-pay-grid');if(!row)return;const method=sel.value||'';const cd=qs('.pay-cheque-date',row);const ref=qs('.pay-ref',row)||qs('[name="pay_reference[]"]',row)||qs('[name="pay_ref[]"]',row)||qs('.std-cheque-ref',row);const isCheque=method==='cheque';if(cd)cd.style.display=isCheque?'block':'none';if(ref)ref.style.display=isCheque?'block':'none';if(!isCheque&&ref&&ref.querySelector('input'))ref.querySelector('input').value='';}
-function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);if(row.dataset.bundleChild!=='1'){const mainRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');if(mainRows[mainRows.length-1]===row&&typeof addRow==='function')addRow(txType);}if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
+function updatePrice(sel){
+ const row=sel?.closest('.sale-row'),opt=sel?.selectedOptions?.[0];
+ if(!row||!opt)return;
+ const price=qs('.price',row),unit=qs('.unit-label',row);
+ const txType=document.body.dataset.txntype||'sale';
+ if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;
+ if(unit)unit.textContent=opt.dataset.unit||'—';
+ if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);
+ if(row.dataset.bundleChild!=='1'){
+   const mainRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');
+   if(mainRows[mainRows.length-1]===row&&typeof addRow==='function')addRow(txType);
+ }
+ if(txType==='sale'&&row.dataset.bundleChild!=='1'){
+   let components=[];
+   try{components=JSON.parse(opt.dataset.bundle||'[]')||[];}catch(_){components=[];}
+   if((!Array.isArray(components)||!components.length)&&window.SutoTxnBundleMap){
+     const map=window.SutoTxnBundleMap;
+     const fromMap=map[String(opt.value)];
+     if(Array.isArray(fromMap))components=fromMap;
+   }
+   if(Array.isArray(components)&&components.length&&typeof window.renderBundleChildrenForRow==='function'){
+     try{window.renderBundleChildrenForRow(row,components);}
+     catch(err){console.error('Direct sale bundle render failed:',err);}
+   }else if(typeof window.syncBundleForRow==='function'){
+     try{window.syncBundleForRow(row);}catch(err){console.error('Sale bundle sync failed:',err);}
+   }
+ }
+ if(typeof recalc==='function')recalc();
+}
 function bindEntryRow(row){qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',function(){recalc();if(x.classList.contains('qty')&&row.dataset.bundleChild!=='1'&&document.body.dataset.txntype==='sale'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);if(typeof window.SutoSyncSerialMeta==='function')window.SutoSyncSerialMeta(row)}));qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));if(typeof window.SutoBindSerialEntry==='function')window.SutoBindSerialEntry(row);const sel=qs('.item-select',row);if(sel&&sel.value&&typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,sel.selectedOptions[0]);}
 function bindPaymentLine(row){qs('select[name="pay_method[]"]',row)?.addEventListener('change',e=>togglePaymentFields(e.target));qs('input[name="pay_amount[]"]',row)?.addEventListener('input',recalc)}
 /* v118: serial-number tracking UI */
