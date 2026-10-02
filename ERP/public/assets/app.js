@@ -109,7 +109,22 @@ function renderSerialModal(){
 function addSerialFromModal(){const row=serialModalState.row,input=qs('#serialEntryInput');if(!row||!input||serialModalState.mode==='sale')return;const value=input.value.trim();if(!value)return;const max=serialMaxQty(row);if(max>0&&serialModalState.values.length>=max)return;const vals=serialModalState.values;if(vals.some(v=>v.toLowerCase()===value.toLowerCase())){input.value='';input.focus();return;}vals.push(value);input.value='';renderSerialModal();input.focus();}
 function saveSerialModal(){const row=serialModalState.row,m=serialModal();if(!row||!m)return;const vals=serialModalState.values.slice(),max=serialMaxQty(row),mode=serialModalState.mode||m.dataset.mode||'sale';if(mode==='purchase'&&max>0&&vals.length!==max){alert('Please enter '+max+' serial number(s) for this item.');return;}if(mode==='sale'&&vals.length>0&&max>0&&vals.length!==max){alert('Please select exactly '+max+' serial number(s), or leave all unselected for automatic selection.');return;}const ta=qs('.serial-number-input',row);if(ta)ta.value=vals.join('\n');renderSerialMeta(row);closeSerialModal();}
 function bindSerialModal(){const m=serialModal();if(!m||m.dataset.bound==='1')return;m.dataset.bound='1';qs('#serialModalClose')?.addEventListener('click',closeSerialModal);qs('#serialModalCancel')?.addEventListener('click',closeSerialModal);qs('#serialEntryAdd')?.addEventListener('click',addSerialFromModal);qs('#serialModalSave')?.addEventListener('click',saveSerialModal);m.querySelector('.serial-entry-backdrop')?.addEventListener('click',closeSerialModal);qs('#serialEntryInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addSerialFromModal();}else if(e.key==='Escape'){e.preventDefault();closeSerialModal();}});qs('#serialAvailableSearch')?.addEventListener('input',e=>{clearTimeout(window.__serialSearchTimer);window.__serialSearchTimer=setTimeout(()=>loadAvailableSaleSerials(e.target.value.trim()),220);});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&serialModal()&&!serialModal().hidden)closeSerialModal();});}
-function ensureNextTxnRow(row,txType){if(!row||row.dataset.bundleChild==='1'||!txType)return;if(row.dataset.autoNextRowCreated==='1')return;const mainRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');if(mainRows.length&&mainRows[mainRows.length-1]===row&&typeof addRow==='function'){row.dataset.autoNextRowCreated='1';addRow(txType);}}
+function ensureNextTxnRow(row,txType){
+  if(!row||row.dataset.bundleChild==='1'||!txType)return;
+  if(row.dataset.autoNextRowCreated==='1')return;
+  const mainRows=qsa('#entryRows .sale-row:not(.bundle-child-row)');
+  if(!mainRows.length||mainRows[mainRows.length-1]!==row)return;
+  const addButton=[...document.querySelectorAll('#entryRows + .entry-actions button, .entry-actions button')].find(btn=>String(btn.getAttribute('onclick')||'').includes("addRow('"+txType+"')"));
+  if(addButton){
+    row.dataset.autoNextRowCreated='1';
+    addButton.click();
+    return;
+  }
+  if(typeof addRow==='function'){
+    row.dataset.autoNextRowCreated='1';
+    addRow(txType);
+  }
+}
 function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));qs('.serial-number-input',row)?.addEventListener('input',()=>renderSerialMeta(row));qs('.serial-trigger-btn',row)?.addEventListener('click',()=>openSerialModal(row));renderSerialMeta(row);}
 function bindPaymentLine(row){qs('select[name="pay_method[]"]',row)?.addEventListener('change',e=>togglePaymentFields(e.target));qs('input[name="pay_amount[]"]',row)?.addEventListener('input',recalc)}
