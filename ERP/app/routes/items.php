@@ -598,6 +598,7 @@ page_start('Items');
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <?php if(!empty($selected['barcode'])): ?><span class="subtle">Barcode: <b><?=e($selected['barcode'])?></b></span><?php endif; ?>
               <a class="btn" href="<?=e(url('item-ledger?item='.(int)$selected['id']))?>">ITEM STOCK LEDGER</a>
+              <button type="button" class="btn" onclick="openModal('itemNoteModal')"><?=trim((string)($selected['item_note']??''))!==''?'Edit Note':'+ Add Note'?></button>
               <button type="button" class="btn primary adjust-btn" onclick="openModal('adjustModal')">☷ ADJUST ITEM</button>
             </div>
             </div>
@@ -606,6 +607,7 @@ page_start('Items');
                 <span><strong>DESCRIPTION:</strong> <?=trim((string)($selected['description']??''))!==''?nl2br(e((string)$selected['description'])):'—'?></span>
                 <span><strong>WARRANTY:</strong> <?=e(trim((string)($selected['warranty']??''))!==''?(string)$selected['warranty']:'—')?></span>
                 <span><strong>LOCATION:</strong> <?=e(trim((string)($selected['location']??''))!==''?(string)$selected['location']:'—')?></span>
+                <?php if(trim((string)($selected['item_note']??''))!==''): ?><span class="item-note-inline-v238"><strong>NOTE:</strong> <?=nl2br(e((string)$selected['item_note']))?></span><?php endif; ?>
               </div>
               <div class="item-info-value-v237"><span>SALE PRICE:</span> <b><?=money((float)$selected['sale_price'])?></b></div>
               <div class="item-info-value-v237 stock-right"><span>STOCK QUANTITY:</span> <b class="<?=((float)$selected['current_stock']<0)?'negative-value':'positive-value'?>"><?= $selected['item_type']==='service' ? '—' : qty((float)$selected['current_stock']) ?></b></div>
@@ -618,14 +620,6 @@ page_start('Items');
             <?php if(!empty($selected['bundle_components'])): ?><div class="table-wrap"><table><thead><tr><th>FREE ITEM</th><th style="width:120px">QTY</th></tr></thead><tbody><?php foreach($selected['bundle_components'] as $bc): ?><tr><td>└─ <?=e($bc['name'])?></td><td><?=e(qty((float)$bc['quantity']).' '.($bc['unit_symbol']??''))?></td></tr><?php endforeach; ?></tbody></table></div><?php else: ?><div class="subtle" style="padding:12px 0">No included free items configured.</div><?php endif; ?>
           </div>
           <?php endif; ?>
-          <div class="item-note-card panel">
-            <div class="panel-head"><div><h2>ITEM NOTE</h2><span class="subtle">Internal note for this item</span></div><button type="button" class="btn small-btn" onclick="openModal('itemNoteModal')"><?=trim((string)($selected['item_note']??''))!==''?'Edit Note':'+ Add Note'?></button></div>
-            <?php if(trim((string)($selected['item_note']??''))!==''): ?>
-              <div class="item-note-body-v234"><?=nl2br(e((string)$selected['item_note']))?></div>
-            <?php else: ?>
-              <div class="subtle item-note-empty-v234">No note added for this item.</div>
-            <?php endif; ?>
-          </div>
           <div class="item-transactions panel">
             <div class="panel-head"><h2>TRANSACTIONS</h2><div class="tx-tools"><input class="input" id="itemTxSearch" placeholder="⌕ Search"><span class="export-icon">▣</span></div></div>
             <div class="table-wrap"><table><thead><tr><th></th><th>TYPE</th><th>NO</th><th>NAME</th><th>DATE</th><th>QUANTITY</th><th>PRICE/UNIT</th><th>STATUS</th><th></th></tr></thead><tbody><?php foreach($txRows as $r): $tt=$r['txn_type']; $typeLabel=['sale'=>'Sale','purchase'=>'Purchase','payment_in'=>'Payment In','payment_out'=>'Payment Out','manual_add'=>'Stock Adjustment','manual_reduce'=>'Stock Adjustment','opening_adjustment'=>'Opening Stock Adjustment','opening_stock'=>'Opening Stock'][$tt]??ucwords(str_replace('_',' ',$tt)); $doc=(string)($r['document_no']??''); $docLink=''; if($tt==='sale' && !empty($r['source_transaction_id'])) $docLink=url('sales?view='.(int)$r['source_transaction_id']); elseif($tt==='purchase' && !empty($r['source_transaction_id'])) $docLink=url('purchase?view='.(int)$r['source_transaction_id']); $displayNo=$doc!==''?$doc:'—'; $displayName=(string)($r['party_name']??''); if($displayName==='') $displayName=$typeLabel; ?><tr><td><span class="tx-dot"></span></td><td><?=e($typeLabel)?></td><td><?php if($docLink):?><a class="tx-doc-link" href="<?=e($docLink)?>"><?=e($displayNo)?></a><?php else:?><?=e($displayNo)?><?php endif;?></td><td><?=e($displayName)?></td><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=qty((float)$r['qty'])?> <?=e($selected['unit_symbol']??'')?></td><td><?=money((float)$r['unit_price'])?></td><td><span class="tx-status"><?=e(ucfirst($r['status']))?></span></td><td class="tx-more" style="width:52px;min-width:52px;text-align:center;position:relative;overflow:visible!important;">
