@@ -1243,17 +1243,18 @@ body:has(.purchase-entry-form) input[type="number"]::-webkit-outer-spin-button{m
 .notification-quick-footer{display:flex;justify-content:space-between;gap:12px;padding:10px 13px;background:#fbfcfe}
 @media(max-width:640px){.notification-quick-panel{right:-10px;width:calc(100vw - 28px);max-width:none}}
 
-/* Sale/Purchase entry table: give ITEM more room and keep QTY compact. */
-.entry-table table{table-layout:fixed;min-width:0}
-.entry-table th:nth-child(1),.entry-table td:nth-child(1){width:30px}
-.entry-table th:nth-child(2),.entry-table td:nth-child(2){width:34%}
+/* Sale/Purchase entry table: clean 6-column layout with compact controls. */
+.entry-table table{table-layout:fixed;min-width:0;width:100%}
+.entry-table th:nth-child(1),.entry-table td:nth-child(1){width:48px}
+.entry-table th:nth-child(2),.entry-table td:nth-child(2){width:38%}
 .entry-table th:nth-child(3),.entry-table td:nth-child(3){width:10%}
 .entry-table th:nth-child(4),.entry-table td:nth-child(4){width:7%}
-.entry-table th:nth-child(5),.entry-table td:nth-child(5){width:17%}
-.entry-table th:nth-child(6),.entry-table td:nth-child(6){width:17%}
-.entry-table th:nth-child(7),.entry-table td:nth-child(7){width:42px}
+.entry-table th:nth-child(5),.entry-table td:nth-child(5){width:15%}
+.entry-table th:nth-child(6),.entry-table td:nth-child(6){width:15%}
+.entry-table th,.entry-table td{overflow:hidden}
 .entry-table td:nth-child(2) .item-picker-cell{min-width:0}
 .entry-table td:nth-child(3) .qty{width:100%;min-width:0}
+.entry-table th:nth-child(6),.entry-table td:nth-child(6){border-right:0}
 
 /* Keep non-item transaction columns pinned to the top of tall item rows. */
 body:has(.transaction-form.txn-compact) .entry-table tbody td:nth-child(3),
@@ -1285,18 +1286,18 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .big-money .dash-money-dec{font-size:.6em}
 .metric-card .value .dash-money-dec,.right-card .value .dash-money-dec{font-size:.62em}
 
-/* Transaction row controls: keep remove button beside the row number. */
+/* Transaction row controls: compact remove + row number control. */
 .entry-table .txn-row-index-cell{
-  width:42px!important;
-  min-width:42px!important;
-  max-width:42px!important;
-  padding:4px 3px!important;
+  width:48px!important;
+  min-width:48px!important;
+  max-width:48px!important;
+  padding:6px 3px!important;
   vertical-align:top!important;
   text-align:center!important;
 }
 .entry-table .txn-row-index-cell{
   display:flex!important;
-  align-items:center!important;
+  align-items:flex-start!important;
   justify-content:center!important;
   gap:4px!important;
 }
@@ -1304,18 +1305,18 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   display:inline-flex!important;
   align-items:center!important;
   justify-content:center!important;
-  width:20px!important;
-  height:20px!important;
+  width:18px!important;
+  height:18px!important;
   margin:0!important;
   padding:0!important;
   border:1px solid #cfd8e3!important;
   border-radius:4px!important;
   background:#fff!important;
   color:#64748b!important;
-  font-size:14px!important;
-  line-height:18px!important;
+  font-size:13px!important;
+  line-height:16px!important;
   cursor:pointer!important;
-  flex:0 0 20px!important;
+  flex:0 0 18px!important;
 }
 .entry-table .txn-row-remove:hover{
   color:#dc2626!important;
@@ -1324,19 +1325,9 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .entry-table .txn-row-number{
   display:inline-block!important;
   font-size:12px!important;
-  line-height:16px!important;
+  line-height:18px!important;
   color:#526276!important;
   flex:0 0 auto!important;
-}
-.entry-table .txn-row-remove:hover{
-  color:#dc2626!important;
-  border-color:#fca5a5!important;
-}
-.entry-table .txn-row-number{
-  display:block!important;
-  font-size:12px!important;
-  line-height:16px!important;
-  color:#526276!important;
 }
 .transaction-form .item-search-clear{
   display:none!important;
