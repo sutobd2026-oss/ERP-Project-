@@ -448,7 +448,7 @@ function delivery_challan_new(): void {
           <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>">৳<?=number_format(max(0,$liQty*$liPrice-$liDisc),2,'.',',')?></td>
         </tr>
         <?php endforeach; ?>
-      </tbody></tbody></table></div>
+      </tbody></table></div>
       <div id="dcItemStatus" class="subtle" style="margin-top:8px"></div>
       <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="dcAddRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#dcRows','delivery')">+ Add Product</button></div><span class="dc-items-total"><b>Items Total</b> <strong id="dcSubtotal">৳0.00</strong></span></div>
       <div class="dc-summary-grid">
@@ -963,7 +963,23 @@ function delivery_challan_new(): void {
       }else if(e.target.closest('#dcAdvanceRows')||['dcInvDisc','dcShipping'].includes(e.target.id))dcRecalc();
     });
     document.addEventListener('change',e=>{if(e.target.matches('.dc-item'))dcSetPrice(e.target); if(e.target.closest('#dcRows'))dcRecalc();});
-    if(window.SutoInitItemSearch) window.SutoInitItemSearch(document.getElementById('dcRows'));
+    (function(){
+      function bootDeliveryItemSearch(){
+        const rows=document.getElementById('dcRows');
+        if(!rows)return false;
+        if(typeof window.SutoInitItemSearch==='function'){
+          window.SutoInitItemSearch(rows);
+          return true;
+        }
+        return false;
+      }
+      if(!bootDeliveryItemSearch()){
+        document.addEventListener('DOMContentLoaded',bootDeliveryItemSearch,{once:false});
+        setTimeout(bootDeliveryItemSearch,100);
+        setTimeout(bootDeliveryItemSearch,400);
+        setTimeout(bootDeliveryItemSearch,1000);
+      }
+    })();
     dcRenumberRows();
     dcRecalc();
     window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};
