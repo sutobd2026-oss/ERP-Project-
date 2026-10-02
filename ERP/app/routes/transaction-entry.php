@@ -29,7 +29,10 @@ if(in_array($route,['sale-new','purchase-new'],true)){
     $bundleMapTxn=bundle_map_for_company($pdo,$cid);
     $payRows=$editPayments ?: [null];
 ?>
-<script>document.body.dataset.txntype=<?=json_encode($type)?>;</script>
+<script>
+document.body.dataset.txntype=<?=json_encode($type)?>;
+window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
+</script>
 <div class="page-title"><div><h1><?=e($pageHeading)?></h1><p><?=e($pageSub)?></p></div><a class="btn" href="<?=e(url($isSale?'sales':'purchase'))?>">Back to List</a></div>
 <form id="txnForm" class="transaction-form txn-compact <?= $isSale ? '' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
@@ -186,9 +189,25 @@ function getRowBundle(row){
   const sel=row?.querySelector('.item-select');
   if(!sel||!sel.value)return [];
   try{
-    const rawText=sel.selectedOptions?.[0]?.dataset?.bundle || row?.dataset?.bundleJson || '[]';
-    const raw=JSON.parse(rawText||'[]')||[];
-    return raw.map(function(c){return {
+    const optBundleText=sel.selectedOptions?.[0]?.dataset?.bundle || '';
+    const rowBundleText=row?.dataset?.bundleJson || '';
+    let raw=[];
+    if(optBundleText){
+      raw=JSON.parse(optBundleText||'[]')||[];
+    }
+    if(!Array.isArray(raw)||!raw.length){
+      if(rowBundleText){
+        raw=JSON.parse(rowBundleText||'[]')||[];
+      }
+    }
+    // Live item search creates a new <option>, so it may not carry the
+    // server-rendered data-bundle attribute. Fall back to the page's
+    // server-side bundle map by selected item id.
+    if(!Array.isArray(raw)||!raw.length){
+      const map=window.SutoTxnBundleMap||{};
+      raw=Array.isArray(map[String(sel.value)])?map[String(sel.value)]:[];
+    }
+    return (Array.isArray(raw)?raw:[]).map(function(c){return {
       item_id:Number(c.item_id||c.component_item_id||0),
       name:String(c.name||''),
       quantity:Number(c.quantity||1),
