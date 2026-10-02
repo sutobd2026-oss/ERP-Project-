@@ -525,7 +525,7 @@ page_start('Items');
             const rows=[...list.querySelectorAll('.item-master-row')];
             rows.forEach(function(row){
               const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
-              if(!q||hay.indexOf(q)!==-1)row.style.removeProperty('display');else row.style.setProperty('display','none','important');
+              row.classList.toggle('sense-live-filter-hidden',!!q && hay.indexOf(q)===-1);
             });
             clearTimeout(window.__senseItemSearchTimer);
             if(!q)return;
@@ -537,11 +537,12 @@ page_start('Items');
                 const data=await res.json();
                 if(!data?.ok||!Array.isArray(data.items))return;
                 const ids=new Set(data.items.map(function(x){return String(x.id);}));
-                rows.forEach(function(row){row.style.display=ids.has(String(row.dataset.itemId||''))?'':'none';});
+                rows.forEach(function(row){
+                  row.classList.toggle('sense-live-filter-hidden',!ids.has(String(row.dataset.itemId||'')));
+                });
               }catch(_){}
             },80);
-          };
-          </script>
+          };          </script>
 
           <script>
           window.itemLiveFilter=window.itemLiveFilter||function(input){
