@@ -756,21 +756,33 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
     setSelectedSummary(box,opt);
     applyItemLineMetadata(box,item);
     const row=box.closest('.sale-row');
+    let updateRan=false;
     if(row && typeof window.updatePrice==='function'){
       // Transaction rows use the same update pipeline as a native select
       // change, so price/unit/metadata, auto-next-row and bundle sync all run
       // immediately after choosing an item from live search.
-      try{window.updatePrice(sel);}catch(err){console.error('Transaction item update failed:',err);}
-    }else{
+      try{window.updatePrice(sel);updateRan=true;}catch(err){console.error('Transaction item update failed:',err);}
+    }else if(!row){
       sel.dispatchEvent(new Event('change',{bubbles:true}));
-      if(row && document.body.dataset.txntype==='sale'){
-        const directBundle=Array.isArray(item?.bundle_components)?item.bundle_components:[];
-        if(directBundle.length && typeof window.renderBundleChildrenForRow==='function'){
-          try{window.renderBundleChildrenForRow(row,directBundle);}
-          catch(err){console.error('Direct bundle row render failed:',err);}
-        }else if(typeof window.syncBundleForRow==='function'){
-          try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
-        }
+    }
+
+    // Sale bundles must be rendered immediately from the search result when
+    // bundle_components are already present. This is a direct fallback for
+    // updatePrice/syncBundleForRow so live item search cannot lose the bundle
+    // just because one transaction-row handler is unavailable or throws.
+    if(row && document.body.dataset.txntype==='sale'){
+      const directBundle=Array.isArray(item?.bundle_components)?item.bundle_components:[];
+      const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';
+      const hasChildren=parentKey && [...document.querySelectorAll('#entryRows .bundle-child-row')].some(function(child){
+        return String(child.dataset.bundleParentKey||'')===String(parentKey);
+      });
+      if(directBundle.length && !hasChildren && typeof window.renderBundleChildrenForRow==='function'){
+        try{window.renderBundleChildrenForRow(row,directBundle);}
+        catch(err){console.error('Direct bundle row render failed:',err);}
+      }else if(!directBundle.length && !hasChildren && typeof window.syncBundleForRow==='function'){
+        try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
+      }else if(!updateRan){
+        try{sel.dispatchEvent(new Event('change',{bubbles:true}));}catch(err){console.error('Transaction item change dispatch failed:',err);}
       }
     }
     return opt;
