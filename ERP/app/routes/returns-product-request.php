@@ -438,6 +438,11 @@ function delivery_challan_new(): void {
                 <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div>
               <?php else: ?>
                 <?php item_search_field($liId,$liName,'','sale'); ?>
+                <select name="item_id[]" class="dc-item item-source-select" tabindex="-1" aria-hidden="true">
+                  <?php if($liId>0): $liBundle=bundle_components_for_parent($pdo,$cid,$liId); ?>
+                    <option value="<?=$liId?>" data-price="<?=e((string)$liPrice)?>" data-unit="<?=e($liUnit)?>" data-sale="<?=e((string)$liPrice)?>" data-buy="0" data-bundle="<?=e(bundle_option_json($liBundle))?>" selected><?=e($liName)?></option>
+                  <?php endif; ?>
+                </select>
               <?php endif; ?>
             </div>
           </td>
