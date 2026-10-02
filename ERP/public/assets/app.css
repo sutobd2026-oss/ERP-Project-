@@ -1686,12 +1686,13 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .item-info-value-v237{
   display:flex!important;
   align-items:center!important;
-  justify-content:space-between!important;
-  gap:10px!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
   min-width:0!important;
   padding:4px 0!important;
   color:#475569!important;
   font-size:12px!important;
+  white-space:nowrap!important;
 }
 .item-info-value-v237 b{
   color:#00a67a!important;
@@ -1706,7 +1707,7 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 }
 
 .item-info-value-v237.stock-right{
-  text-align:right!important;
+  text-align:left!important;
 }
 @media(max-width:900px){
   .item-info-grid-v237{grid-template-columns:1fr!important}
