@@ -966,7 +966,7 @@ function delivery_challan_new(): void {
     if(window.SutoInitItemSearch) window.SutoInitItemSearch(document.getElementById('dcRows'));
     dcRenumberRows();
     dcRecalc();
-    <script>window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};</script>
+    window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};
     </script>
     <?php render_inline_creation_modals(); page_end();
 }
