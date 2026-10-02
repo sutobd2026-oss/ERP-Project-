@@ -753,16 +753,23 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
     if(incomingBundle.length>0 || !opt.dataset.bundle) opt.dataset.bundle=JSON.stringify(incomingBundle);
     opt.selected=true;
     setSelectedSummary(box,opt);
-    sel.dispatchEvent(new Event('change',{bubbles:true}));
     applyItemLineMetadata(box,item);
     const row=box.closest('.sale-row');
-    if(row && document.body.dataset.txntype==='sale'){
-      const directBundle=Array.isArray(item?.bundle_components)?item.bundle_components:[];
-      if(directBundle.length && typeof window.renderBundleChildrenForRow==='function'){
-        try{window.renderBundleChildrenForRow(row,directBundle);}
-        catch(err){console.error('Direct bundle row render failed:',err);}
-      }else if(typeof window.syncBundleForRow==='function'){
-        try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
+    if(row && typeof window.updatePrice==='function'){
+      // Transaction rows use the same update pipeline as a native select
+      // change, so price/unit/metadata, auto-next-row and bundle sync all run
+      // immediately after choosing an item from live search.
+      try{window.updatePrice(sel);}catch(err){console.error('Transaction item update failed:',err);}
+    }else{
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+      if(row && document.body.dataset.txntype==='sale'){
+        const directBundle=Array.isArray(item?.bundle_components)?item.bundle_components:[];
+        if(directBundle.length && typeof window.renderBundleChildrenForRow==='function'){
+          try{window.renderBundleChildrenForRow(row,directBundle);}
+          catch(err){console.error('Direct bundle row render failed:',err);}
+        }else if(typeof window.syncBundleForRow==='function'){
+          try{window.syncBundleForRow(row);}catch(err){console.error('Bundle sync failed:',err);}
+        }
       }
     }
     return opt;
