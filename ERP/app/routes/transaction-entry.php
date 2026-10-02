@@ -267,7 +267,7 @@ function duplicateTxnRow(btn){
 .sale-invoice-ui .item-picker-cell{min-width:0!important}
 .sale-invoice-ui .item-live-search{position:relative!important}
 .sale-invoice-ui .item-search-wrap{position:relative!important}
-.sale-invoice-ui .item-search-wrap:before{content:"";position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;border:1.5px solid #8b9ab0;border-radius:50%;z-index:2;pointer-events:none}
+.sale-invoice-ui .item-search-wrap:before{content:none!important;display:none!important}
 .sale-invoice-ui .item-search-wrap:after{content:"";position:absolute;right:10px;top:50%;margin-top:-2px;width:6px;height:6px;border-right:1.5px solid #7b899a;border-bottom:1.5px solid #7b899a;transform:translateY(-50%) rotate(45deg);z-index:2;pointer-events:none}
 .sale-invoice-ui .item-search-input{height:34px!important;width:100%!important;padding:0 28px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:12px!important;color:#263548!important}
 .sale-invoice-ui .item-search-input:focus{border-color:#7db7ea!important;box-shadow:0 0 0 2px rgba(22,134,234,.08)!important;outline:none!important}
