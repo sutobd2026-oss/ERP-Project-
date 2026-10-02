@@ -518,14 +518,18 @@ page_start('Items');
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
           <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" autocomplete="off" oninput="senseItemsLiveSearch(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
           <script>
+          function senseCaptureItemTemplates(){
+            const list=document.getElementById('itemListBody');
+            if(!list||list._senseItemTemplates)return;
+            list._senseItemTemplates=[...list.querySelectorAll('.item-master-row')].map(function(row){
+              return {id:String(row.dataset.itemId||''),name:String(row.dataset.name||'').toLowerCase(),html:row.outerHTML};
+            });
+          }
+          document.addEventListener('DOMContentLoaded',senseCaptureItemTemplates);
           window.senseItemsLiveSearch=function(input){
             const list=document.getElementById('itemListBody');
             if(!list)return;
-            if(!list._senseItemTemplates){
-              list._senseItemTemplates=[...list.querySelectorAll('.item-master-row')].map(function(row){
-                return {id:String(row.dataset.itemId||''),name:String(row.dataset.name||'').toLowerCase(),html:row.outerHTML};
-              });
-            }
+            senseCaptureItemTemplates();
             const templates=list._senseItemTemplates;
             const q=String(input.value||'').toLowerCase().trim();
             function paint(rows){
