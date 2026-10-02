@@ -119,14 +119,15 @@ function sense_read_xlsx_rows(string $path): array {
     $ss=$zip->getFromName('xl/sharedStrings.xml');
     if($ss!==false){
         $xml=new SimpleXMLElement($ss);
-        $ns=$xml->getNamespaces(true);
-        foreach($xml->si as $si){
-            $texts=[];
-            foreach($si->xpath('.//a:t')?:[] as $t) $texts[]=(string)$t;
-            if(!$texts){
-                foreach($si->xpath('.//t')?:[] as $t) $texts[]=(string)$t;
+        $mainNs='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+        $main=$xml->children($mainNs);
+        foreach($main->si as $si){
+            $parts=[];
+            foreach($si->children($mainNs)->t as $t) $parts[]=(string)$t;
+            foreach($si->children($mainNs)->r as $run){
+                foreach($run->children($mainNs)->t as $t) $parts[]=(string)$t;
             }
-            $shared[] = implode('', $texts);
+            $shared[]=implode('',$parts);
         }
     }
     $workbook=$zip->getFromName('xl/workbook.xml');
