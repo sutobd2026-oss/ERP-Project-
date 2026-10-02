@@ -143,7 +143,7 @@ function render_invoice_print_preview(array $tx,array $lines,array $payments,arr
       .sense-invoice-preview-sheet .sip-items tbody td{border-bottom:1px solid #e7eaee;padding:8px 7px;vertical-align:top;font-size:10px}
       .sense-invoice-preview-sheet.paper-a5 .sip-items tbody td{padding:6px 5px;font-size:8px}
       .sense-invoice-preview-sheet .sip-item-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:3px}.sense-invoice-preview-sheet .sip-item-description{font-size:8px;line-height:1.35;color:#64748b;white-space:pre-line}.sense-invoice-preview-sheet .sip-item-warranty{font-size:8px;font-weight:700;color:#475569;white-space:nowrap}.sense-invoice-preview-sheet.paper-a5 .sip-item-description,.sense-invoice-preview-sheet.paper-a5 .sip-item-warranty{font-size:6.8px}
-      .sense-invoice-preview-sheet .num{text-align:right;white-space:nowrap}
+      .sense-invoice-preview-sheet .num{text-align:right;white-space:nowrap}.sense-invoice-preview-sheet .sip-items thead th.num,.sense-invoice-preview-sheet .sip-items tbody td.num{text-align:right!important}
       .sense-invoice-preview-sheet .sip-bottom{display:grid;grid-template-columns:minmax(0,1fr) 74mm;gap:18px;margin-top:14px}
       .sense-invoice-preview-sheet.paper-a5 .sip-bottom{grid-template-columns:minmax(0,1fr) 54mm;gap:10px;margin-top:9px}
       .sense-invoice-preview-sheet .sip-notes{font-size:9px;line-height:1.45;color:#475569;white-space:pre-line}
