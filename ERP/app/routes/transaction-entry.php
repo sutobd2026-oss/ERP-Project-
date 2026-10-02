@@ -261,7 +261,27 @@ function syncBundleForRow(row){
 }
 function updatePrice(sel){
   const row=sel?.closest('.sale-row'), opt=sel?.selectedOptions?.[0];
-  if(row&&opt){const price=qs('.price',row),unit=qs('.unit-label',row);if(price)price.value=(document.body.dataset.txntype==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';renderSerialMeta(row);if(document.body.dataset.txntype==='sale')syncBundleForRow(row);recalc();}
+  if(row&&opt){
+    const price=qs('.price',row),unit=qs('.unit-label',row);
+    const txType=document.body.dataset.txntype||'sale';
+    if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;
+    if(unit)unit.textContent=opt.dataset.unit||'—';
+    const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);
+    if(desc&&!desc.value)desc.value=opt.dataset.description||'';
+    if(war&&!war.value)war.value=opt.dataset.warranty||'';
+    renderSerialMeta(row);
+
+    // Automatically keep one blank item row ready after the last selected
+    // item, for both Sale and Purchase. Bundle child rows (Sale only) are
+    // inserted before this blank row when applicable.
+    if(row.dataset.bundleChild!=='1' && txType!==''){
+      const mainRows=[...document.querySelectorAll('#entryRows .sale-row:not(.bundle-child-row)')];
+      if(mainRows[mainRows.length-1]===row && typeof addRow==='function') addRow(txType);
+    }
+
+    if(txType==='sale')syncBundleForRow(row);
+    recalc();
+  }
 }
 function validateTransactionForm(){
   const rows=[...document.querySelectorAll('#entryRows .sale-row')];
