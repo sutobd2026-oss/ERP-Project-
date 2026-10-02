@@ -833,9 +833,8 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
   function liveFilterMasterLists(target){
     if(!target)return;
     const isParty=target.classList.contains('party-search-input-v111');
-    const isItem=target.id==='itemSearch';
-    if(!isParty&&!isItem)return;
-    const list=isParty?document.querySelector('.party-list-v110'):document.getElementById('itemListBody');
+    if(!isParty)return;
+    const list=document.querySelector('.party-list-v110');
     if(!list)return;
     const q=String(target.value||'').toLowerCase().trim();
     const rows=[...list.querySelectorAll(isParty?'.party-list-row-v110':'.item-master-row')];
@@ -846,7 +845,7 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
   }
   document.addEventListener('input',function(e){liveFilterMasterLists(e.target);},true);
   document.addEventListener('keydown',function(e){
-    if((e.target.classList?.contains('party-search-input-v111')||e.target.id==='itemSearch')&&e.key==='Enter')e.preventDefault();
+    if(e.target.classList?.contains('party-search-input-v111')&&e.key==='Enter')e.preventDefault();
   },true);
 })();
 (function(){
