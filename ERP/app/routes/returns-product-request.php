@@ -910,21 +910,33 @@ function delivery_challan_new(): void {
     }
     window.dcRemoveRow=function(btn){
       const row=btn?.closest('#dcRows tr'); const body=document.getElementById('dcRows'); if(!row||!body)return;
-      row.remove(); document.querySelectorAll('#dcRows tr').forEach(function(r,i){if(r.children[0])r.children[0].textContent=i+1;}); dcRecalc();
+      const wasParent=row.dataset.bundleChild!=='1';
+      const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';
+      if(wasParent) dcRemoveBundleChildren(parentKey);
+      row.remove(); dcRenumberRows(); dcRecalc();
     };
     window.dcAddRow=function(){
       const body=document.getElementById('dcRows'); const first=body?.querySelector('tr'); if(!body||!first)return;
       const row=first.cloneNode(true);
-      row.querySelectorAll('.item-live-search').forEach(function(box){ delete box.dataset.itemSearchBound; });
-      row.querySelectorAll('input').forEach(function(inp){ if(inp.classList.contains('dc-qty')) inp.value='1'; else inp.value='0'; });
+      row.className='';
+      row.dataset.bundleChild='0'; row.dataset.bundleParentKey=''; row.dataset.bundleRowKey=dcMakeRowKey(); row.dataset.bundleJson='[]';
+      row.querySelectorAll('input[name="bundle_row_key[]"]').forEach(function(i){i.value=row.dataset.bundleRowKey;});
+      row.querySelectorAll('input[name="bundle_parent_key[]"]').forEach(function(i){i.value='';});
+      row.querySelectorAll('input[name="bundle_child[]"]').forEach(function(i){i.value='0';});
+      row.querySelectorAll('.item-live-search').forEach(function(box){ delete box.dataset.itemSearchBound; box.dataset.itemSearchBound=''; });
+      row.querySelectorAll('input').forEach(function(inp){
+        if(inp.classList.contains('dc-qty')) inp.value='1';
+        else if(inp.classList.contains('dc-price')||inp.classList.contains('dc-line-discount')) inp.value='0';
+        else if(inp.classList.contains('item-search-input')) inp.value='';
+        else if(inp.name==='item_id[]') inp.value='';
+      });
       row.querySelectorAll('select').forEach(function(sel){sel.value='';});
       const search=row.querySelector('.item-search-input'); if(search) search.value='';
       const clear=row.querySelector('.item-search-clear'); if(clear) clear.style.display='none';
       const results=row.querySelector('.item-search-results'); if(results){results.hidden=true;results.innerHTML='';}
       const unit=row.querySelector('.dc-unit'); if(unit) unit.textContent='—';
-      const amt=row.querySelector('.dc-amt'); if(amt) amt.textContent='৳0.00';
-      if(!row.querySelector('.dc-row-remove')){ const td=document.createElement('td'); td.innerHTML='<button type="button" class="row-remove-btn dc-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>'; row.appendChild(td); }
-      const idx=body.querySelectorAll('tr').length+1; if(row.children[0])row.children[0].textContent=idx;
+      const amt=row.querySelector('.dc-amt'); if(amt){amt.textContent='৳0.00';amt.dataset.discount='0';}
+      const n=row.querySelector('.txn-row-number'); if(n)n.textContent=String(body.querySelectorAll('tr').length+1);
       body.appendChild(row);
       if(window.SutoInitItemSearch) window.SutoInitItemSearch(row);
       dcRecalc();
@@ -941,9 +953,16 @@ function delivery_challan_new(): void {
       document.querySelectorAll('#dcRows tr').forEach(function(r,i){if(r.children[0])r.children[0].textContent=i+1;});
       if(valid<1){ e.preventDefault(); alert('Add at least one item.'); }
     });
-    document.addEventListener('input',e=>{if(e.target.closest('#dcRows')||e.target.closest('#dcAdvanceRows')||['dcInvDisc','dcShipping'].includes(e.target.id))dcRecalc();});
+    document.addEventListener('input',e=>{
+      if(e.target.closest('#dcRows')){
+        const row=e.target.closest('#dcRows tr');
+        if(row && e.target.classList.contains('dc-qty') && row.dataset.bundleChild!=='1') dcUpdateBundleQuantities(row);
+        dcRecalc();
+      }else if(e.target.closest('#dcAdvanceRows')||['dcInvDisc','dcShipping'].includes(e.target.id))dcRecalc();
+    });
     document.addEventListener('change',e=>{if(e.target.matches('.dc-item'))dcSetPrice(e.target); if(e.target.closest('#dcRows'))dcRecalc();});
     if(window.SutoInitItemSearch) window.SutoInitItemSearch(document.getElementById('dcRows'));
+    dcRenumberRows();
     dcRecalc();
     <script>window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};</script>
     </script>
