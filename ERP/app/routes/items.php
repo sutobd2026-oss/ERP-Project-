@@ -517,9 +517,45 @@ page_start('Items');
           </div>
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
           <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="filterItems()"></div>
+          <script>
+          (function(){
+            const input=document.getElementById('itemSearch');
+            const list=document.getElementById('itemListBody');
+            if(!input||!list)return;
+            let timer=0,seq=0;
+            const rows=()=>Array.from(list.querySelectorAll('.item-master-row'));
+            function localFilter(q,ids){
+              const qq=(q||'').toLowerCase().trim();
+              rows().forEach(function(row){
+                const text=(row.dataset.name||'').toLowerCase();
+                const id=String(row.dataset.itemId||'');
+                const match=!qq || (!ids ? text.indexOf(qq)!==-1 : ids.has(id));
+                row.style.display=match?'':'none';
+              });
+            }
+            async function search(){
+              const q=input.value.trim();
+              if(!q){localFilter('');return;}
+              const my=++seq;
+              localFilter(q,null);
+              try{
+                const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
+                u.searchParams.set('q',q);
+                const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+                const data=await res.json();
+                if(my!==seq)return;
+                if(data&&data.ok&&Array.isArray(data.items)){
+                  const ids=new Set(data.items.map(x=>String(x.id)));
+                  localFilter(q,ids);
+                }
+              }catch(_){}
+            }
+            input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(search,120);});
+          })();
+          </script>
           <div id="itemListBody" class="item-master-list">
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
-              <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
+              <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-item-id="<?=e((string)$r['id'])?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
                 <?php $itemTxCountSt=$pdo->prepare('SELECT COUNT(*) FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE ti.item_id=? AND t.company_id=?');$itemTxCountSt->execute([(int)$r['id'],$cid]);$itemTxCount=(int)$itemTxCountSt->fetchColumn(); ?>
                 <a class="item-master-main" href="<?=e(url('items?tab='.$tab.'&view='.$r['id']))?>">
                   <span class="item-master-name"><?=e($r['name'])?></span>
