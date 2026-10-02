@@ -112,7 +112,7 @@ if($route==='export-items'){
 if($route==='__xlsx_helpers_never_route__'){ exit; }
 function sense_zip_u16(string $s,int $o): int { $a=unpack('v',substr($s,$o,2)); return (int)$a[1]; }
 function sense_zip_u32(string $s,int $o): int { $a=unpack('V',substr($s,$o,4)); return (int)$a[1]; }
-function sense_xlsx_zip_entry(string $path,string $wanted): string|false {
+function sense_xlsx_zip_entry(string $path,string $wanted) {
     $fh=@fopen($path,'rb'); if(!$fh) return false;
     $size=filesize($path); $tailLen=min($size,65557); fseek($fh,$size-$tailLen); $tail=fread($fh,$tailLen); $pos=strrpos($tail,"\x50\x4b\x05\x06");
     if($pos===false){fclose($fh);return false;}
