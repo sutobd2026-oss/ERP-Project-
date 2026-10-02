@@ -33,7 +33,7 @@ if(in_array($route,['sale-new','purchase-new'],true)){
 document.body.dataset.txntype=<?=json_encode($type)?>;
 window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
 </script>
-<div class="page-title sale-invoice-page-title">
+<div class="page-title <?= $isSale ? 'sale-invoice-page-title' : '' ?>">
   <div class="sale-invoice-title-main">
     <div class="sale-invoice-title-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,7 +46,7 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
   </div>
   <a class="btn sale-back-btn" href="<?=e(url($isSale?'sales':'purchase'))?>"><span aria-hidden="true">←</span><span>Back to List</span></a>
 </div>
-<form id="txnForm" class="transaction-form txn-compact sale-invoice-ui <?= $isSale ? '' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
+<form id="txnForm" class="transaction-form txn-compact <?= $isSale ? 'sale-invoice-ui' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
 <div class="panel">
   <div class="entry-top <?= $isSale?'sale-entry-top':'purchase-entry-top' ?>">
@@ -197,9 +197,9 @@ function duplicateTxnRow(btn){
 }
 </script><style id="sale-invoice-ui-v2">
 .sale-invoice-page-title{margin:10px 0 8px!important;padding:10px 12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(15,23,42,.06)!important;min-height:58px}
-.sale-invoice-title-main{display:flex;align-items:center;gap:11px;min-width:0}
-.sale-invoice-title-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#1686ea;color:#fff;box-shadow:inset 0 -1px 0 rgba(0,0,0,.08);flex:0 0 40px}
-.sale-invoice-page-title h1{font-size:18px;line-height:1.15;margin:0;color:#142033;font-weight:700}
+.sale-invoice-page-title .sale-invoice-title-main{display:flex;align-items:center;gap:11px;min-width:0}
+.sale-invoice-title-icon{display:none;width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#1686ea;color:#fff;box-shadow:inset 0 -1px 0 rgba(0,0,0,.08);flex:0 0 40px}
+.sale-invoice-page-title .sale-invoice-title-icon{display:flex}.sale-invoice-page-title h1{font-size:18px;line-height:1.15;margin:0;color:#142033;font-weight:700}
 .sale-invoice-page-title p{margin:2px 0 0;color:#7a8798;font-size:10.5px}
 .sale-invoice-page-title .sale-back-btn{height:34px!important;padding:0 13px!important;display:inline-flex;align-items:center;gap:7px;border:1px solid #d8e1ec!important;background:#fff!important;border-radius:9px!important;color:#243247!important;box-shadow:none!important;font-size:12px!important;font-weight:600!important}
 .sale-invoice-page-title .sale-back-btn:hover{background:#f7fbff!important;border-color:#c8d7e8!important}
