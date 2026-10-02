@@ -551,12 +551,12 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
     <?php endif; ?>
     <div class="modal-backdrop" id="itemModal" onclick="if(event.target===this)closeModal('itemModal')"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group">
 <label>Category</label>
-<div class="item-category-dropdown" id="itemCategoryDropdown">
-  <button type="button" class="item-category-trigger" onclick="window.toggleItemCategoryDropdown(event)">
+<details class="item-category-dropdown" id="itemCategoryDropdown">
+  <summary class="item-category-trigger">
     <span class="item-category-trigger-text" id="itemCategoryTriggerText">Select Category</span><span class="item-category-chevron">⌄</span>
-  </button>
-  <div class="item-category-menu" id="itemCategoryMenu">
-    <button type="button" class="item-category-add-new" onclick="openModal('categoryModal');window.closeItemCategoryDropdown()">＋ <span>Add New Category</span></button>
+  </summary>
+  <div class="item-category-menu">
+    <button type="button" class="item-category-add-new" onclick="event.preventDefault();openModal('categoryModal');this.closest('details')?.removeAttribute('open')">＋ <span>Add New Category</span></button>
     <div class="item-category-options">
       <?php foreach($catRows as $c): if($edit && ($edit['item_type']??'product')!==$c['type']) continue; $checked=in_array((int)$c['id'],$editCategoryIds,true); ?>
         <label class="item-category-option" data-category-type="<?=e($c['type'])?>">
@@ -566,7 +566,8 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
       <?php endforeach; ?>
     </div>
   </div>
-</div>
+</details>
+</div></div>
 </div><div class="form-group"><label>Select Unit</label><select name="unit_id"><option value="">Select Unit</option><?php foreach($unitRows as $x):?><option value="<?=$x['id']?>" <?=($edit&&$edit['unit_id']==$x['id'])?'selected':''?>><?=e($x['name'].' '.($x['symbol']?'('.$x['symbol'].')':''))?></option><?php endforeach;?></select></div></div><div class="item-type-toggle"><label><input type="radio" name="item_type" value="product" <?=(!$edit||$edit['item_type']==='product')?'checked':''?> onchange="toggleStock();filterItemCategoryChoices()"> Product</label><label><input type="radio" name="item_type" value="service" <?=($edit&&$edit['item_type']==='service')?'checked':''?> onchange="toggleStock();filterItemCategoryChoices()"> Service</label></div><div class="serial-tracking-toggle"><label><input type="checkbox" name="serial_tracked" value="1" <?=($edit&&((int)($edit['serial_tracked']??0)===1))?'checked':''?>> Enable Serial Number Tracking</label><span class="subtle"> Purchase each unit with a unique serial; sale can auto-pick or use specific serials.</span></div><div class="grid2"><div class="form-group span2"><label>Item Code</label><input name="code" value="<?=e($edit['code']??'')?>"></div></div><div class="tabs"><button type="button" class="active">PRICING</button><button type="button">STOCK</button></div><div class="pricing-section"><div class="grid3"><div class="form-group"><label>Sale Price</label><input type="number" step="0.01" name="sale_price" value="<?=e($edit['sale_price']??'0')?>"></div><div class="form-group"><label>Wholesale Price</label><input type="number" step="0.01" name="wholesale_price" value="<?=e($edit['wholesale_price']??'0')?>"></div><div class="form-group"><label>Minimum Wholesale Qty</label><input type="number" step="0.01" name="min_wholesale_qty" value="<?=e($edit['min_wholesale_qty']??'0')?>"></div><div class="form-group"><label>Purchase Price</label><input type="number" step="0.01" name="purchase_price" value="<?=e($edit['purchase_price']??'0')?>"></div></div></div><div class="stock-section"><div class="grid2"><div class="form-group stock-field"><label>Opening Stock</label><input type="number" step="0.01" name="opening_stock" value="<?=e($edit['opening_stock']??'0')?>"></div><div class="form-group stock-field"><label>Low Stock Limit</label><input type="number" step="0.01" name="low_stock_limit" value="<?=e($edit['low_stock_limit']??'0')?>"></div><div class="form-group"><label>Location</label><input name="location" value="<?=e($edit['location']??'')?>" placeholder="e.g. Main Warehouse / Rack A-03"></div><div class="form-group"><label>Warranty</label><input name="warranty" value="<?=e($edit['warranty']??'')?>" placeholder="e.g. 12 Months"></div></div><div class="grid2" style="margin-top:14px"><div class="form-group"><label>Description</label><textarea name="description" rows="4" placeholder="General product/service description"><?=e($edit['description']??'')?></textarea></div><div class="form-group"><label>Item Note</label><textarea name="item_note" rows="4" placeholder="Internal note for this item"><?=e($edit['item_note']??'')?></textarea></div></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('itemModal')">Cancel</button><button class="btn primary"><?= $edit?'Update':'Save' ?></button></div></form></div></div>
     <style>
       .item-note-card{margin-top:10px;}
@@ -877,14 +878,13 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 <script>
-window.toggleItemCategoryDropdown=function(e){if(e)e.stopPropagation();var root=document.getElementById('itemCategoryDropdown');if(root)root.classList.toggle('open');};
-window.closeItemCategoryDropdown=function(){var root=document.getElementById('itemCategoryDropdown');if(root)root.classList.remove('open');};
 window.updateItemCategoryTrigger=function(){
-  const root=document.getElementById('itemCategoryDropdown'), out=document.getElementById('itemCategoryTriggerText');
+  const root=document.getElementById('itemCategoryDropdown');
+  const out=document.getElementById('itemCategoryTriggerText');
   if(!root||!out)return;
-  const names=[...root.querySelectorAll('input[name="category_ids[]"]:checked')].map(function(x){return x.nextElementSibling?.textContent.trim()||''}).filter(Boolean);
+  const names=[...root.querySelectorAll('input[name="category_ids[]"]:checked')].map(x=>x.nextElementSibling?.textContent.trim()||'').filter(Boolean);
   out.textContent=names.length?names.join(', '):'Select Category';
-}
+};
 window.filterItemCategoryChoices=function(){
   const type=document.querySelector('#itemModal input[name="item_type"]:checked')?.value||'product';
   document.querySelectorAll('#itemModal .item-category-option').forEach(function(el){
@@ -894,11 +894,10 @@ window.filterItemCategoryChoices=function(){
   });
   window.updateItemCategoryTrigger();
 };
-document.addEventListener('click',function(e){
-  const root=document.getElementById('itemCategoryDropdown');
-  if(root && !root.contains(e.target))window.closeItemCategoryDropdown();
+document.addEventListener('DOMContentLoaded',function(){
+  window.filterItemCategoryChoices();
+  window.updateItemCategoryTrigger();
 });
-document.addEventListener('DOMContentLoaded',function(){window.filterItemCategoryChoices();window.updateItemCategoryTrigger();});
 </script>
 <?php render_inline_creation_modals(); page_end(); exit; }
 
