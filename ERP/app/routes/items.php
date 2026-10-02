@@ -522,12 +522,20 @@ page_start('Items');
             const list=document.getElementById('itemListBody');
             if(!list)return;
             const q=String(input.value||'').toLowerCase().trim();
-            const rows=[...list.querySelectorAll('.item-master-row')];
-            rows.forEach(function(row){
-              const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
-              row.classList.toggle('sense-live-filter-hidden',!!q && hay.indexOf(q)===-1);
-            });
+            list._senseAllRows=list._senseAllRows||[...list.querySelectorAll('.item-master-row')];
+            const all=list._senseAllRows;
+            function render(ids){
+              const allowed=ids?new Set(ids.map(String)):null;
+              all.forEach(function(row){
+                const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
+                const show=!q || (allowed ? allowed.has(String(row.dataset.itemId||'')) : hay.indexOf(q)!==-1);
+                row._senseShow=show;
+              });
+              while(list.firstChild)list.removeChild(list.firstChild);
+              all.forEach(function(row){if(row._senseShow)list.appendChild(row);});
+            }
             clearTimeout(window.__senseItemSearchTimer);
+            render(null);
             if(!q)return;
             window.__senseItemSearchTimer=setTimeout(async function(){
               try{
@@ -536,10 +544,7 @@ page_start('Items');
                 const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
                 const data=await res.json();
                 if(!data?.ok||!Array.isArray(data.items))return;
-                const ids=new Set(data.items.map(function(x){return String(x.id);}));
-                rows.forEach(function(row){
-                  row.classList.toggle('sense-live-filter-hidden',!ids.has(String(row.dataset.itemId||'')));
-                });
+                render(data.items.map(function(x){return x.id;}));
               }catch(_){}
             },80);
           };          </script>
