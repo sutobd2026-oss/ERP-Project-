@@ -306,11 +306,37 @@ if($route==='parties'){
         <div class="party-list-tools-v110 party-tools-v111-search">
           <form class="party-list-search-v110 party-search-always-v111" method="get" id="partyListSearchForm" onsubmit="return false;">
             <input type="hidden" name="type" value="<?=e($type)?>"><?php if($selectedId):?><input type="hidden" name="id" value="<?=$selectedId?>"><?php endif;?>
-            <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off">
+            <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off" oninput="partyLiveFilter(this)" onkeydown="if(event.key==='Enter')event.preventDefault()">
           </form>
           <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm();openModal('partyModal')">⊕ Add Party <span>＋</span></a>
         </div>
         <script>
+        window.partyLiveFilter=window.partyLiveFilter||function(input){
+          clearTimeout(input._partyTimer);
+          input._partyTimer=setTimeout(async function(){
+            const list=document.querySelector('.party-list-v110');
+            if(!list)return;
+            const q=(input.value||'').toLowerCase().trim();
+            const rows=[...list.querySelectorAll('.party-list-row-v110')];
+            if(!q){rows.forEach(r=>r.style.display='');return;}
+            rows.forEach(function(row){
+              const txt=(row.dataset.partySearch||row.textContent||'').toLowerCase();
+              row.style.display=txt.indexOf(q)!==-1?'':'none';
+            });
+            try{
+              const u=new URL('<?=e(url('party-search-api'))?>',location.origin);
+              u.searchParams.set('q',q);
+              u.searchParams.set('role','<?=e($type==='all'?'all':($type==='labels'?'customer':$type))?>');
+              const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+              const data=await res.json();
+              if(!data?.ok||!Array.isArray(data.items))return;
+              const ids=new Set(data.items.map(function(x){return String(x.id);}));
+              [...list.querySelectorAll('.party-list-row-v110')].forEach(function(row){
+                row.style.display=ids.has(String(row.dataset.partyId||''))?'':'none';
+              });
+            }catch(e){}
+          },60);
+        };
         document.addEventListener('DOMContentLoaded',function(){
           const input=document.getElementById('partyListSearchForm')?.querySelector('.party-search-input-v111');
           const list=document.querySelector('.party-list-v110');
