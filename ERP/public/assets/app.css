@@ -56,6 +56,37 @@
 .item-share{font-size:18px;margin-left:4px;color:#3f4d59}
 .item-subline{font-size:11px;color:#9aa3ad;margin-top:4px}
 .adjust-btn{font-size:11px;border-radius:5px;padding:8px 12px}
+/* Item detail action buttons: same compact shape as Adjust Item.
+   Only Adjust Item stays filled blue; ledger/bundle/note remain white. */
+.item-detail-top > div:last-child{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.item-detail-top > div:last-child > .btn{
+  height:30px!important;
+  min-height:30px!important;
+  padding:0 11px!important;
+  border-radius:5px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  box-sizing:border-box!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.06)!important;
+}
+.item-detail-top > div:last-child > .btn:not(.adjust-btn){
+  background:#fff!important;
+  border:1px solid #cfd8e3!important;
+  color:#324153!important;
+}
+.item-detail-top > div:last-child > .btn:not(.adjust-btn):hover{
+  background:#f8fafc!important;
+  border-color:#bfcbd8!important;
+}
+.item-detail-top > div:last-child > .btn.adjust-btn{
+  height:30px!important;
+  min-height:30px!important;
+  padding:0 11px!important;
+  border-radius:5px!important;
+  background:var(--blue)!important;
+  border-color:var(--blue)!important;
+  color:#fff!important;
+}
 .item-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 25px;margin-top:17px;font-size:12px;color:#3f4752}
 .item-price-grid b{color:#00a67a;font-weight:600}
 .item-price-grid .stock-right{text-align:right}
