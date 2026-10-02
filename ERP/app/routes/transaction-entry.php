@@ -302,6 +302,41 @@ function updatePrice(sel){
     recalc();
   }
 }
+document.addEventListener('change',function(e){
+  const sel=e.target;
+  if(!sel || !sel.matches || !sel.matches('#entryRows .item-source-select')) return;
+  if(document.body.dataset.txntype!=='sale') return;
+  const row=sel.closest('.sale-row');
+  if(!row || row.dataset.bundleChild==='1') return;
+
+  // Run after the normal item-search/updatePrice handlers complete.
+  setTimeout(function(){
+    const itemId=Number(sel.value||0);
+    if(!itemId || !row.isConnected) return;
+
+    let components=[];
+    try{ components=JSON.parse(sel.selectedOptions?.[0]?.dataset?.bundle||'[]')||[]; }catch(_){ components=[]; }
+
+    if((!Array.isArray(components)||!components.length) && window.SutoTxnBundleMap){
+      const mapped=window.SutoTxnBundleMap[String(itemId)];
+      if(Array.isArray(mapped)) components=mapped;
+    }
+
+    const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';
+    if(!parentKey) return;
+
+    const hasChildren=[...document.querySelectorAll('#entryRows .bundle-child-row')].some(function(child){
+      return String(child.dataset.bundleParentKey||'')===String(parentKey);
+    });
+
+    if(Array.isArray(components) && components.length && typeof window.renderBundleChildrenForRow==='function'){
+      try{
+        if(!hasChildren) window.renderBundleChildrenForRow(row,components);
+      }catch(err){ console.error('Guaranteed sale bundle render failed:',err); }
+    }
+  },0);
+});
+
 function validateTransactionForm(){
   const rows=[...document.querySelectorAll('#entryRows .sale-row')];
   let validCount=0;
