@@ -3,6 +3,18 @@ if($route==='items'){
     $u=require_login();
     $cid=(int)$u['company_id'];
     $pdo=db();
+    try{
+        $pdo->exec('CREATE TABLE IF NOT EXISTS item_categories (
+          item_id INT UNSIGNED NOT NULL,
+          category_id INT UNSIGNED NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (item_id,category_id),
+          KEY idx_item_categories_category (category_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        $pdo->exec("INSERT IGNORE INTO item_categories(item_id,category_id)
+                    SELECT id,category_id FROM items
+                    WHERE category_id IS NOT NULL AND category_id>0");
+    }catch(Throwable $e){ error_log('multi-category schema: '.$e->getMessage()); }
 
     /* v235: separate item metadata fields. The previous Item Note update reused
        description; migrate that content into item_note once, then keep the four
@@ -116,7 +128,16 @@ page_start('Items');
                     $barcode=(string)($keepRow['barcode']??'');
                 }
                 if($name==='')throw new RuntimeException('Item name is required.');
-                $categoryId=(int)($_POST['category_id']??0)?:null;
+                $categoryIds=array_values(array_unique(array_map('intval',(array)($_POST['category_ids']??[]))));
+                if(!$categoryIds && !empty($_POST['category_id'])) $categoryIds=[(int)$_POST['category_id']];
+                if($categoryIds){
+                    $ph=implode(',',array_fill(0,count($categoryIds),'?'));
+                    $cs=$pdo->prepare("SELECT id,type FROM categories WHERE company_id=? AND id IN ($ph)");
+                    $cs->execute(array_merge([$cid],$categoryIds));
+                    $validCats=$cs->fetchAll(PDO::FETCH_KEY_PAIR);
+                    $categoryIds=array_values(array_filter($categoryIds,fn($v)=>isset($validCats[$v]) && $validCats[$v]===$type));
+                }
+                $categoryId=$categoryIds[0]??null;
                 $unitId=(int)($_POST['unit_id']??0)?:null;
                 $sale=(float)($_POST['sale_price']??0);$wh=(float)($_POST['wholesale_price']??0);$minWh=(float)($_POST['min_wholesale_qty']??0);$buy=(float)($_POST['purchase_price']??0);
                 $opening=$type==='product'?(float)($_POST['opening_stock']??0):0;$low=$type==='product'?(float)($_POST['low_stock_limit']??0):0;
@@ -124,6 +145,11 @@ page_start('Items');
                     $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? LIMIT 1');$st->execute([$editId,$cid]);$old=$st->fetch();if(!$old)throw new RuntimeException('Item not found.');
                     $pdo->prepare('UPDATE items SET item_type=?,name=?,code=?,barcode=?,serial_tracked=?,category_id=?,unit_id=?,sale_price=?,wholesale_price=?,min_wholesale_qty=?,purchase_price=?,low_stock_limit=?,description=?,item_note=?,warranty=?,location=? WHERE id=? AND company_id=?')->execute([$type,$name,$code?:null,$barcode?:null,($type==='product' && !empty($_POST['serial_tracked']))?1:0,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$low,trim($_POST['description']??'')?:null,trim($_POST['item_note']??'')?:null,trim($_POST['warranty']??'')?:null,trim($_POST['location']??'')?:null,$editId,$cid]);
                     $id=$editId;
+                    $pdo->prepare('DELETE FROM item_categories WHERE item_id=?')->execute([$id]);
+                    if($categoryIds){
+                        $insCat=$pdo->prepare('INSERT IGNORE INTO item_categories(item_id,category_id) VALUES(?,?)');
+                        foreach($categoryIds as $catId)$insCat->execute([$id,$catId]);
+                    }
                     if($type==='product' && abs($opening-(float)$old['opening_stock'])>0.0001){
                         $delta=$opening-(float)$old['opening_stock'];
                         $pdo->prepare('UPDATE items SET opening_stock=? WHERE id=? AND company_id=?')->execute([$opening,$id,$cid]);
@@ -138,6 +164,10 @@ page_start('Items');
                     try {
                         $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,serial_tracked,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit,description,item_note,warranty,location) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$type,$name,$code?:null,$barcode?:null,($type==='product' && !empty($_POST['serial_tracked']))?1:0,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$opening,$low,trim($_POST['description']??'')?:null,trim($_POST['item_note']??'')?:null,trim($_POST['warranty']??'')?:null,trim($_POST['location']??'')?:null]);
                         $id=(int)$pdo->lastInsertId();
+                        if($categoryIds){
+                            $insCat=$pdo->prepare('INSERT IGNORE INTO item_categories(item_id,category_id) VALUES(?,?)');
+                            foreach($categoryIds as $catId)$insCat->execute([$id,$catId]);
+                        }
                         if($type==='product' && abs($opening)>0.0001){
                             $pdo->prepare('INSERT INTO stock_movements(company_id,item_id,movement_date,quantity,unit_price,movement_type,note) VALUES(?,?,?,?,?,?,?)')
                                 ->execute([$cid,$id,date('Y-m-d'),$opening,$buy,'opening_stock','Opening Stock']);
@@ -188,8 +218,8 @@ page_start('Items');
                 $st=$pdo->prepare('SELECT id,name FROM categories WHERE id=? AND company_id=? LIMIT 1');
                 $st->execute([$id,$cid]); $cat=$st->fetch();
                 if(!$cat) throw new RuntimeException('Category not found.');
-                $st=$pdo->prepare('SELECT COUNT(*) FROM items WHERE category_id=? AND company_id=? AND active=1');
-                $st->execute([$id,$cid]); $count=(int)$st->fetchColumn();
+                $st=$pdo->prepare('SELECT COUNT(DISTINCT item_id) FROM item_categories ic JOIN items ii ON ii.id=ic.item_id AND ii.company_id=? AND ii.active=1 WHERE ic.category_id=?');
+                $st->execute([$cid,$id]); $count=(int)$st->fetchColumn();
                 if($count>0) throw new RuntimeException('This category cannot be deleted because '.$count.' active item(s) use it. Reassign those items first.');
                 $pdo->prepare('DELETE FROM categories WHERE id=? AND company_id=?')->execute([$id,$cid]);
                 audit('delete','category',$id,['name'=>$cat['name']]);
@@ -279,7 +309,16 @@ page_start('Items');
     $cats=$pdo->prepare('SELECT id,name,type FROM categories WHERE company_id=? ORDER BY type,name');$cats->execute([$cid]);$catRows=$cats->fetchAll();
     $units=$pdo->prepare('SELECT id,name,symbol FROM units WHERE company_id=? ORDER BY name');$units->execute([$cid]);$unitRows=$units->fetchAll();
     $edit=null;
-    if($editId){$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$editId,$cid]);$edit=$st->fetch()?:null;}
+    $editCategoryIds=[];
+    if($editId){
+        try{
+            $cs=$pdo->prepare('SELECT category_id FROM item_categories WHERE item_id=? ORDER BY category_id');$cs->execute([$editId]);
+            $editCategoryIds=array_map('intval',$cs->fetchAll(PDO::FETCH_COLUMN));
+        }catch(Throwable $e){}
+    }
+    if($editId){$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$editId,$cid]);$edit=$st->fetch()?:null;
+        if(!$editCategoryIds && $edit && !empty($edit['category_id'])) $editCategoryIds=[(int)$edit['category_id']];
+    }
     /** v233: Items workspace UI restore. Keep all four tabs visible and use a wider left master column. */
     echo '<style id="sense-items-ui-v233">
 
@@ -510,7 +549,7 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
 <?php if(!empty($selected['bundle_components'])): foreach($selected['bundle_components'] as $bc): ?><tr class="bundle-config-row"><td><select name="component_item_id[]" required><option value="">Select product</option><?php foreach($items as $opt): if($opt['item_type']!=='product'||(int)$opt['id']===(int)$selected['id']||!(int)$opt['active'])continue; ?><option value="<?=$opt['id']?>" <?=((int)$opt['id']===(int)$bc['item_id'])?'selected':''?>><?=e($opt['name'])?></option><?php endforeach; ?></select></td><td><input type="number" name="component_qty[]" min="0.001" step="0.001" value="<?=e((string)$bc['quantity'])?>" required></td><td><button type="button" class="btn small-btn" onclick="this.closest('tr').remove()">×</button></td></tr><?php endforeach; else: ?><tr class="bundle-config-row"><td><select name="component_item_id[]"><option value="">Select product</option><?php foreach($items as $opt): if($opt['item_type']!=='product'||(int)$opt['id']===(int)$selected['id']||!(int)$opt['active'])continue; ?><option value="<?=$opt['id']?>"><?=e($opt['name'])?></option><?php endforeach; ?></select></td><td><input type="number" name="component_qty[]" min="0.001" step="0.001" value="1"></td><td><button type="button" class="btn small-btn" onclick="this.closest('tr').remove()">×</button></td></tr><?php endif; ?>
 </tbody></table></div><div style="margin-top:10px"><button type="button" class="btn" onclick="addBundleConfigRow()">+ Add Free Item</button></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('itemBundleModal')">Cancel</button><button class="btn primary">Save Bundle</button></div></form></div></div>
     <?php endif; ?>
-    <div class="modal-backdrop" id="itemModal" onclick="if(event.target===this)closeModal('itemModal')"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group"><label>Category</label><select name="category_id"><option value="">Select Category</option><?php foreach($catRows as $c):?><option value="<?=$c['id']?>" <?=($edit&&$edit['category_id']==$c['id'])?'selected':''?>><?=e($c['name'])?> (<?=e($c['type'])?>)</option><?php endforeach;?></select></div><div class="form-group"><label>Select Unit</label><select name="unit_id"><option value="">Select Unit</option><?php foreach($unitRows as $x):?><option value="<?=$x['id']?>" <?=($edit&&$edit['unit_id']==$x['id'])?'selected':''?>><?=e($x['name'].' '.($x['symbol']?'('.$x['symbol'].')':''))?></option><?php endforeach;?></select></div></div><div class="item-type-toggle"><label><input type="radio" name="item_type" value="product" <?=(!$edit||$edit['item_type']==='product')?'checked':''?> onchange="toggleStock()"> Product</label><label><input type="radio" name="item_type" value="service" <?=($edit&&$edit['item_type']==='service')?'checked':''?> onchange="toggleStock()"> Service</label></div><div class="serial-tracking-toggle"><label><input type="checkbox" name="serial_tracked" value="1" <?=($edit&&((int)($edit['serial_tracked']??0)===1))?'checked':''?>> Enable Serial Number Tracking</label><span class="subtle"> Purchase each unit with a unique serial; sale can auto-pick or use specific serials.</span></div><div class="grid2"><div class="form-group span2"><label>Item Code</label><input name="code" value="<?=e($edit['code']??'')?>"></div></div><div class="tabs"><button type="button" class="active">PRICING</button><button type="button">STOCK</button></div><div class="pricing-section"><div class="grid3"><div class="form-group"><label>Sale Price</label><input type="number" step="0.01" name="sale_price" value="<?=e($edit['sale_price']??'0')?>"></div><div class="form-group"><label>Wholesale Price</label><input type="number" step="0.01" name="wholesale_price" value="<?=e($edit['wholesale_price']??'0')?>"></div><div class="form-group"><label>Minimum Wholesale Qty</label><input type="number" step="0.01" name="min_wholesale_qty" value="<?=e($edit['min_wholesale_qty']??'0')?>"></div><div class="form-group"><label>Purchase Price</label><input type="number" step="0.01" name="purchase_price" value="<?=e($edit['purchase_price']??'0')?>"></div></div></div><div class="stock-section"><div class="grid2"><div class="form-group stock-field"><label>Opening Stock</label><input type="number" step="0.01" name="opening_stock" value="<?=e($edit['opening_stock']??'0')?>"></div><div class="form-group stock-field"><label>Low Stock Limit</label><input type="number" step="0.01" name="low_stock_limit" value="<?=e($edit['low_stock_limit']??'0')?>"></div><div class="form-group"><label>Location</label><input name="location" value="<?=e($edit['location']??'')?>" placeholder="e.g. Main Warehouse / Rack A-03"></div><div class="form-group"><label>Warranty</label><input name="warranty" value="<?=e($edit['warranty']??'')?>" placeholder="e.g. 12 Months"></div></div><div class="grid2" style="margin-top:14px"><div class="form-group"><label>Description</label><textarea name="description" rows="4" placeholder="General product/service description"><?=e($edit['description']??'')?></textarea></div><div class="form-group"><label>Item Note</label><textarea name="item_note" rows="4" placeholder="Internal note for this item"><?=e($edit['item_note']??'')?></textarea></div></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('itemModal')">Cancel</button><button class="btn primary"><?= $edit?'Update':'Save' ?></button></div></form></div></div>
+    <div class="modal-backdrop" id="itemModal" onclick="if(event.target===this)closeModal('itemModal')"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group"><label>Categories</label><div class="item-category-picker"><?php foreach($catRows as $c): if($edit && ($edit['item_type']??'product')!==$c['type']) continue; $checked=in_array((int)$c['id'],$editCategoryIds,true); ?><label class="item-category-option"><input type="checkbox" name="category_ids[]" value="<?=$c['id']?>" <?=$checked?'checked':''?>><span><?=e($c['name'])?></span></label><?php endforeach; ?></div><div class="subtle">Select one or more categories for this item.</div></div><div class="form-group"><label>Select Unit</label><select name="unit_id"><option value="">Select Unit</option><?php foreach($unitRows as $x):?><option value="<?=$x['id']?>" <?=($edit&&$edit['unit_id']==$x['id'])?'selected':''?>><?=e($x['name'].' '.($x['symbol']?'('.$x['symbol'].')':''))?></option><?php endforeach;?></select></div></div><div class="item-type-toggle"><label><input type="radio" name="item_type" value="product" <?=(!$edit||$edit['item_type']==='product')?'checked':''?> onchange="toggleStock()"> Product</label><label><input type="radio" name="item_type" value="service" <?=($edit&&$edit['item_type']==='service')?'checked':''?> onchange="toggleStock()"> Service</label></div><div class="serial-tracking-toggle"><label><input type="checkbox" name="serial_tracked" value="1" <?=($edit&&((int)($edit['serial_tracked']??0)===1))?'checked':''?>> Enable Serial Number Tracking</label><span class="subtle"> Purchase each unit with a unique serial; sale can auto-pick or use specific serials.</span></div><div class="grid2"><div class="form-group span2"><label>Item Code</label><input name="code" value="<?=e($edit['code']??'')?>"></div></div><div class="tabs"><button type="button" class="active">PRICING</button><button type="button">STOCK</button></div><div class="pricing-section"><div class="grid3"><div class="form-group"><label>Sale Price</label><input type="number" step="0.01" name="sale_price" value="<?=e($edit['sale_price']??'0')?>"></div><div class="form-group"><label>Wholesale Price</label><input type="number" step="0.01" name="wholesale_price" value="<?=e($edit['wholesale_price']??'0')?>"></div><div class="form-group"><label>Minimum Wholesale Qty</label><input type="number" step="0.01" name="min_wholesale_qty" value="<?=e($edit['min_wholesale_qty']??'0')?>"></div><div class="form-group"><label>Purchase Price</label><input type="number" step="0.01" name="purchase_price" value="<?=e($edit['purchase_price']??'0')?>"></div></div></div><div class="stock-section"><div class="grid2"><div class="form-group stock-field"><label>Opening Stock</label><input type="number" step="0.01" name="opening_stock" value="<?=e($edit['opening_stock']??'0')?>"></div><div class="form-group stock-field"><label>Low Stock Limit</label><input type="number" step="0.01" name="low_stock_limit" value="<?=e($edit['low_stock_limit']??'0')?>"></div><div class="form-group"><label>Location</label><input name="location" value="<?=e($edit['location']??'')?>" placeholder="e.g. Main Warehouse / Rack A-03"></div><div class="form-group"><label>Warranty</label><input name="warranty" value="<?=e($edit['warranty']??'')?>" placeholder="e.g. 12 Months"></div></div><div class="grid2" style="margin-top:14px"><div class="form-group"><label>Description</label><textarea name="description" rows="4" placeholder="General product/service description"><?=e($edit['description']??'')?></textarea></div><div class="form-group"><label>Item Note</label><textarea name="item_note" rows="4" placeholder="Internal note for this item"><?=e($edit['item_note']??'')?></textarea></div></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('itemModal')">Cancel</button><button class="btn primary"><?= $edit?'Update':'Save' ?></button></div></form></div></div>
     <style>
       .item-note-card{margin-top:10px;}
       .item-note-body-v234{padding:12px 14px;border:1px solid #e3e9f0;border-radius:8px;background:#fbfdff;color:#334155;line-height:1.55;font-size:13px;white-space:normal;}
