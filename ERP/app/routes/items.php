@@ -516,7 +516,33 @@ page_start('Items');
             <button type="button" class="icon-more" aria-label="More">⋮</button>
           </div>
           <div class="item-master-head"><span>ITEM</span><span>QUANTITY</span></div>
-          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="itemLiveFilter(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
+          <div class="item-search-wrap"><input id="itemSearch" placeholder="Search items" oninput="senseItemSearchNow(this)" onkeydown="if(event.key==='Enter')event.preventDefault()"></div>
+          <script>
+          window.senseItemSearchNow=function(input){
+            const list=document.getElementById('itemListBody');
+            if(!list)return;
+            const q=String(input.value||'').toLowerCase().trim();
+            const rows=[...list.querySelectorAll('.item-master-row')];
+            rows.forEach(function(row){
+              const hay=String(row.dataset.name||row.textContent||'').toLowerCase();
+              row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+            });
+            clearTimeout(window.__senseItemSearchTimer);
+            if(!q)return;
+            window.__senseItemSearchTimer=setTimeout(async function(){
+              try{
+                const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
+                u.searchParams.set('q',q);
+                const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+                const data=await res.json();
+                if(!data?.ok||!Array.isArray(data.items))return;
+                const ids=new Set(data.items.map(function(x){return String(x.id);}));
+                rows.forEach(function(row){row.style.display=ids.has(String(row.dataset.itemId||''))?'':'none';});
+              }catch(_){}
+            },80);
+          };
+          </script>
+
           <script>
           window.itemLiveFilter=window.itemLiveFilter||function(input){
             clearTimeout(input._itemTimer);
