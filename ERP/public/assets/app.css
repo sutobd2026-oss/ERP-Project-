@@ -1588,3 +1588,39 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 
 /* Reliable live filtering for master lists. */
 .sense-live-filter-hidden{display:none!important}
+
+/* v236: keep item description, warranty and location in the same summary card. */
+.item-info-grid-v236{
+  grid-template-columns:1fr 1fr!important;
+  gap:13px 25px!important;
+  margin-top:17px!important;
+}
+.item-inline-meta-v236{
+  padding-top:10px;
+  border-top:1px solid #edf1f5;
+  min-width:0;
+}
+.item-inline-meta-v236:nth-child(5){grid-column:1/3}
+.item-inline-meta-v236:nth-child(6){grid-column:1}
+.item-inline-meta-v236:nth-child(7){grid-column:2}
+.item-inline-meta-v236 span{
+  display:block;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.04em;
+  color:#66717d;
+  margin-bottom:5px;
+}
+.item-inline-meta-v236 p{
+  margin:0;
+  color:#3f4752;
+  font-size:12px;
+  line-height:1.45;
+  word-break:break-word;
+}
+@media(max-width:900px){
+  .item-info-grid-v236{grid-template-columns:1fr!important}
+  .item-inline-meta-v236:nth-child(5),
+  .item-inline-meta-v236:nth-child(6),
+  .item-inline-meta-v236:nth-child(7){grid-column:auto!important}
+}
