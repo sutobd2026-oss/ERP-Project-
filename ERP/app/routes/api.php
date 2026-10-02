@@ -77,6 +77,32 @@ if($route==='item-search-api'){
 }
 
 
+if($route==='bundle-components-api'){
+    $u=require_login(); $cid=(int)$u['company_id'];
+    header('Content-Type: application/json; charset=utf-8');
+    $itemId=(int)($_GET['item_id']??0);
+    if($itemId<=0){echo json_encode(['ok'=>true,'items'=>[]],JSON_UNESCAPED_UNICODE);exit;}
+    try{
+        $map=bundle_map_for_company(db(),$cid);
+        $items=[];
+        foreach(($map[$itemId]??[]) as $r){
+            $items[]=[
+                'item_id'=>(int)($r['item_id']??$r['component_item_id']??0),
+                'name'=>(string)($r['name']??''),
+                'quantity'=>(float)($r['quantity']??1),
+                'unit_symbol'=>(string)($r['unit_symbol']??''),
+                'serial_tracked'=>(int)($r['serial_tracked']??0),
+                'sale_price'=>(float)($r['sale_price']??0),
+                'purchase_price'=>(float)($r['purchase_price']??0),
+            ];
+        }
+        echo json_encode(['ok'=>true,'items'=>$items],JSON_UNESCAPED_UNICODE);exit;
+    }catch(Throwable $e){
+        error_log('bundle components api: '.$e->getMessage());
+        http_response_code(500);echo json_encode(['ok'=>false,'error'=>'Bundle components lookup failed.'],JSON_UNESCAPED_UNICODE);exit;
+    }
+}
+
 if($route==='inline-party-create'){
     $u=require_login();
     header('Content-Type: application/json; charset=utf-8');
