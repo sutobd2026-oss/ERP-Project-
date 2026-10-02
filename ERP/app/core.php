@@ -452,6 +452,7 @@ function render_inline_creation_modals(): void {
         opt.textContent=String(item.name||'');
         opt.dataset.sale=String(item.sale_price||0);opt.dataset.buy=String(item.purchase_price||0);const mode=row.querySelector('.item-live-search')?.dataset?.priceMode || (row.closest('.purchase-entry-form')?'purchase':'sale');opt.dataset.price=String(mode==='purchase'?(item.purchase_price||0):(item.sale_price||0));
         opt.dataset.unit=String(item.unit_symbol||'');opt.dataset.type='product';opt.dataset.serialTracked=String(item.serial_tracked||0);
+        opt.dataset.bundle=JSON.stringify(Array.isArray(item.bundle_components)?item.bundle_components:[]);
         if(sel.classList.contains('dc-item')){opt.dataset.price=String(item.sale_price||0);opt.dataset.unit=String(item.unit_symbol||'');}
         sel.value=String(item.id);sel.dispatchEvent(new Event('change',{bubbles:true}));
         const inp=row.querySelector('.item-search-input');if(inp){inp.value=String(item.name||'')+(item.code?' · '+item.code:'');}
