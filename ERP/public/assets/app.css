@@ -1285,28 +1285,48 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .big-money .dash-money-dec{font-size:.6em}
 .metric-card .value .dash-money-dec,.right-card .value .dash-money-dec{font-size:.62em}
 
-/* Transaction row controls: remove button sits directly above its row number. */
+/* Transaction row controls: keep remove button beside the row number. */
 .entry-table .txn-row-index-cell{
   width:42px!important;
   min-width:42px!important;
   max-width:42px!important;
-  padding:4px 4px!important;
+  padding:4px 3px!important;
   vertical-align:top!important;
   text-align:center!important;
 }
+.entry-table .txn-row-index-cell{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+}
 .entry-table .txn-row-remove{
-  display:block!important;
-  width:24px!important;
-  height:24px!important;
-  margin:0 auto 4px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:20px!important;
+  height:20px!important;
+  margin:0!important;
   padding:0!important;
   border:1px solid #cfd8e3!important;
-  border-radius:5px!important;
+  border-radius:4px!important;
   background:#fff!important;
   color:#64748b!important;
-  font-size:16px!important;
-  line-height:22px!important;
+  font-size:14px!important;
+  line-height:18px!important;
   cursor:pointer!important;
+  flex:0 0 20px!important;
+}
+.entry-table .txn-row-remove:hover{
+  color:#dc2626!important;
+  border-color:#fca5a5!important;
+}
+.entry-table .txn-row-number{
+  display:inline-block!important;
+  font-size:12px!important;
+  line-height:16px!important;
+  color:#526276!important;
+  flex:0 0 auto!important;
 }
 .entry-table .txn-row-remove:hover{
   color:#dc2626!important;
