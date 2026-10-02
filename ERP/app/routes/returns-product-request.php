@@ -162,13 +162,32 @@ function delivery_challan_new(): void {
             if(!$pr) throw new RuntimeException('Customer is required.');
             $txnDate=transaction_datetime($_POST['txn_date']??null); $dueDate=$_POST['due_date']?:null; $notes=trim($_POST['notes']??'');
             $itemIds=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[];
-            $rows=[]; $subtotal=0; $itemDisc=0;
+            $rowKeys=(array)($_POST['bundle_row_key']??[]); $parentKeys=(array)($_POST['bundle_parent_key']??[]); $childFlags=(array)($_POST['bundle_child']??[]);
+            $rows=[]; $subtotal=0; $itemDisc=0; $seenRowKeys=[]; $parentRowsByKey=[];
             foreach($itemIds as $i=>$iid){
                 $iid=(int)$iid; $q=(float)($qtys[$i]??0); $price=(float)($prices[$i]??0); $disc=max(0,(float)($discs[$i]??0));
                 if($iid<=0 || $q<=0) continue;
+                $rowKey=trim((string)($rowKeys[$i]??'')); if($rowKey==='') $rowKey='dc-row-'.$i.'-'.bin2hex(random_bytes(4));
+                if(isset($seenRowKeys[$rowKey])) throw new RuntimeException('Duplicate bundle row key.');
+                $seenRowKeys[$rowKey]=true;
+                $parentKey=trim((string)($parentKeys[$i]??'')); $isChild=((int)($childFlags[$i]??0)===1);
                 $itSt=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1'); $itSt->execute([$iid,$cid]); $it=$itSt->fetch();
                 if(!$it) throw new RuntimeException('Invalid item selected.');
-                $gross=$q*$price; if($disc>$gross)$disc=$gross; $rows[]=[$iid,$q,$price,$disc,$it]; $subtotal+=$gross; $itemDisc+=$disc;
+                $parentItemId=0;
+                if($isChild){
+                    if($parentKey==='' || !isset($parentRowsByKey[$parentKey])) throw new RuntimeException('A bundle child item is missing its parent product.');
+                    $parentItemId=(int)$parentRowsByKey[$parentKey]['item_id'];
+                    $component=bundle_component_lookup($pdo,$cid,$parentItemId,$iid);
+                    if(!$component) throw new RuntimeException('Invalid included free item for the selected bundle product.');
+                    $parentQty=(float)$parentRowsByKey[$parentKey]['qty'];
+                    $expectedQty=round($parentQty*(float)$component['quantity'],6);
+                    if(abs($q-$expectedQty)>0.000001) throw new RuntimeException('Included free item quantity does not match the bundle quantity.');
+                    $price=0; $disc=0;
+                }
+                $gross=$q*$price; if($disc>$gross)$disc=$gross;
+                $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'it'=>$it,'parentItemId'=>$parentItemId];
+                $rows[]=$rowData;
+                if(!$isChild){$parentRowsByKey[$rowKey]=$rowData;$subtotal+=$gross;$itemDisc+=$disc;}
             }
             if(!$rows) throw new RuntimeException('Add at least one item.');
             $invDisc=max(0,(float)($_POST['invoice_discount']??0));
@@ -209,8 +228,18 @@ function delivery_challan_new(): void {
                     ->execute([$cid,$party,'delivery_challan',$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,0,$shipping,$total,$advance,$cod,$u['currency_code'],$cod<=0.0001?'paid':'open',$notes,$u['id']]);
                 $tid=(int)$pdo->lastInsertId();
             }
-            $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
-            foreach($rows as [$iid,$q,$price,$disc,$it]) $ins->execute([$tid,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
+            $insParent=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,bundle_parent_transaction_item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?,?)');
+            $parentTxItemIds=[];
+            foreach($rows as $rr){
+                $parentTxId=null;
+                if($rr['isChild']){
+                    $parentTxId=$parentTxItemIds[$rr['parentKey']]??null;
+                    if(!$parentTxId) throw new RuntimeException('Bundle parent item could not be linked.');
+                }
+                $insParent->execute([$tid,$rr['item_id'],$parentTxId,$rr['qty'],$rr['price'],$rr['discount'],0,max(0,$rr['qty']*$rr['price']-$rr['discount'])]);
+                $newTi=(int)$pdo->lastInsertId();
+                if(!$rr['isChild']) $parentTxItemIds[$rr['rowKey']]=$newTi;
+            }
 
             // Store each actual advance method (Cash / Bank Account) against
             // the Delivery Challan so it appears in the account history.
