@@ -529,14 +529,20 @@ page_start('Items');
           window.senseItemsLiveSearch=function(input){
             const list=document.getElementById('itemListBody');
             if(!list)return;
-            senseCaptureItemTemplates();
+            if(!list._senseItemTemplates){
+              list._senseItemTemplates=[...list.querySelectorAll('.item-master-row')].map(function(row){
+                return {id:String(row.dataset.itemId||''),name:String(row.dataset.name||'').toLowerCase(),html:row.outerHTML};
+              });
+            }
             const templates=list._senseItemTemplates;
             const q=String(input.value||'').toLowerCase().trim();
+            list._senseSearchSeq=(list._senseSearchSeq||0)+1;
+            const mySeq=list._senseSearchSeq;
+            clearTimeout(window.__senseItemsSearchTimer);
             function paint(rows){
-              list.innerHTML=rows.map(function(x){return x.html;}).join('');
-              if(!rows.length && q){
-                list.innerHTML='<div class="item-empty sense-search-empty-row">No matching items found.</div>';
-              }
+              list.innerHTML=rows.length
+                ? rows.map(function(x){return x.html;}).join('')
+                : (q?'<div class="item-empty sense-search-empty-row">No matching items found.</div>':'');
             }
             if(!q){
               paint(templates);
@@ -544,13 +550,13 @@ page_start('Items');
             }
             const local=templates.filter(function(x){return x.name.indexOf(q)!==-1;});
             paint(local);
-            clearTimeout(window.__senseItemsSearchTimer);
             window.__senseItemsSearchTimer=setTimeout(async function(){
               try{
                 const u=new URL('<?=e(url('item-search-api'))?>',location.origin);
                 u.searchParams.set('q',q);
                 const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
                 const data=await res.json();
+                if(mySeq!==list._senseSearchSeq)return;
                 if(!data?.ok||!Array.isArray(data.items))return;
                 const ids=new Set(data.items.map(function(x){return String(x.id);}));
                 const exact=templates.filter(function(x){return ids.has(x.id);});
