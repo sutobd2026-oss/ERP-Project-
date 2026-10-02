@@ -215,7 +215,41 @@ function duplicateTxnRow(btn){
 .sale-invoice-ui .subtle[style*="margin-top:6px"]{margin-top:4px!important;font-size:9.5px!important}
 .sale-invoice-ui .subtle[style*="margin-top:6px"] .btn{height:25px!important;padding:0 9px!important;font-size:10px!important;border-radius:7px!important}
 
-.sale-invoice-ui .entry-table{margin-top:2px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;overflow:hidden!important}
+<style id="sale-invoice-ui-v3">
+.sale-invoice-ui .entry-table,
+.sale-invoice-ui .entry-table table,
+.sale-invoice-ui .entry-table th,
+.sale-invoice-ui .entry-table td{box-sizing:border-box!important}
+.sale-invoice-ui .entry-table{width:100%!important;overflow:hidden!important}
+.sale-invoice-ui .entry-table table{width:100%!important;max-width:100%!important;table-layout:fixed!important}
+.sale-invoice-ui .entry-table th:nth-child(1),.sale-invoice-ui .entry-table td:nth-child(1){width:4%!important}
+.sale-invoice-ui .entry-table th:nth-child(2),.sale-invoice-ui .entry-table td:nth-child(2){width:38%!important}
+.sale-invoice-ui .entry-table th:nth-child(3),.sale-invoice-ui .entry-table td:nth-child(3){width:8%!important}
+.sale-invoice-ui .entry-table th:nth-child(4),.sale-invoice-ui .entry-table td:nth-child(4){width:8%!important}
+.sale-invoice-ui .entry-table th:nth-child(5),.sale-invoice-ui .entry-table td:nth-child(5){width:13%!important}
+.sale-invoice-ui .entry-table th:nth-child(6),.sale-invoice-ui .entry-table td:nth-child(6){width:12%!important}
+.sale-invoice-ui .entry-table th:nth-child(7),.sale-invoice-ui .entry-table td:nth-child(7){width:10%!important}
+.sale-invoice-ui .entry-table th:nth-child(8),.sale-invoice-ui .entry-table td:nth-child(8){width:7%!important}
+.sale-invoice-ui .entry-table tbody td{overflow:hidden!important}
+.sale-invoice-ui .item-picker-cell{width:100%!important;max-width:100%!important;overflow:hidden!important}
+.sale-invoice-ui .item-live-search,.sale-invoice-ui .item-search-wrap{width:100%!important;max-width:100%!important}
+.sale-invoice-ui .item-search-input{box-sizing:border-box!important;min-width:0!important;width:100%!important;padding-left:28px!important;padding-right:26px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.sale-invoice-ui .item-search-wrap:before{left:9px!important}
+.sale-invoice-ui .item-search-wrap:after{right:9px!important}
+.sale-invoice-ui .item-line-meta-grid{width:100%!important;min-width:0!important}
+.sale-invoice-ui .item-line-meta-grid>div{min-width:0!important}
+.sale-invoice-ui .item-line-meta input,.sale-invoice-ui .item-line-meta textarea{box-sizing:border-box!important;min-width:0!important}
+.sale-invoice-ui .qty,.sale-invoice-ui .price,.sale-invoice-ui .line-disc{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
+.sale-invoice-ui .amount{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;padding:0 3px 0 2px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.sale-invoice-ui .txn-row-actions-cell{padding-left:4px!important;padding-right:4px!important}
+.sale-invoice-ui .txn-action-btn{width:28px!important;height:28px!important;margin:0 1px!important}
+.sale-invoice-ui .txn-copy-btn,.sale-invoice-ui .txn-delete-btn{flex:0 0 28px!important}
+.sale-invoice-ui .txn-footer-summary{white-space:nowrap!important}
+@media(max-width:1000px){
+  .sale-invoice-ui .entry-table{overflow-x:auto!important}
+  .sale-invoice-ui .entry-table table{min-width:900px!important}
+}
+</style>.sale-invoice-ui .entry-table{margin-top:2px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;overflow:hidden!important}
 .sale-invoice-ui .entry-table table{width:100%!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
 .sale-invoice-ui .entry-table thead th{height:31px!important;padding:5px 8px!important;background:#f4f7fb!important;color:#66758a!important;border-bottom:1px solid #dce4ee!important;font-size:9px!important;letter-spacing:.02em!important;font-weight:700!important;text-transform:uppercase!important}
 .sale-invoice-ui .entry-table tbody td{padding:5px 7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important}
