@@ -830,6 +830,26 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
   window.addEventListener('resize',()=>{if(active)placeResults(active);});window.addEventListener('scroll',()=>{if(active)placeResults(active);},true);
 })();
 (function(){
+  function liveFilterMasterLists(target){
+    if(!target)return;
+    const isParty=target.classList.contains('party-search-input-v111');
+    const isItem=target.id==='itemSearch';
+    if(!isParty&&!isItem)return;
+    const list=isParty?document.querySelector('.party-list-v110'):document.getElementById('itemListBody');
+    if(!list)return;
+    const q=String(target.value||'').toLowerCase().trim();
+    const rows=[...list.querySelectorAll(isParty?'.party-list-row-v110':'.item-master-row')];
+    rows.forEach(function(row){
+      const hay=String((isParty?row.dataset.partySearch:row.dataset.name)||row.textContent||'').toLowerCase();
+      row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+    });
+  }
+  document.addEventListener('input',function(e){liveFilterMasterLists(e.target);},true);
+  document.addEventListener('keydown',function(e){
+    if((e.target.classList?.contains('party-search-input-v111')||e.target.id==='itemSearch')&&e.key==='Enter')e.preventDefault();
+  },true);
+})();
+(function(){
   document.addEventListener('wheel',function(e){
     const el=e.target.closest && e.target.closest('input[type=number]');
     if(el && document.activeElement===el){ e.preventDefault(); }
