@@ -215,7 +215,6 @@ function duplicateTxnRow(btn){
 .sale-invoice-ui .subtle[style*="margin-top:6px"]{margin-top:4px!important;font-size:9.5px!important}
 .sale-invoice-ui .subtle[style*="margin-top:6px"] .btn{height:25px!important;padding:0 9px!important;font-size:10px!important;border-radius:7px!important}
 
-<style id="sale-invoice-ui-v3">
 .sale-invoice-ui .entry-table,
 .sale-invoice-ui .entry-table table,
 .sale-invoice-ui .entry-table th,
@@ -249,7 +248,7 @@ function duplicateTxnRow(btn){
   .sale-invoice-ui .entry-table{overflow-x:auto!important}
   .sale-invoice-ui .entry-table table{min-width:900px!important}
 }
-</style>.sale-invoice-ui .entry-table{margin-top:2px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;overflow:hidden!important}
+.sale-invoice-ui .entry-table{margin-top:2px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;overflow:hidden!important}
 .sale-invoice-ui .entry-table table{width:100%!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
 .sale-invoice-ui .entry-table thead th{height:31px!important;padding:5px 8px!important;background:#f4f7fb!important;color:#66758a!important;border-bottom:1px solid #dce4ee!important;font-size:9px!important;letter-spacing:.02em!important;font-weight:700!important;text-transform:uppercase!important}
 .sale-invoice-ui .entry-table tbody td{padding:5px 7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important}
