@@ -306,10 +306,37 @@ if($route==='parties'){
         <div class="party-list-tools-v110 party-tools-v111-search">
           <form class="party-list-search-v110 party-search-always-v111" method="get" id="partyListSearchForm" onsubmit="return false;">
             <input type="hidden" name="type" value="<?=e($type)?>"><?php if($selectedId):?><input type="hidden" name="id" value="<?=$selectedId?>"><?php endif;?>
-            <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off" oninput="partyLiveFilter(this)" onkeydown="if(event.key==='Enter')event.preventDefault()">
+            <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off" oninput="sensePartySearchNow(this)" onkeydown="if(event.key==='Enter')event.preventDefault()">
           </form>
           <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm();openModal('partyModal')">⊕ Add Party <span>＋</span></a>
         </div>
+        <script>
+        window.sensePartySearchNow=function(input){
+          const list=document.querySelector('.party-list-v110');
+          if(!list)return;
+          const q=String(input.value||'').toLowerCase().trim();
+          const rows=[...list.querySelectorAll('.party-list-row-v110')];
+          rows.forEach(function(row){
+            const hay=String(row.dataset.partySearch||row.textContent||'').toLowerCase();
+            row.style.display=(!q||hay.indexOf(q)!==-1)?'':'none';
+          });
+          clearTimeout(window.__sensePartySearchTimer);
+          if(!q)return;
+          window.__sensePartySearchTimer=setTimeout(async function(){
+            try{
+              const u=new URL('<?=e(url('party-search-api'))?>',location.origin);
+              u.searchParams.set('q',q);
+              u.searchParams.set('role','<?=e($type==='all'?'all':($type==='labels'?'customer':$type))?>');
+              const res=await fetch(u.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+              const data=await res.json();
+              if(!data?.ok||!Array.isArray(data.items))return;
+              const ids=new Set(data.items.map(function(x){return String(x.id);}));
+              rows.forEach(function(row){row.style.display=ids.has(String(row.dataset.partyId||''))?'':'none';});
+            }catch(_){}
+          },80);
+        };
+        </script>
+
         <script>
         window.partyLiveFilter=window.partyLiveFilter||function(input){
           clearTimeout(input._partyTimer);
