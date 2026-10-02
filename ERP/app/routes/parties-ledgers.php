@@ -3,10 +3,39 @@
 if($route==='parties'){
     page_start('Parties');
     $cid=(int)$u['company_id'];
+    $customerLabels=[];
     try{
-        $partyCols=db()->query('SHOW COLUMNS FROM parties')->fetchAll(PDO::FETCH_COLUMN,0);
-        if(!in_array('customer_label',$partyCols,true)) db()->exec('ALTER TABLE parties ADD COLUMN customer_label VARCHAR(100) NULL');
-    }catch(Throwable $e){ error_log('customer label schema: '.$e->getMessage()); }
+        $pdoSchema=db();
+        $pdoSchema->exec('CREATE TABLE IF NOT EXISTS customer_labels (
+          id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          company_id INT UNSIGNED NOT NULL,
+          name VARCHAR(100) NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NULL,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_customer_label_company_name (company_id,name),
+          KEY idx_customer_label_company (company_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        $pdoSchema->exec('CREATE TABLE IF NOT EXISTS party_customer_labels (
+          party_id INT UNSIGNED NOT NULL,
+          label_id INT UNSIGNED NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (party_id,label_id),
+          KEY idx_pcl_label (label_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        $partyCols=$pdoSchema->query('SHOW COLUMNS FROM parties')->fetchAll(PDO::FETCH_COLUMN,0);
+        if(in_array('customer_label',$partyCols,true)){
+          $pdoSchema->exec("INSERT IGNORE INTO customer_labels(company_id,name)
+            SELECT company_id,TRIM(customer_label) FROM parties
+            WHERE customer_label IS NOT NULL AND TRIM(customer_label)<>'' GROUP BY company_id,TRIM(customer_label)");
+          $pdoSchema->exec("INSERT IGNORE INTO party_customer_labels(party_id,label_id)
+            SELECT p.id,cl.id FROM parties p
+            JOIN customer_labels cl ON cl.company_id=p.company_id AND cl.name=TRIM(p.customer_label)
+            WHERE p.customer_label IS NOT NULL AND TRIM(p.customer_label)<>''");
+        }
+        $clst=$pdoSchema->prepare('SELECT id,name FROM customer_labels WHERE company_id=? ORDER BY name');
+        $clst->execute([$cid]); $customerLabels=$clst->fetchAll(PDO::FETCH_ASSOC);
+    }catch(Throwable $e){ error_log('customer labels schema: '.$e->getMessage()); }
     $roleLabels=[
         'customer'=>'Customer','supplier'=>'Supplier','investor'=>'Investor','lender'=>'Lender',
         'borrower'=>'Borrower','employee'=>'Employee','other'=>'Other'
@@ -24,6 +53,29 @@ if($route==='parties'){
     if($_SERVER['REQUEST_METHOD']==='POST'){
         check_csrf();
         $action=$_POST['party_action']??'create';
+        if(in_array($action,['add_customer_label','rename_customer_label','delete_customer_label'],true)){
+            $labelName=trim((string)($_POST['label_name']??''));
+            $labelId=(int)($_POST['label_id']??0);
+            try{
+                if($action==='add_customer_label'){
+                    if($labelName==='') throw new RuntimeException('Label name is required.');
+                    if(mb_strlen($labelName)>100) throw new RuntimeException('Label name is too long.');
+                    db()->prepare('INSERT INTO customer_labels(company_id,name) VALUES(?,?)')->execute([$cid,$labelName]);
+                    flash('success','Customer label added.');
+                }elseif($action==='rename_customer_label'){
+                    if($labelId<=0||$labelName==='') throw new RuntimeException('Label name is required.');
+                    if(mb_strlen($labelName)>100) throw new RuntimeException('Label name is too long.');
+                    db()->prepare('UPDATE customer_labels SET name=?,updated_at=NOW() WHERE id=? AND company_id=?')->execute([$labelName,$labelId,$cid]);
+                    flash('success','Customer label updated.');
+                }else{
+                    if($labelId<=0) throw new RuntimeException('Invalid customer label.');
+                    db()->prepare('DELETE FROM party_customer_labels WHERE label_id=?')->execute([$labelId]);
+                    db()->prepare('DELETE FROM customer_labels WHERE id=? AND company_id=?')->execute([$labelId,$cid]);
+                    flash('success','Customer label deleted.');
+                }
+            }catch(Throwable $e){ flash('error',$e->getMessage()); }
+            redirect('parties');
+        }
         if($action==='add_note'){
             $partyId=(int)($_POST['id']??0); $note=trim((string)($_POST['note']??''));
             if($partyId<=0 || $note===''){ flash('error','Party and note are required.'); redirect('parties'); }
@@ -54,9 +106,8 @@ if($route==='parties'){
         $phone=preg_replace('/\D+/','',$_POST['phone']??'');
         $email=trim($_POST['email']??'');
         $roles=array_values(array_unique(array_intersect($validRoles,(array)($_POST['party_roles']??[]))));
-        $customerLabel=trim((string)($_POST['customer_label']??''));
-        if(!in_array('customer',$roles,true)) $customerLabel='';
-        if(strlen($customerLabel)>100) $customerLabel=substr($customerLabel,0,100);
+        $customerLabelIds=array_values(array_unique(array_map('intval',(array)($_POST['customer_label_ids']??[]))));
+        if(!in_array('customer',$roles,true)) $customerLabelIds=[];
         $address=trim($_POST['address']??'');
         $opening=(float)($_POST['opening_balance']??0);
         $openingType=$_POST['opening_balance_type']??'receivable';
@@ -79,16 +130,31 @@ if($route==='parties'){
                 $check=$pdo->prepare('SELECT id FROM parties WHERE company_id=? AND phone=? AND id<>? LIMIT 1');$check->execute([$cid,$phone,$id]);
                 if($check->fetchColumn()){flash('error','This phone number already belongs to another party.');redirect('parties');}
                 $pdo->beginTransaction();
-                $pdo->prepare('UPDATE parties SET name=?,phone=?,email=?,party_type=?,address=?,opening_balance=?,opening_balance_type=?,credit_limit=?,customer_label=? WHERE id=? AND company_id=?')->execute([$name,$phone,$email,$ptype,$address,$opening,$openingType,$limit,$customerLabel,$id,$cid]);
+                $pdo->prepare('UPDATE parties SET name=?,phone=?,email=?,party_type=?,address=?,opening_balance=?,opening_balance_type=?,credit_limit=? WHERE id=? AND company_id=?')->execute([$name,$phone,$email,$ptype,$address,$opening,$openingType,$limit,$id,$cid]);
                 $pdo->prepare('DELETE FROM party_roles WHERE party_id=?')->execute([$id]);
                 $ins=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)'); foreach($roles as $r)$ins->execute([$id,$r]);
+                $pdo->prepare('DELETE FROM party_customer_labels WHERE party_id=?')->execute([$id]);
+                if($customerLabelIds){
+                    $ph=implode(',',array_fill(0,count($customerLabelIds),'?'));
+                    $chk=db()->prepare("SELECT id FROM customer_labels WHERE company_id=? AND id IN ($ph)");
+                    $chk->execute(array_merge([$cid],$customerLabelIds));
+                    $li=db()->prepare('INSERT IGNORE INTO party_customer_labels(party_id,label_id) VALUES(?,?)');
+                    foreach(array_map('intval',$chk->fetchAll(PDO::FETCH_COLUMN)) as $lid)$li->execute([$id,$lid]);
+                }
                 $pdo->commit();
                 audit('update','party',$id,['name'=>$name,'phone'=>$phone,'roles'=>$roles]);flash('success','Party updated successfully.');redirect('parties');
             }
             $pdo->beginTransaction();
-            $pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit,customer_label) VALUES(?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,$email,$ptype,$address,$opening,$openingType,$limit,$customerLabel]);
+            $pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,$email,$ptype,$address,$opening,$openingType,$limit]);
             $id=(int)$pdo->lastInsertId();
             $ins=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)'); foreach($roles as $r)$ins->execute([$id,$r]);
+            if($customerLabelIds){
+                $ph=implode(',',array_fill(0,count($customerLabelIds),'?'));
+                $chk=db()->prepare("SELECT id FROM customer_labels WHERE company_id=? AND id IN ($ph)");
+                $chk->execute(array_merge([$cid],$customerLabelIds));
+                $li=db()->prepare('INSERT IGNORE INTO party_customer_labels(party_id,label_id) VALUES(?,?)');
+                foreach(array_map('intval',$chk->fetchAll(PDO::FETCH_COLUMN)) as $lid)$li->execute([$id,$lid]);
+            }
             $pdo->commit();
             audit('create','party',$id,['name'=>$name,'phone'=>$phone,'roles'=>$roles]); flash('success','Party added successfully.');
         }catch(PDOException $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getCode()==='23000'?'This phone number already belongs to another party.':'Could not save party.');}
