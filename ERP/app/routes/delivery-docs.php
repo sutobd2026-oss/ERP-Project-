@@ -151,7 +151,7 @@ function delivery_challans_list(): void {
     page_start('Delivery Challans');
     ?>
     <div class="panel">
-      <div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" style="display:flex;gap:8px"><input class="input" name="q" value="<?=e($q)?>" placeholder="⌕ Search by challan, party, phone"><button class="btn" type="submit">Search</button></form></div>
+      <div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" class="delivery-list-search"><input class="input" name="q" value="<?=e($q)?>" placeholder="⌕ Search by challan, party, phone"><button class="btn" type="submit">Search</button><a class="btn primary delivery-add-challan-btn" href="<?=e(url('delivery-challan-new'))?>">⊕ Add Challan</a></form></div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>PARTY</th><th>CHALLAN NO.</th><th>DUE DATE</th><th>TOTAL AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
       <?php foreach($rows as $r): $converted=!empty($r['sale_id']); ?>
       <tr>
@@ -170,7 +170,12 @@ function delivery_challans_list(): void {
       </tr>
       <?php endforeach; if(!$rows):?><tr><td colspan="7" class="subtle">No Delivery Challans found.</td></tr><?php endif; ?></tbody></table></div>
     </div>
-    <style>.action{position:relative}.row-menu{position:absolute;right:0;top:38px;display:none;background:#fff;border:1px solid #d8dee8;box-shadow:0 8px 20px rgba(0,0,0,.12);z-index:20;min-width:150px}.row-menu.show{display:block}.row-menu a{display:block;padding:9px 12px;white-space:nowrap}.row-menu a:hover{background:#f3f6fa}.row-menu form{margin:0}.row-menu form button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:9px 12px;font:inherit;color:#dc2626;cursor:pointer}.row-menu form button:hover{background:#fef2f2}</style>
+    <style>
+.delivery-list-search{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.delivery-list-search .input{min-width:0}
+.delivery-add-challan-btn{white-space:nowrap}
+@media(max-width:700px){.delivery-list-search{flex-wrap:wrap}.delivery-list-search .input{flex:1 1 100%}}
+.action{position:relative}.row-menu{position:absolute;right:0;top:38px;display:none;background:#fff;border:1px solid #d8dee8;box-shadow:0 8px 20px rgba(0,0,0,.12);z-index:20;min-width:150px}.row-menu.show{display:block}.row-menu a{display:block;padding:9px 12px;white-space:nowrap}.row-menu a:hover{background:#f3f6fa}.row-menu form{margin:0}.row-menu form button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:9px 12px;font:inherit;color:#dc2626;cursor:pointer}.row-menu form button:hover{background:#fef2f2}</style>
     <?php page_end();exit;
 }
 
