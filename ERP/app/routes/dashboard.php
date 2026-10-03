@@ -249,7 +249,6 @@ if($route==='dashboard'){
       </div>
     </section>
     <aside class="right-stack">
-      <div class="privacy"><span>Privacy</span><button type="button" class="privacy-toggle" id="privacyToggle" aria-pressed="false"><span class="privacy-dot"></span><span class="privacy-state">Off</span></button></div>
       <div class="dashboard-sensitive-right dashboard-blur-target">
         <div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
         <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link <?=((float)$cash<0)?'cash-negative-warning':''?>"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value cash-in-hand-value <?=((float)$cash<0)?'cash-negative-value':''?>"><?=$dashboardMoney((float)$cash)?></div></a>
