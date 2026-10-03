@@ -150,7 +150,6 @@ function delivery_challans_list(): void {
     $sql.=' ORDER BY t.txn_date DESC,t.id DESC'; $st=$pdo->prepare($sql);$st->execute($params);$rows=$st->fetchAll();
     page_start('Delivery Challans');
     ?>
-    <div class="page-title"><div><h1>Delivery Challan</h1><p>Track delivery challans and convert them to sales.</p></div><a class="btn primary" href="<?=e(url('delivery-challan-new'))?>">⊕ Add Delivery Challan</a></div>
     <div class="panel">
       <div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" style="display:flex;gap:8px"><input class="input" name="q" value="<?=e($q)?>" placeholder="⌕ Search by challan, party, phone"><button class="btn" type="submit">Search</button></form></div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>PARTY</th><th>CHALLAN NO.</th><th>DUE DATE</th><th>TOTAL AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
