@@ -247,7 +247,9 @@ function transaction_list(string $type,string $title,string $addRoute,string $pr
 
     page_start($title);
     ?>
+    <?php if($type!=='sale'): ?>
     <div class="page-title"><div><h1><?=e($title)?></h1><p><?=e(date('d M Y',strtotime($from)))?> → <?=e(date('d M Y',strtotime($to)))?><?= $q!==''?' · Search: '.e($q):''?></p></div><a class="btn primary" href="<?=e(url($addRoute))?>">⊕ Add <?=e($addLabel)?></a></div>
+    <?php endif; ?>
     <div class="panel">
       <form class="filterbar" method="get">
         <div class="between"><span>Between</span><input type="date" name="from" value="<?=e($from)?>"><span>To</span><input type="date" name="to" value="<?=e($to)?>"></div>
