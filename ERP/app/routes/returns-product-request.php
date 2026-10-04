@@ -463,7 +463,7 @@ function delivery_challan_new(): void {
           </td>
           <td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>></td>
           <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
-          <td><input type="number" class="dc-price" name="price[]" step="1" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
+          <td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
           <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
           <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>">৳<?=number_format(max(0,$liQty*$liPrice-$liDisc),2,'.',',')?></td>
         </tr>
@@ -806,7 +806,7 @@ function delivery_challan_new(): void {
         '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
         '<td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly></td>'+
         '<td class="dc-unit">'+unit+'</td>'+
-        '<td><input type="number" class="dc-price" name="price[]" step="1" min="0" value="0" readonly></td>'+
+        '<td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
         '<td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="0" readonly></td>'+
         '<td class="dc-amt" data-discount="0">৳0.00</td>';
       return tr;
@@ -901,6 +901,13 @@ function delivery_challan_new(): void {
       const sel=row.querySelector('select'); if(sel) sel.selectedIndex=0;
       box.appendChild(row); dcRecalc();
     };
+    // Delivery Challan prices accept decimal values at 0.01 precision.
+    function dcEnsureDecimalPriceInputs(){
+      document.querySelectorAll('#dcRows .dc-price').forEach(function(input){
+        input.setAttribute('step','0.01');
+        input.step='0.01';
+      });
+    }
     function dcRecalc(){
       let subtotal=0;
       document.querySelectorAll('#dcRows tr').forEach(function(r){
@@ -961,6 +968,7 @@ function delivery_challan_new(): void {
       const n=row.querySelector('.txn-row-number'); if(n)n.textContent=String(body.querySelectorAll('tr').length+1);
       body.appendChild(row);
       if(window.SutoInitItemSearch) window.SutoInitItemSearch(row);
+      dcEnsureDecimalPriceInputs();
       dcRecalc();
     };
     document.getElementById('dcForm')?.addEventListener('submit',function(e){
@@ -1019,6 +1027,7 @@ function delivery_challan_new(): void {
       }
     })();
     dcRenumberRows();
+    dcEnsureDecimalPriceInputs();
     dcRecalc();
     window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};
     </script>
