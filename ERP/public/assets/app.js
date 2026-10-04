@@ -129,7 +129,20 @@ function ensureNextTxnRow(row,txType){
   window.setTimeout(create,0);
 }
 function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
-function bindEntryRow(row){qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));qs('.serial-number-input',row)?.addEventListener('input',()=>renderSerialMeta(row));qs('.serial-trigger-btn',row)?.addEventListener('click',()=>openSerialModal(row));renderSerialMeta(row);}
+function bindEntryRow(row){
+  const txType=document.body.dataset.txntype||'sale';
+  // Delivery Challan unit prices support 2-decimal values such as 1600.50.
+  // Keep the spinner increment at 1 by changing step only (keyboard/arrow
+  // increment remains 1 while decimal input stays valid).
+  if(txType==='delivery_challan'){
+    qsa('.price',row).forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
+  }
+  qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));
+  qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));
+  qs('.serial-number-input',row)?.addEventListener('input',()=>renderSerialMeta(row));
+  qs('.serial-trigger-btn',row)?.addEventListener('click',()=>openSerialModal(row));
+  renderSerialMeta(row);
+}
 function bindPaymentLine(row){qs('select[name="pay_method[]"]',row)?.addEventListener('change',e=>togglePaymentFields(e.target));qs('input[name="pay_amount[]"]',row)?.addEventListener('input',recalc)}
 function validateTransactionForm(){const totalText=qs('#grandTotal')?.textContent||'৳0.00';const total=Number(totalText.replace(/[^0-9.-]/g,''))||0;let paid=0;qsa('[name="pay_amount[]"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));if(paid>total+0.01){alert('Payment cannot be greater than invoice total.');return false}return true}
 function toggleStock(){const svc=qs('input[name=item_type]:checked')?.value==='service'||qs('#item_type')?.value==='service';qsa('.stock-field').forEach(x=>x.style.display=svc?'none':'block')}
@@ -150,7 +163,14 @@ document.addEventListener('click',e=>{
   qs('#addMore')?.classList.remove('show');
 });
 document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#entryRows .item-source-select'))return;const row=sel.closest('.sale-row');if(!row||row.dataset.bundleChild==='1'||!sel.value)return;ensureNextTxnRow(row,document.body.dataset.txntype||'sale');});
-document.addEventListener('DOMContentLoaded',()=>{bindDots();qsa('.qty,.price,.line-disc,[name="invoice_discount"],[name="tax"],[name="direct_expense"]').forEach(x=>x.addEventListener('input',recalc));qsa('.sale-row').forEach(bindEntryRow);qsa('.payment-line').forEach(bindPaymentLine);const received=qs('#receivedToggle');if(received){received.addEventListener('change',()=>{recalc();setTimeout(forceApplyReceived,0);});}document.addEventListener('change',e=>{if(e.target?.id==='receivedToggle')setTimeout(forceApplyReceived,0);});document.addEventListener('input',e=>{if(e.target?.matches?.('[name="pay_amount[]"]')&&qs('#receivedToggle')?.checked)forceApplyReceived();});qsa('#addMoreBtn').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();toggleMenu('addMore')}));qs('#item_type')?.addEventListener('change',toggleStock);toggleStock();recalc();setTimeout(forceApplyReceived,0)})
+document.addEventListener('DOMContentLoaded',()=>{
+  bindDots();
+  const txType=document.body.dataset.txntype||'sale';
+  if(txType==='delivery_challan'){
+    qsa('#entryRows .price').forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
+  }
+  qsa('.qty,.price,.line-disc,[name="invoice_discount"],[name="tax"],[name="direct_expense"]').forEach(x=>x.addEventListener('input',recalc));
+  qsa('.sale-row').forEach(bindEntryRow);qsa('.payment-line').forEach(bindPaymentLine);const received=qs('#receivedToggle');if(received){received.addEventListener('change',()=>{recalc();setTimeout(forceApplyReceived,0);});}document.addEventListener('change',e=>{if(e.target?.id==='receivedToggle')setTimeout(forceApplyReceived,0);});document.addEventListener('input',e=>{if(e.target?.matches?.('[name="pay_amount[]"]')&&qs('#receivedToggle')?.checked)forceApplyReceived();});qsa('#addMoreBtn').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();toggleMenu('addMore')}));qs('#item_type')?.addEventListener('change',toggleStock);toggleStock();recalc();setTimeout(forceApplyReceived,0)})
 function addExpensePayment(){const wrap=qs('#expensePaymentRows');if(!wrap)return;const first=qs('.expense-payment-line',wrap);const clone=first.cloneNode(true);qsa('input',clone).forEach(i=>i.value='');qsa('select',clone).forEach(s=>s.selectedIndex=0);wrap.appendChild(clone);toggleExpensePayment(qs('select',clone));expenseRecalc();}
 function toggleExpensePayment(sel){const row=sel?.closest('.expense-payment-line')||sel?.closest('.expense-entry-payment-row')||sel?.closest('.std-payment-row');if(!row)return;const ref=qs('.std-cheque-ref',row)||qs('.pay-ref',row)||qs('[name="pay_reference[]"]',row);const show=(sel.value||'')==='cheque';if(ref)ref.style.display=show?'block':'none';}
 function expenseRecalc(){const total=parseFloat(qs('#expenseAmount')?.value||0)||0;let paid=0;qsa('[name="pay_amount[]"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));if(qs('#expenseTotalPreview'))qs('#expenseTotalPreview').textContent=fmt(total);if(qs('#expensePaidPreview'))qs('#expensePaidPreview').textContent=fmt(paid);if(qs('#expenseDuePreview'))qs('#expenseDuePreview').textContent=fmt(Math.max(0,total-paid));}
