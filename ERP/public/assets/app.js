@@ -131,10 +131,9 @@ function ensureNextTxnRow(row,txType){
 function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){
   const txType=document.body.dataset.txntype||'sale';
-  // Delivery Challan unit prices support 2-decimal values such as 1600.50.
-  // Keep the spinner increment at 1 by changing step only (keyboard/arrow
-  // increment remains 1 while decimal input stays valid).
-  if(txType==='delivery_challan'){
+  // Sale and Delivery Challan unit prices support 2-decimal values.
+  // Spinner increment remains 1 while decimal input stays valid.
+  if(txType==='sale'||txType==='delivery_challan'){
     qsa('.price',row).forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
   }
   qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));
@@ -166,7 +165,7 @@ document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#e
 document.addEventListener('DOMContentLoaded',()=>{
   bindDots();
   const txType=document.body.dataset.txntype||'sale';
-  if(txType==='delivery_challan'){
+  if(txType==='sale'||txType==='delivery_challan'){
     qsa('#entryRows .price').forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
   }
   qsa('.qty,.price,.line-disc,[name="invoice_discount"],[name="tax"],[name="direct_expense"]').forEach(x=>x.addEventListener('input',recalc));
