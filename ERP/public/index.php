@@ -20,7 +20,7 @@ $routeFiles = [
     'sale-new'=>'transaction-entry.php', 'purchase-new'=>'transaction-entry.php', 'transaction-save'=>'transaction-entry.php',
     'payment-in'=>'sales-purchase-reports.php', 'sales'=>'sales-purchase-reports.php', 'purchase'=>'sales-purchase-reports.php', 'reports'=>'sales-purchase-reports.php', 'payment-out'=>'sales-purchase-reports.php',
     'return-items'=>'returns-product-request.php', 'product-request-stock'=>'returns-product-request.php',
-    'sale-return'=>'returns-product-request.php', 'purchase-return'=>'returns-product-request.php',
+    'sale-return'=>'sales-purchase-reports.php', 'purchase-return'=>'sales-purchase-reports.php',
     'delivery-challans'=>'delivery-docs.php', 'delivery-challan-items'=>'delivery-docs.php', 'delivery-challan-new'=>'returns-product-request.php',
     'product-requests'=>'returns-product-request.php', 'product-request-new'=>'returns-product-request.php',
     'quotations'=>'returns-product-request.php', 'sale-order'=>'returns-product-request.php', 'sale-order-new'=>'returns-product-request.php', 'purchase-order'=>'returns-product-request.php', 'purchase_order'=>'returns-product-request.php',
@@ -49,6 +49,12 @@ if ($file !== null) {
             break;
         case 'product-request-new':
             product_request_new();
+            break;
+        case 'sale-return':
+            return_module('sale_return');
+            break;
+        case 'purchase-return':
+            return_module('purchase_return');
             break;
         case 'quotations':
             document_module('quotation','Estimate / Quotation','QT-','Customer',['sale_order']);
