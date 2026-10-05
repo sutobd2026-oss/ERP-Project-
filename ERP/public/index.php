@@ -54,10 +54,10 @@ if ($file !== null) {
             document_module('quotation','Estimate / Quotation','QT-','Customer',['sale_order']);
             break;
         case 'sale-order':
-            document_module('sale_order','Sale Order','SO-','Customer',['delivery_challan'],true,'sale-order');
+            document_module('sale_order','Sale Order','SO-','Customer',['sale'],true,'sale-order');
             break;
         case 'sale-order-new':
-            document_module('sale_order','Sale Order','SO-','Customer',['delivery_challan'],false,'sale-order');
+            document_module('sale_order','Sale Order','SO-','Customer',['sale'],false,'sale-order');
             break;
         case 'purchase-order':
         case 'purchase_order':
