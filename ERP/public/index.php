@@ -5,13 +5,13 @@ declare(strict_types=1);
 // The previous monolithic public/index.php is preserved under backup/index-original.php.
 require __DIR__ . '/../app/core.php';
 
-$publicRoutes = ['login','register','accept-invite','platform-login','platform-logout','platform-control','platform-audit'];
+$publicRoutes = ['login','register','accept-invite','forgot-password','reset-password','platform-login','platform-logout','platform-control','platform-audit'];
 if (!in_array($route, $publicRoutes, true)) {
     $u = require_login();
 }
 
 $routeFiles = [
-    'login'=>'auth.php', 'platform-login'=>'auth.php', 'platform-logout'=>'auth.php', 'platform-audit'=>'auth.php', 'register'=>'auth.php',
+    'login'=>'auth.php', 'platform-login'=>'auth.php', 'platform-logout'=>'auth.php', 'platform-audit'=>'auth.php', 'register'=>'auth.php', 'forgot-password'=>'auth.php', 'reset-password'=>'auth.php',
     'party-search-api'=>'api.php', 'item-search-api'=>'api.php', 'bundle-components-api'=>'api.php', 'inline-party-create'=>'api.php', 'inline-product-create'=>'api.php',
     'logout'=>'general.php', 'support'=>'general.php', 'platform-control'=>'general.php', 'serial-search-api'=>'general.php', 'transactions'=>'general.php',
     'dashboard'=>'dashboard.php',
