@@ -1038,7 +1038,7 @@ function document_items(int $companyId,int $tid): array {
     $st=db()->prepare('SELECT ti.*,i.name item_name,i.item_type,u.symbol unit_symbol FROM transaction_items ti JOIN items i ON i.id=ti.item_id LEFT JOIN units u ON u.id=i.unit_id WHERE ti.transaction_id=? ORDER BY ti.id');
     $st->execute([$tid]); return $st->fetchAll();
 }
-function document_module(string $type,string $title,string $prefix,string $partyLabel,array $nextTypes=[]): void {
+function document_module(string $type,string $title,string $prefix,string $partyLabel,array $nextTypes=[],bool $listOnly=false,string $listRoute=''): void {
     // Quotation/Sale Order shared document engine.
     // These documents do not post accounting entries until a Sale conversion occurs.
     global $u;
@@ -1074,7 +1074,7 @@ function document_module(string $type,string $title,string $prefix,string $party
                     $pdo->commit(); flash('success',$title.' '.$src['document_no'].' duplicated as '.$newDoc.'.');
                 }
             }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());}
-            redirect($type);
+            redirect($listRoute!==''?$listRoute:$type);
         }
         if($action==='save_document'){
         try{
@@ -1142,7 +1142,7 @@ function document_module(string $type,string $title,string $prefix,string $party
     if(isset($_GET['view'])){
         $tid=(int)$_GET['view'];$st=$pdo->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.id=? AND t.company_id=? AND t.txn_type=?');$st->execute([$tid,$cid,$type]);$tx=$st->fetch();
         if($tx){$lines=document_items($cid,$tid);$can=$tx['status']!=='converted';$convertLabel=$type==='quotation'?'Convert to Sale Order':($type==='sale_order'?'Convert to Delivery Challan':($type==='purchase_order'?'Convert to Purchase Bill':'Convert to Sale'));$urlType = ($type==='purchase_order'?'purchase-order':$type); $convertUrl=$can?url($urlType.'?convert='.(int)$tx['id']):'#';
-        ?><div class="panel print-company-header" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px"><div><?php $logo=saas_company_logo_url($u['logo_path']??null); if($logo): ?><img src="<?=e($logo)?>" alt="Company logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:6px"><br><?php endif; ?><h2 style="margin:0"><?=e($u['company_name']??'')?></h2><div class="subtle"><?=e($title)?></div></div><div style="text-align:right"><strong><?=e($tx['document_no'])?></strong><br><?=e(date('d/m/Y',strtotime($tx['txn_date'])))?></div></div></div><div class="page-title"><div><h1><?=e($title)?> <?=e($tx['document_no'])?></h1><p><?=e($tx['party_name']??'')?> · <?=e($tx['txn_date'])?></p></div><div><a class="btn" href="<?=e(url($type))?>">Back</a><?php if($can):?><a class="btn primary" href="<?=$convertUrl?>"><?=e($convertLabel)?></a><?php endif;?></div></div>
+        ?><div class="panel print-company-header" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px"><div><?php $logo=saas_company_logo_url($u['logo_path']??null); if($logo): ?><img src="<?=e($logo)?>" alt="Company logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:6px"><br><?php endif; ?><h2 style="margin:0"><?=e($u['company_name']??'')?></h2><div class="subtle"><?=e($title)?></div></div><div style="text-align:right"><strong><?=e($tx['document_no'])?></strong><br><?=e(date('d/m/Y',strtotime($tx['txn_date'])))?></div></div></div><div class="page-title"><div><h1><?=e($title)?> <?=e($tx['document_no'])?></h1><p><?=e($tx['party_name']??'')?> · <?=e($tx['txn_date'])?></p></div><div><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Back</a><?php if($can):?><a class="btn primary" href="<?=$convertUrl?>"><?=e($convertLabel)?></a><?php endif;?></div></div>
         <div class="cards-top"><div class="metric-card"><div class="label">Total</div><div class="value"><?=money((float)$tx['total'])?></div></div><div class="metric-card"><div class="label"><?=e($partyLabel)?></div><div class="value" style="font-size:20px"><?=e($tx['party_name']??'')?></div></div><div class="metric-card"><div class="label">Status</div><div class="value" style="font-size:20px"><?=e(ucfirst($tx['status']))?></div></div></div>
         <div class="panel"><div class="panel-head"><h2>ITEMS</h2></div><div class="table-wrap"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody><?php foreach($lines as $i=>$r):?><tr><td><?=$i+1?></td><td><?=e($r['item_name'])?></td><td><?=qty((float)$r['qty']).' '.e($r['unit_symbol']??'')?></td><td><?=money((float)$r['unit_price'])?></td><td><?=money((float)$r['discount'])?></td><td><?=money((float)$r['amount'])?></td></tr><?php endforeach;?></tbody></table></div></div><?php page_end();exit;}
     }
@@ -1152,12 +1152,63 @@ function document_module(string $type,string $title,string $prefix,string $party
     if($q!==''){ $sql.=' AND (t.document_no LIKE ? OR p.name LIKE ? OR p.phone LIKE ?)'; $like='%'.$q.'%'; $params[]=$like; $params[]=$like; $params[]=$like; }
     $sql.=' ORDER BY t.txn_date DESC,t.id DESC';
     $st=$pdo->prepare($sql);$st->execute($params);$rows=$st->fetchAll();
-    ?><div class="page-title"><div><h1><?=e($title)?></h1><p>Manage <?=e(strtolower($title))?></p></div><a class="btn primary" href="#newDoc">⊕ Add <?=e($title==='Estimate / Quotation'?'Quotation':($title==='Sale Order'?'Sale Order':'Purchase Order'))?></a></div>
+    <?php if($listOnly): ?>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>TRANSACTIONS</h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          <form method="get" style="display:flex;gap:8px">
+            <input class="input" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone">
+            <button class="btn" type="submit">Search</button>
+          </form>
+          <a class="btn primary" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add Sale Order</a>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>DATE</th><th>DOCUMENT NO.</th><th><?=e(strtoupper($partyLabel))?></th><th>TOTAL</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
+      <?php foreach($rows as $r):?>
+        <tr>
+          <td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td>
+          <td><?=e($r['document_no'])?></td>
+          <td><?=e($r['party_name']??'')?></td>
+          <td><?=money((float)$r['total'])?></td>
+          <td><span class="status <?=($r['status']==='converted'?'paid':'open')?>"><?=e(ucfirst($r['status']))?></span></td>
+          <td class="action">
+            <a class="btn" href="<?=e(url(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id']))?>">View</a>
+            <?php if($r['status']!=='converted'):?>
+              <a class="btn primary small-btn" href="<?=e(url(($listRoute!==''?$listRoute:$type).'?convert='.(int)$r['id']))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='sale_order'?'CONVERT TO DELIVERY CHALLAN':($type==='quotation'?'CONVERT TO SALE ORDER':'CONVERT TO PURCHASE BILL'))?></a>
+            <?php endif;?>
+            <button type="button" class="dots" aria-label="Actions">⋮</button>
+            <div class="row-menu">
+              <a href="<?=e(url(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id']))?>">View</a>
+              <?php if($r['status']!=='converted'):?>
+                <a href="<?=e(url(($listRoute!==''?$listRoute:$type).'?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this document?')"><?=e($type==='sale_order'?'Convert to Delivery Challan':($type==='quotation'?'Convert to Sale Order':'Convert to Purchase Bill'))?></a>
+                <form method="post" onsubmit="return confirm('Delete this document? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form>
+              <?php endif;?>
+              <form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="duplicate_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Duplicate</button></form>
+              <a href="<?=e(url(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id'].'&print=1'))?>">Open PDF</a>
+              <a href="<?=e(url(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id']))?>">Preview</a>
+              <a href="<?=e(url(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+            </div>
+          </td>
+        </tr>
+      <?php endforeach;?>
+      <?php if(!$rows):?><tr><td colspan="6" class="subtle">No documents yet.</td></tr><?php endif;?>
+      </tbody></table></div>
+    </div>
+    <script>
+    document.addEventListener('click',function(e){
+      const btn=e.target.closest('.dots');
+      if(!btn) document.querySelectorAll('.row-menu').forEach(m=>m.classList.remove('show'));
+    });
+    </script>
+    <?php page_end();exit;
+    <?php endif; ?>
+    <div class="page-title"><div><h1><?=e($title)?></h1><p>Manage <?=e(strtolower($title))?></p></div><a class="btn primary" href="#newDoc">⊕ Add <?=e($title==='Estimate / Quotation'?'Quotation':($title==='Sale Order'?'Sale Order':'Purchase Order'))?></a></div>
     <div class="panel standard-entry-form" id="newDoc"><div class="panel-head"><h2>New <?=e($title==='Estimate / Quotation'?'Quotation':$title)?></h2><span class="subtle">No accounting/stock posting until conversion to the next document.</span></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_document"><div class="entry-top standard-entry-top"><div class="standard-party-field"><?php party_search_field($partyLabel,$partyLabel==='Customer'?'customer':'supplier',0,'',''); ?><div style="margin-top:6px"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('<?=$neededRole?>')">+ Add Party</button></div></div><div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Number</label><input name="document_no" placeholder="Auto: <?=e($prefix)?>01"></div><div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Date*</label><input type="date" name="txn_date" value="<?=date('Y-m-d')?>" required></div></div>
     <div class="entry-table"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="docRows"><tr><td>1</td><td><div class="item-picker-cell"><?php item_search_field(0,'','',($type==='purchase_order'?'purchase':'sale')); ?><select name="item_id[]" class="item-select item-source-select" onchange="docPrice(this)" required><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-price="<?=$it[$type==='purchase_order'?'purchase_price':'sale_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>"><?=e($it['name'])?></option><?php endforeach;?></select></div></td><td><input type="number" name="qty[]" class="doc-qty" step="<?= $type==='sale_order' ? '1' : '0.01' ?>" min="<?= $type==='sale_order' ? '1' : '0.001' ?>" value="1" required></td><td><input type="number" name="price[]" class="doc-price" step="0.01" min="0" value="0" required></td><td><input type="number" name="discount[]" class="doc-disc" step="0.01" min="0" value="0"></td><td class="doc-amt"><?=money(0)?></td></tr></tbody></table></div>
     <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addDocRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#docRows','doc')">+ Add Product</button></div><span><b>Total</b> <strong id="docTotal">৳0.00</strong></span></div>
     <div class="grid3"><div class="form-group"><label>Invoice Discount</label><input id="docInvDisc" type="number" name="invoice_discount" min="0" step="0.01" value="0"></div><div class="form-group"><label>Tax / VAT</label><input id="docTax" type="number" name="tax" min="0" step="0.01" value="0"></div><div class="form-group"><label>Direct Expense</label><input id="docDirect" type="number" name="direct_expense" min="0" step="0.01" value="0"></div></div>
-    <div class="form-group"><label>Description / Note</label><textarea name="notes" rows="3"></textarea></div><div class="form-footer" style="margin:0 -16px -16px"><a class="btn" href="<?=e(url($type))?>">Cancel</a><button class="btn primary">Save</button></div></form></div>
+    <div class="form-group"><label>Description / Note</label><textarea name="notes" rows="3"></textarea></div><div class="form-footer" style="margin:0 -16px -16px"><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Cancel</a><button class="btn primary">Save</button></div></form></div>
     <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" style="display:flex;gap:8px"><input class="input" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone"><button class="btn">Search</button></form></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>DOCUMENT NO.</th><th><?=e(strtoupper($partyLabel))?></th><th>TOTAL</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody><?php foreach($rows as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td><?=money((float)$r['total'])?></td><td><span class="status <?=($r['status']==='converted'?'paid':'open')?>"><?=e(ucfirst($r['status']))?></span></td><td class="action"><a class="btn" href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">View</a><?php if($r['status']!=='converted'):?><a class="btn primary small-btn" href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?convert='.(int)$r['id'])))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='quotation'?'CONVERT TO SALE ORDER':($type==='sale_order'?'CONVERT TO DELIVERY CHALLAN':($type==='purchase_order'?'CONVERT TO PURCHASE BILL':'CONVERT TO SALE')))?></a><?php endif;?><button type="button" class="dots" aria-label="Actions">⋮</button><div class="row-menu"><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">View</a><?php if($r['status']!=='converted'):?><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?convert='.(int)$r['id'])))?>" onclick="return confirm('Convert this document?')"><?=e($type==='quotation'?'Convert to Sale Order':($type==='sale_order'?'Convert to Delivery Challan':($type==='purchase_order'?'Convert to Purchase Bill':'Convert to Sale')))?></a><form method="post" onsubmit="return confirm('Delete this document? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form><?php endif;?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="duplicate_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Duplicate</button></form><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'].'&print=1')))?>">Open PDF</a><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">Preview</a><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'].'&print=1')))?>">Print</a></div></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No documents yet.</td></tr><?php endif;?></tbody></table></div></div>
     <script>
     function docPrice(el){const o=el.selectedOptions[0];const row=el.closest('tr');if(row)row.querySelector('.doc-price').value=o?.dataset.price||0;docRecalc();}
