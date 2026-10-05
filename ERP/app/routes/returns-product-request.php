@@ -1108,6 +1108,48 @@ function document_module(string $type,string $title,string $prefix,string $party
         }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));}
         }
     }
+    if($type==='sale_order' && isset($_GET['convert_dc'])){
+        $sourceId=(int)$_GET['convert_dc'];
+        try{
+            $relation='order_to_challan';
+            $existing=$pdo->prepare('SELECT to_transaction_id FROM transaction_links WHERE company_id=? AND from_transaction_id=? AND relation_type=? LIMIT 1');
+            $existing->execute([$cid,$sourceId,$relation]);
+            if($existing->fetchColumn()) throw new RuntimeException('This Sale Order has already been converted to a Delivery Challan.');
+
+            $st=$pdo->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.id=? AND t.company_id=? AND t.txn_type="sale_order" AND t.deleted_at IS NULL');
+            $st->execute([$sourceId,$cid]); $source=$st->fetch();
+            if(!$source) throw new RuntimeException('Sale Order not found.');
+
+            $its=$pdo->prepare('SELECT ti.* FROM transaction_items ti WHERE ti.transaction_id=? ORDER BY ti.id');
+            $its->execute([$sourceId]); $sourceItems=$its->fetchAll();
+            if(!$sourceItems) throw new RuntimeException('Sale Order has no items.');
+
+            $targetType='delivery_challan';
+            $targetDoc=next_document_in_transaction($pdo,$cid,$targetType,'DC-');
+            $pdo->beginTransaction();
+            $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+              ->execute([$cid,$source['party_id'],$targetType,$targetDoc,transaction_datetime(null),$source['due_date'],$source['subtotal'],$source['item_discount'],$source['invoice_discount'],$source['tax'],$source['direct_expense'],$source['total'],0,$source['total'],$u['currency_code'],'open','Converted from Sale Order '.$source['document_no'],$u['id']]);
+
+            $tid=(int)$pdo->lastInsertId();
+            $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
+            foreach($sourceItems as $sr){
+                $ins->execute([$tid,$sr['item_id'],$sr['qty'],$sr['unit_price'],$sr['discount'],$sr['tax'],$sr['amount']]);
+            }
+
+            $pdo->prepare('INSERT INTO transaction_links(company_id,from_transaction_id,to_transaction_id,relation_type,quantity) VALUES(?,?,?,?,NULL)')
+              ->execute([$cid,$sourceId,$tid,$relation]);
+
+            $pdo->prepare('UPDATE transactions SET status="converted" WHERE id=? AND company_id=?')->execute([$sourceId,$cid]);
+            audit('convert','transaction',$sourceId,['to_transaction'=>$tid,'relation'=>$relation,'target_type'=>$targetType,'target_document'=>$targetDoc]);
+            $pdo->commit();
+            flash('success',$source['document_no'].' converted to '.$targetDoc.'.');
+            redirect('delivery-challans?view='.$tid);
+        }catch(Throwable $e){
+            if($pdo->inTransaction())$pdo->rollBack();
+            flash('error',$e->getMessage());
+            redirect('sale-order');
+        }
+    }
     if(isset($_GET['convert'])){
         $sourceId=(int)$_GET['convert'];
         try{
@@ -1201,7 +1243,28 @@ function document_module(string $type,string $title,string $prefix,string $party
             <?php if($r['status']!=='converted'):?>
               <a class="btn primary small-btn" href="<?=e(url(($listRoute!==''?$listRoute:$type).'?convert='.(int)$r['id']))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='sale_order'?'CONVERT TO SALE':($type==='quotation'?'CONVERT TO SALE ORDER':'CONVERT TO PURCHASE BILL'))?></a>
             <?php endif;?>
-
+            <div class="row-menu-wrap" style="position:relative;display:inline-block">
+              <button type="button" class="dots" aria-label="Actions">⋮</button>
+              <div class="row-menu">
+                <form method="post" onsubmit="return confirm('Delete this Sale Order? It will move to Recycle Bin.')">
+                  <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                  <input type="hidden" name="action" value="delete_document">
+                  <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                  <button type="submit">Delete</button>
+                </form>
+                <form method="post">
+                  <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                  <input type="hidden" name="action" value="duplicate_document">
+                  <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                  <button type="submit">Duplicate</button>
+                </form>
+                <a href="<?=e(url('sale-order?view='.(int)$r['id']))?>">Preview</a>
+                <a href="<?=e(url('sale-order?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+                <?php if($r['status']!=='converted'):?>
+                  <a href="<?=e(url('sale-order?convert_dc='.(int)$r['id']))?>" onclick="return confirm('Convert this Sale Order to a Delivery Challan?')">Convert to Delivery Challan</a>
+                <?php endif;?>
+              </div>
+            </div>
           </td>
         </tr>
       <?php endforeach;?>
@@ -1211,7 +1274,11 @@ function document_module(string $type,string $title,string $prefix,string $party
     <script>
     document.addEventListener('click',function(e){
       const btn=e.target.closest('.dots');
-      if(!btn) document.querySelectorAll('.row-menu').forEach(m=>m.classList.remove('show'));
+      document.querySelectorAll('.row-menu').forEach(function(m){
+        if(btn && m===btn.nextElementSibling){m.classList.toggle('show');}
+        else if(!btn || !m.contains(e.target)){m.classList.remove('show');}
+      });
+      if(btn) e.stopPropagation();
     });
     </script>
     <?php page_end(); exit; endif; ?>
