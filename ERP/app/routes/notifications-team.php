@@ -100,6 +100,30 @@ if($route==='team'){
             $link=url('accept-invite?token='.$token); $subject='Invitation to '.$u['company_name'].' · sense'; $msg="You have been invited to join {$u['company_name']} on sense.\n\nOpen this link to accept: https://".$_SERVER['HTTP_HOST'].$link."\n\nThis invitation expires in 7 days."; $sent=false; if(function_exists('mail')){$headers='From: sense <no-reply@'.preg_replace('/[^a-z0-9.-]/i','',$_SERVER['HTTP_HOST']).'>\r\nContent-Type: text/plain; charset=UTF-8'; $sent=@mail($email,$subject,$msg,$headers);}
             audit('invite','user_invite',(int)db()->lastInsertId(),['email'=>$email,'role'=>$role]); flash('success',$sent?'Invitation email sent.':'Invitation created. Copy the invitation link from the pending invitations table.'); redirect('team');
         }
+        if($action==='send_password_reset'){
+            $targetId=(int)($_POST['user_id']??0);
+            $st=db()->prepare('SELECT id,name,email,status FROM users WHERE id=? AND company_id=? LIMIT 1');
+            $st->execute([$targetId,$cid]);
+            $target=$st->fetch();
+            if(!$target || (string)$target['status']!=='active'){flash('error','Active user not found.');redirect('team');}
+            try{
+                $token=sense_password_reset_token_create((int)$target['id']);
+                $link=sense_password_reset_url($token);
+                $subject='Reset your sense password';
+                $body="Hello ".($target['name']??'').",\n\nAn administrator of ".($u['company_name']??'your company')." requested a password reset link for your sense account.\n\nOpen this link within 30 minutes to set a new password:\n".$link."\n\nIf you did not request this, you can safely ignore this email.\n\n— sense";
+                if(sense_send_mail((string)$target['email'],$subject,$body)){
+                    audit('password_reset','user',(int)$target['id'],['method'=>'admin_email','email'=>$target['email']]);
+                    flash('success','Password reset link sent to '.($target['email']??'the user').'.');
+                }else{
+                    audit('password_reset_failed','user',(int)$target['id'],['method'=>'admin_email','email'=>$target['email']]);
+                    flash('error','The reset token was created, but the email could not be sent. Check the server email configuration.');
+                }
+            }catch(Throwable $e){
+                error_log('v240 admin password reset: '.$e->getMessage());
+                flash('error','Unable to create the reset link right now.');
+            }
+            redirect('team');
+        }
         if($action==='role_permissions'){
             $roleId=(int)($_POST['role_id']??0); $permIds=array_map('intval',$_POST['permissions']??[]);
             $st=db()->prepare('SELECT id,name FROM roles WHERE id=? AND company_id=?');$st->execute([$roleId,$cid]);$roleRow=$st->fetch();
@@ -132,7 +156,7 @@ if($route==='team'){
     ?><div class="page-title"><div><h1>Team & Permissions</h1><p>Invite users and control role-based access</p></div><span class="status paid"><?=count($us)?> users</span></div>
     <div class="grid2"><div class="panel"><div class="panel-head"><h2>Invite User</h2></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="team_action" value="invite"><div class="grid2"><div class="form-group"><label>Name*</label><input name="name" required></div><div class="form-group"><label>Email*</label><input name="email" type="email" required></div><div class="form-group"><label>Role</label><select name="role"><option value="admin">Admin</option><option value="manager">Manager</option><option value="accountant">Accountant</option><option value="sales">Sales</option><option value="purchase">Purchase</option><option value="viewer" selected>Viewer</option><option value="custom">Custom</option></select></div></div><button class="btn primary">Send Invite</button></form></div>
     <div class="panel"><div class="panel-head"><h2>Pending Invitations</h2></div><div class="table-wrap"><table><thead><tr><th>NAME</th><th>EMAIL</th><th>ROLE</th><th>EXPIRES</th><th>LINK</th></tr></thead><tbody><?php foreach($inv as $i):$link=url('accept-invite?token='.$i['token']);?><tr><td><?=e($i['name']??'-')?></td><td><?=e($i['email'])?></td><td><?=e(ucfirst($i['role']))?></td><td><?=e($i['expires_at'])?></td><td><input class="copy-link" readonly value="https://<?=e($_SERVER['HTTP_HOST'].$link)?>"></td></tr><?php endforeach;if(!$inv):?><tr><td colspan="5" class="subtle">No pending invitations.</td></tr><?php endif;?></tbody></table></div></div></div>
-    <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Users</h2></div><div class="table-wrap"><table><thead><tr><th>NAME</th><th>EMAIL</th><th>ROLE</th><th>STATUS</th><th>LAST LOGIN</th></tr></thead><tbody><?php foreach($us as $x):?><tr><td><?=e($x['name'])?></td><td><?=e($x['email'])?></td><td><?=e(ucwords(str_replace('_',' ',($x['role_name']?:$x['role']))))?></td><td><?=e(ucfirst($x['status']))?></td><td><?=e($x['last_login_at']?:'-')?></td></tr><?php endforeach;?></tbody></table></div></div>
+    <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Users</h2></div><div class="table-wrap"><table><thead><tr><th>NAME</th><th>EMAIL</th><th>ROLE</th><th>STATUS</th><th>LAST LOGIN</th><th>ACTION</th></tr></thead><tbody><?php foreach($us as $x):?><tr><td><?=e($x['name'])?></td><td><?=e($x['email'])?></td><td><?=e(ucwords(str_replace('_',' ',($x['role_name']?:$x['role']))))?></td><td><?=e(ucfirst($x['status']))?></td><td><?=e($x['last_login_at']?:'-')?></td><td><form method="post" style="margin:0" onsubmit="return confirm('Send a password reset link to this user?')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="team_action" value="send_password_reset"><input type="hidden" name="user_id" value="<?=((int)$x['id'])?>"><button class="btn small-btn" type="submit">Send Reset Link</button></form></td></tr><?php endforeach;?></tbody></table></div></div>
     <style>
       .team-perm-panel{margin-top:14px}.team-role-card{border:1px solid #e4e9f0;border-radius:10px;background:#fff;margin:10px 0;overflow:hidden}.team-role-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #edf1f5;background:#fafbfd}.team-role-name{font-weight:700;color:#18324f}.team-role-note{font-size:12px;color:#7b8794;margin-left:8px}.team-perm-grid{display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));gap:10px;padding:14px}.team-perm-grid label{display:flex;align-items:center;gap:7px;font-size:13px;color:#334155;min-height:28px}.team-perm-grid input{width:15px;height:15px}.team-unrestricted{padding:12px 14px;color:#0b7a55;background:#f0fdf7;border-top:1px solid #d1fae5;font-size:12px;font-weight:600}.team-role-actions{display:flex;align-items:center;gap:8px}@media(max-width:1100px){.team-perm-grid{grid-template-columns:repeat(4,minmax(100px,1fr))}}@media(max-width:700px){.team-perm-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.team-role-head{align-items:flex-start;flex-direction:column}}
     </style>
