@@ -1,6 +1,109 @@
 <?php
 /* sense modular v1 route module extracted from the current public/index.php master. */
-if ($route==='login') { if(user()) redirect('dashboard'); if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();$email=trim($_POST['email']??'');$pass=$_POST['password']??'';$st=db()->prepare('SELECT * FROM users WHERE email=? AND status="active" LIMIT 1');$st->execute([$email]);$x=$st->fetch();if($x&&password_verify($pass,$x['password_hash'])){try{$cs=db()->prepare('SELECT account_status FROM companies WHERE id=? LIMIT 1');$cs->execute([(int)$x['company_id']]);if((string)($cs->fetchColumn()??'active')==='suspended'){flash('error','This company account is suspended. Please contact sense support.');redirect('login');}}catch(Throwable $e){}session_regenerate_id(true);$_SESSION['uid']=$x['id'];db()->prepare('UPDATE users SET last_login_at=NOW() WHERE id=?')->execute([$x['id']]);platform_record_login((int)$x['id']);redirect('dashboard');}flash('error','Invalid email or password.');redirect('login');} ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login · sense</title><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>"></head><body class="auth"><div class="auth-card"><div class="auth-brand"><span class="brandmark">SA</span><span>sense</span></div><h1>Welcome back</h1><p>Sign in to your company account.</p><?php foreach(flashes() as $f):?><div class="alert <?=$f[0]?>"><?=e($f[1])?></div><?php endforeach;?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>Email</label><input type="email" name="email" required></div><div class="form-group"><label>Password</label><input type="password" name="password" required></div><button class="btn primary" style="width:100%;justify-content:center">Login</button></form><a class="small-link" href="<?=e(url('register'))?>">Create company account</a></div></body></html><?php exit; }
+
+if ($route==='forgot-password') {
+    if(user()) redirect('dashboard');
+    if($_SERVER['REQUEST_METHOD']==='POST'){
+        check_csrf();
+        $email=strtolower(trim((string)($_POST['email']??'')));
+        if(filter_var($email,FILTER_VALIDATE_EMAIL)){
+            try{
+                $st=db()->prepare('SELECT id,name,email,company_id FROM users WHERE email=? AND status="active" LIMIT 1');
+                $st->execute([$email]);
+                $usr=$st->fetch();
+                if($usr){
+                    $token=sense_password_reset_token_create((int)$usr['id']);
+                    $link=sense_password_reset_url($token);
+                    $subject='Reset your sense password';
+                    $body="Hello ".($usr['name']??'').",\n\nWe received a request to reset your sense password.\n\nOpen this link within 30 minutes to set a new password:\n".$link."\n\nIf you did not request this, you can safely ignore this email.\n\n— sense";
+                    sense_send_mail((string)$usr['email'],$subject,$body);
+                }
+            }catch(Throwable $e){
+                error_log('v240 forgot-password: '.$e->getMessage());
+            }
+        }
+        flash('success','If an active account exists for that email, a password reset link has been sent.');
+        redirect('forgot-password');
+    }
+    ?>
+    <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forgot Password · sense</title><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>"></head>
+    <body class="auth"><div class="auth-card">
+      <div class="auth-brand"><span class="brandmark">SA</span><span>sense</span></div>
+      <h1>Forgot password?</h1><p>Enter your account email and we will send you a reset link.</p>
+      <?php foreach(flashes() as $f):?><div class="alert <?=$f[0]?>"><?=e($f[1])?></div><?php endforeach;?>
+      <form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+        <div class="form-group"><label>Email</label><input type="email" name="email" autocomplete="email" required></div>
+        <button class="btn primary" style="width:100%;justify-content:center">Send Reset Link</button>
+      </form>
+      <a class="small-link" href="<?=e(url('login'))?>">Back to Login</a>
+    </div></body></html><?php exit;
+}
+
+if ($route==='reset-password') {
+    if(user()) redirect('dashboard');
+    $token=trim((string)($_GET['token']??''));
+    $valid=false; $resetId=0; $userId=0; $resetEmail='';
+    if($token!==''){
+        try{
+            $hash=hash('sha256',$token);
+            $st=db()->prepare('SELECT pr.id,pr.user_id,u.email FROM password_reset_tokens pr JOIN users u ON u.id=pr.user_id WHERE pr.token_hash=? AND pr.used_at IS NULL AND pr.expires_at>NOW() AND u.status="active" LIMIT 1');
+            $st->execute([$hash]);
+            if($row=$st->fetch()){
+                $valid=true;$resetId=(int)$row['id'];$userId=(int)$row['user_id'];$resetEmail=(string)$row['email'];
+            }
+        }catch(Throwable $e){ error_log('v240 reset-password lookup: '.$e->getMessage()); }
+    }
+    if($_SERVER['REQUEST_METHOD']==='POST'){
+        check_csrf();
+        $token=trim((string)($_POST['token']??''));
+        $pass=(string)($_POST['password']??'');
+        $confirm=(string)($_POST['password_confirm']??'');
+        $valid=false;
+        try{
+            $hash=hash('sha256',$token);
+            $st=db()->prepare('SELECT pr.id,pr.user_id,u.email FROM password_reset_tokens pr JOIN users u ON u.id=pr.user_id WHERE pr.token_hash=? AND pr.used_at IS NULL AND pr.expires_at>NOW() AND u.status="active" LIMIT 1');
+            $st->execute([$hash]);
+            if($row=$st->fetch()){$resetId=(int)$row['id'];$userId=(int)$row['user_id'];$resetEmail=(string)$row['email'];$valid=true;}
+        }catch(Throwable $e){}
+        if(!$valid){flash('error','This reset link is invalid or has expired.');redirect('forgot-password');}
+        if(strlen($pass)<8){flash('error','Password must be at least 8 characters.');redirect('reset-password?token='.rawurlencode($token));}
+        if($pass!==$confirm){flash('error','Passwords do not match.');redirect('reset-password?token='.rawurlencode($token));}
+        try{
+            $hashPassword=password_hash($pass,PASSWORD_DEFAULT);
+            $pdo=db();
+            $pdo->beginTransaction();
+            $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([$hashPassword,$userId]);
+            $pdo->prepare('UPDATE password_reset_tokens SET used_at=NOW() WHERE id=?')->execute([$resetId]);
+            $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id=? AND id<>?')->execute([$userId,$resetId]);
+            $pdo->commit();
+            flash('success','Your password has been reset. You can now sign in.');
+            redirect('login');
+        }catch(Throwable $e){
+            if(db()->inTransaction())db()->rollBack();
+            error_log('v240 reset-password save: '.$e->getMessage());
+            flash('error','Unable to reset the password right now. Please try again.');
+            redirect('reset-password?token='.rawurlencode($token));
+        }
+    }
+    if(!$valid){
+        flash('error','This reset link is invalid or has expired.');
+        redirect('forgot-password');
+    }
+    ?>
+    <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset Password · sense</title><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>"></head>
+    <body class="auth"><div class="auth-card">
+      <div class="auth-brand"><span class="brandmark">SA</span><span>sense</span></div>
+      <h1>Reset password</h1><p>Set a new password for <?=e($resetEmail)?>.</p>
+      <?php foreach(flashes() as $f):?><div class="alert <?=$f[0]?>"><?=e($f[1])?></div><?php endforeach;?>
+      <form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="token" value="<?=e($token)?>">
+        <div class="form-group"><label>New Password</label><input type="password" name="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="form-group"><label>Confirm New Password</label><input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required></div>
+        <button class="btn primary" style="width:100%;justify-content:center">Reset Password</button>
+      </form>
+    </div></body></html><?php exit;
+}
+
+if ($route==='login') { if(user()) redirect('dashboard'); if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();$email=trim($_POST['email']??'');$pass=$_POST['password']??'';$st=db()->prepare('SELECT * FROM users WHERE email=? AND status="active" LIMIT 1');$st->execute([$email]);$x=$st->fetch();if($x&&password_verify($pass,$x['password_hash'])){try{$cs=db()->prepare('SELECT account_status FROM companies WHERE id=? LIMIT 1');$cs->execute([(int)$x['company_id']]);if((string)($cs->fetchColumn()??'active')==='suspended'){flash('error','This company account is suspended. Please contact sense support.');redirect('login');}}catch(Throwable $e){}session_regenerate_id(true);$_SESSION['uid']=$x['id'];db()->prepare('UPDATE users SET last_login_at=NOW() WHERE id=?')->execute([$x['id']]);platform_record_login((int)$x['id']);redirect('dashboard');}flash('error','Invalid email or password.');redirect('login');} ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login · sense</title><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>"></head><body class="auth"><div class="auth-card"><div class="auth-brand"><span class="brandmark">SA</span><span>sense</span></div><h1>Welcome back</h1><p>Sign in to your company account.</p><?php foreach(flashes() as $f):?><div class="alert <?=$f[0]?>"><?=e($f[1])?></div><?php endforeach;?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>Email</label><input type="email" name="email" required></div><div class="form-group"><label>Password</label><input type="password" name="password" autocomplete="current-password" required></div><div style="display:flex;justify-content:flex-end;margin:-2px 0 10px"><a class="small-link" href="<?=e(url('forgot-password'))?>">Forgot Password?</a></div><button class="btn primary" style="width:100%;justify-content:center">Login</button></form><a class="small-link" href="<?=e(url('register'))?>">Create company account</a></div></body></html><?php exit; }
 if ($route==='platform-login') {
     if(platform_admin()) redirect('platform-control');
     if($_SERVER['REQUEST_METHOD']==='POST'){
