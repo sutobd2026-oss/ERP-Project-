@@ -88,6 +88,50 @@ function ensure_messages_v230_schema(): void {
 }
 ensure_messages_v230_schema();
 
+/** v240: password reset tokens for user self-service and admin-triggered email resets. */
+function ensure_password_reset_v240_schema(): void {
+    static $done=false; if($done) return; $done=true;
+    try{
+        db()->exec("CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id INT UNSIGNED NOT NULL,
+            token_hash CHAR(64) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(id),
+            UNIQUE KEY uq_prt_token_hash(token_hash),
+            KEY idx_prt_user(user_id),
+            KEY idx_prt_expires(expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }catch(Throwable $e){
+        error_log('v240 password reset schema: '.$e->getMessage());
+    }
+}
+ensure_password_reset_v240_schema();
+
+function sense_password_reset_token_create(int $userId): string {
+    ensure_password_reset_v240_schema();
+    $pdo=db();
+    try{$pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id=?')->execute([$userId]);}catch(Throwable $e){}
+    $token=bin2hex(random_bytes(32));
+    $hash=hash('sha256',$token);
+    $expires=date('Y-m-d H:i:s',time()+30*60);
+    $pdo->prepare('INSERT INTO password_reset_tokens(user_id,token_hash,expires_at) VALUES(?,?,?)')->execute([$userId,$hash,$expires]);
+    return $token;
+}
+
+function sense_password_reset_url(string $token): string {
+    $host=preg_replace('/[^a-z0-9.-]/i','',$_SERVER['HTTP_HOST']??'sense.suto.bd');
+    return 'https://'.$host.url('reset-password?token='.rawurlencode($token));
+}
+
+function sense_send_mail(string $to,string $subject,string $body): bool {
+    if(!function_exists('mail')) return false;
+    $headers="From: sense <no-reply@sense.suto.bd>\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8";
+    return @mail($to,$subject,$body,$headers);
+}
+
 function verified_customer_transaction(PDO $pdo,int $companyId,int $partyId): ?array {
     $q=$pdo->prepare('SELECT id,txn_type,document_no FROM transactions WHERE company_id=? AND party_id=? AND deleted_at IS NULL AND txn_type IN ("sale","purchase","payment_in","payment_out") ORDER BY id DESC LIMIT 1');
     $q->execute([$companyId,$partyId]); if($r=$q->fetch()) return ['id'=>(int)$r['id'],'type'=>(string)$r['txn_type'],'document_no'=>(string)($r['document_no']??'')];
