@@ -1152,7 +1152,7 @@ function document_module(string $type,string $title,string $prefix,string $party
     if($q!==''){ $sql.=' AND (t.document_no LIKE ? OR p.name LIKE ? OR p.phone LIKE ?)'; $like='%'.$q.'%'; $params[]=$like; $params[]=$like; $params[]=$like; }
     $sql.=' ORDER BY t.txn_date DESC,t.id DESC';
     $st=$pdo->prepare($sql);$st->execute($params);$rows=$st->fetchAll();
-    <?php if($listOnly): ?>
+    if($listOnly): ?>
     <div class="panel">
       <div class="panel-head">
         <h2>TRANSACTIONS</h2>
