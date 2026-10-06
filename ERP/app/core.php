@@ -401,7 +401,7 @@ function party_search_field(string $label,string $role,int $selectedId=0,string 
       <label><?=e($label)?><?= $required?'*':'' ?></label>
       <div class="party-search-wrap">
         <input type="text" class="party-search-input" placeholder="Search by Name / Phone" value="<?=e($display)?>" autocomplete="off">
-        <input type="hidden" name="party_id" id="<?=e($role==='supplier'?'paymentParty':'partyPartyId')?>" class="party-search-id" value="<?= $selectedId>0?(int)$selectedId:'' ?>" <?= $required?'required':'' ?>>
+        <input type="hidden" name="party_id" id="<?=e(in_array($role,['supplier','payment_out'],true)?'paymentParty':'partyPartyId')?>" class="party-search-id" value="<?= $selectedId>0?(int)$selectedId:'' ?>" <?= $required?'required':'' ?>>
         <button type="button" class="party-search-clear" title="Clear" aria-label="Clear" <?= $selectedId>0?'':'style="display:none"'?>>×</button>
       </div>
       <div class="party-search-results" hidden></div>
