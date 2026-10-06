@@ -300,14 +300,8 @@ page_start('Items');
         }
     }
     $items=get_items($cid);
-    if (!$selected && in_array($tab,['products','services'],true)) {
-        foreach ($items as $r0) {
-            if (($tab==='products' && $r0['item_type']==='product') || ($tab==='services' && $r0['item_type']==='service')) {
-                $selected=$r0;
-                break;
-            }
-        }
-    }
+    // Do not auto-select the first item on a normal /items visit.
+    // A saved/new item is selected explicitly through ?view=<id>.
     $cats=$pdo->prepare('SELECT id,name,type FROM categories WHERE company_id=? ORDER BY type,name');$cats->execute([$cid]);$catRows=$cats->fetchAll();
     $units=$pdo->prepare('SELECT id,name,symbol FROM units WHERE company_id=? ORDER BY name');$units->execute([$cid]);$unitRows=$units->fetchAll();
     $edit=null;
