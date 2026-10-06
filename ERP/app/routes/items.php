@@ -181,7 +181,10 @@ page_start('Items');
                     }
                     try{audit('create','item',$id,['name'=>$name,'type'=>$type,'opening_stock'=>$opening]);}catch(Throwable $auditError){error_log('item create audit failed: '.$auditError->getMessage());}flash('success','Item added successfully.');
                 }
-                redirect('items?tab='.($type==='service'?'services':'products').'&view='.$id);
+                $targetTab=$type==='service'?'services':'products';
+                $targetUrl=url('items').'?'.http_build_query(['tab'=>$targetTab,'view'=>(int)$id]);
+                header('Location: '.$targetUrl, true, 302);
+                exit;
             }
             if($action==='save_item_note'){
                 $iid=(int)($_POST['item_id']??0);
@@ -299,11 +302,14 @@ page_start('Items');
             redirect('items'.($editId?'?edit='.$editId:''));
         }
     }
-    $items=get_items($cid);
+    $items=[];
+    try{$items=get_items($cid);}catch(Throwable $e){error_log('Items list load failed: '.$e->getMessage());}
     // Do not auto-select the first item on a normal /items visit.
     // A saved/new item is selected explicitly through ?view=<id>.
-    $cats=$pdo->prepare('SELECT id,name,type FROM categories WHERE company_id=? ORDER BY type,name');$cats->execute([$cid]);$catRows=$cats->fetchAll();
-    $units=$pdo->prepare('SELECT id,name,symbol FROM units WHERE company_id=? ORDER BY name');$units->execute([$cid]);$unitRows=$units->fetchAll();
+    $catRows=[];
+    try{$cats=$pdo->prepare('SELECT id,name,type FROM categories WHERE company_id=? ORDER BY type,name');$cats->execute([$cid]);$catRows=$cats->fetchAll();}catch(Throwable $e){error_log('Items category list load failed: '.$e->getMessage());}
+    $unitRows=[];
+    try{$units=$pdo->prepare('SELECT id,name,symbol FROM units WHERE company_id=? ORDER BY name');$units->execute([$cid]);$unitRows=$units->fetchAll();}catch(Throwable $e){error_log('Items unit list load failed: '.$e->getMessage());}
     $edit=null;
     $editCategoryIds=[];
     if($editId){
