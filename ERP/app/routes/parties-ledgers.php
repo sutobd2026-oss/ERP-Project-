@@ -308,7 +308,7 @@ if($route==='parties'){
             <input type="hidden" name="type" value="<?=e($type)?>"><?php if($selectedId):?><input type="hidden" name="id" value="<?=$selectedId?>"><?php endif;?>
             <input class="input party-search-input-v111" name="q" value="<?=e($q)?>" placeholder="Search Party" autocomplete="off" oninput="sensePartySearchNow(this)" onkeydown="if(event.key==='Enter')event.preventDefault()">
           </form>
-          <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm("<?=e(in_array($type,$validRoles,true)?$type:'')?>");openModal('partyModal')">⊕ Add Party <span>＋</span></a>
+          <a class="btn party-add-v110" href="javascript:void(0)" onclick="resetPartyForm('<?=e(in_array($type,$validRoles,true)?$type:'')?>');openModal('partyModal')">⊕ Add Party <span>＋</span></a>
         </div>
         <script>
         window.sensePartySearchNow=function(input){
