@@ -66,7 +66,7 @@ function base_url(): string {
     return $host === 'sense.suto.bd' ? '' : rtrim((string)($config['app']['base_url']??'/ERP'),'/');
 }
 function url(string $path=''): string { $b=base_url(); $p=ltrim($path,'/'); return $b . ($p?'/'.$p:''); }
-function redirect(string $path): never { header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0'); header('Pragma: no-cache'); header('Location: '.url($path), true, 303); exit; }
+function redirect(string $path): never { header('Location: '.url($path)); exit; }
 function csrf_token(): string { if(empty($_SESSION['_csrf']))$_SESSION['_csrf']=bin2hex(random_bytes(32)); return $_SESSION['_csrf']; }
 function check_csrf(): void { if(!hash_equals($_SESSION['_csrf']??'',$_POST['_csrf']??'')){http_response_code(419);exit('Invalid CSRF token.');} }
 function flash(string $type,string $message): void { $_SESSION['_flash'][]=[$type,$message]; }
