@@ -10,6 +10,44 @@ if($route==='payment-in'){
     if($_SERVER['REQUEST_METHOD']==='POST'){
         check_csrf();
         try{
+            $action=(string)($_POST['payment_action']??'');
+            $txActionId=(int)($_POST['transaction_id']??0);
+            if($action==='delete'){
+                if($txActionId<=0) throw new RuntimeException('Invalid Payment-In transaction.');
+                $st=$pdo->prepare('SELECT * FROM transactions WHERE id=? AND company_id=? AND txn_type="payment_in" AND deleted_at IS NULL LIMIT 1');
+                $st->execute([$txActionId,$cid]);$tx=$st->fetch();
+                if(!$tx) throw new RuntimeException('Payment-In transaction not found.');
+                $pdo->beginTransaction();
+                $pdo->prepare('UPDATE transactions SET deleted_at=NOW() WHERE id=? AND company_id=?')->execute([$txActionId,$cid]);
+                audit('delete','transaction',$txActionId,['type'=>'payment_in','document_no'=>$tx['document_no']??null,'reason'=>'Payment-In moved to Recycle Bin']);
+                $pdo->commit();
+                flash('success','Payment-In moved to Recycle Bin.');
+                redirect('payment-in');
+            }
+            if($action==='duplicate'){
+                if($txActionId<=0) throw new RuntimeException('Invalid Payment-In transaction.');
+                $st=$pdo->prepare('SELECT * FROM transactions WHERE id=? AND company_id=? AND txn_type="payment_in" AND deleted_at IS NULL LIMIT 1');
+                $st->execute([$txActionId,$cid]);$tx=$st->fetch();
+                if(!$tx) throw new RuntimeException('Payment-In transaction not found.');
+                $pdo->beginTransaction();
+                $doc=next_document_in_transaction($pdo,$cid,'payment_in','PI-');
+                $date=transaction_datetime(null);
+                $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                    ->execute([$cid,$tx['party_id'],'payment_in',$doc,$date,null,(float)$tx['subtotal'],(float)$tx['total'],(float)$tx['paid'],(float)$tx['due'],$tx['currency_code']??$u['currency_code'],'final','Duplicate of '.$tx['document_no'].((string)($tx['notes']??'')!==''?' · '.(string)$tx['notes']:''),$u['id']]);
+                $newId=(int)$pdo->lastInsertId();
+                $ps=$pdo->prepare('SELECT method,account_name,reference_no,cheque_date,amount,status FROM payment_lines WHERE transaction_id=? ORDER BY id');
+                $ps->execute([$txActionId]);$oldPayments=$ps->fetchAll();
+                $pl=$pdo->prepare('INSERT INTO payment_lines(transaction_id,method,account_name,reference_no,cheque_date,amount,status) VALUES(?,?,?,?,?,?,?)');
+                foreach($oldPayments as $p){$pl->execute([$newId,$p['method'],$p['account_name'],$p['reference_no'],$p['cheque_date'],$p['amount'],$p['status']]);}
+                $ls=$pdo->prepare('SELECT account_code,account_name,debit,credit,memo FROM ledger_entries WHERE transaction_id=? ORDER BY id');
+                $ls->execute([$txActionId]);$oldLedger=$ls->fetchAll();
+                $le=$pdo->prepare('INSERT INTO ledger_entries(company_id,transaction_id,entry_date,account_code,account_name,debit,credit,memo) VALUES(?,?,?,?,?,?,?,?)');
+                foreach($oldLedger as $l){$le->execute([$cid,$newId,$date,$l['account_code'],$l['account_name'],$l['debit'],$l['credit'],$l['memo']]);}
+                audit('duplicate','transaction',$newId,['type'=>'payment_in','source_transaction_id'=>$txActionId,'document_no'=>$doc]);
+                $pdo->commit();
+                flash('success','Payment-In duplicated as '.$doc.'.');
+                redirect('payment-in?view='.$newId);
+            }
             $editId=(int)($_POST['transaction_id']??0);
             $existingTx=null;
             if($editId>0){
@@ -66,7 +104,7 @@ if($route==='payment-in'){
         if($tx){$ps=db()->prepare('SELECT * FROM payment_lines WHERE transaction_id=? ORDER BY id');$ps->execute([$tid]);$payments=$ps->fetchAll();
         ?><div class="panel print-company-header" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px"><div><?php $logo=saas_company_logo_url($u['logo_path']??null); if($logo): ?><img src="<?=e($logo)?>" alt="Company logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:6px"><br><?php endif; ?><h2 style="margin:0"><?=e($u['company_name']??'')?></h2><div class="subtle">Payment Receipt</div></div><div style="text-align:right"><strong><?=e($tx['document_no'])?></strong><br><?=e(date('d/m/Y',strtotime($tx['txn_date'])))?></div></div></div><div class="page-title"><div><h1>Payment-In <?=e($tx['document_no'])?></h1><p><?=e($tx['txn_date'])?> · <?=e($tx['party_name'])?></p></div><div><button class="btn" onclick="window.print()">Print</button><a class="btn primary" href="<?=e(url('payment-in'))?>">+ New Payment</a></div></div>
         <div class="cards-top"><div class="metric-card"><div class="label">Received</div><div class="value"><?=money((float)$tx['total'])?></div></div><div class="metric-card"><div class="label">Party</div><div class="value" style="font-size:20px"><?=e($tx['party_name'])?></div></div></div>
-        <div class="panel"><div class="panel-head"><h2>Payment Details</h2></div><div class="table-wrap"><table><thead><tr><th>METHOD</th><th>ACCOUNT</th><th>REFERENCE</th><th>AMOUNT</th></tr></thead><tbody><?php foreach($payments as $r):?><tr><td><?=e(ucwords(str_replace('_',' ',$r['method'])))?></td><td><?=e($r['account_name']??'-')?></td><td><?=e($r['reference_no']??'-')?></td><td><?=money((float)$r['amount'])?></td></tr><?php endforeach;?></tbody></table></div></div><?php page_end();exit;}
+        <div class="panel"><div class="panel-head"><h2>Payment Details</h2></div><div class="table-wrap"><table><thead><tr><th>METHOD</th><th>ACCOUNT</th><th>REFERENCE</th><th>AMOUNT</th></tr></thead><tbody><?php foreach($payments as $r):?><tr><td><?=e(ucwords(str_replace('_',' ',$r['method'])))?></td><td><?=e($r['account_name']??'-')?></td><td><?=e($r['reference_no']??'-')?></td><td><?=money((float)$r['amount'])?></td></tr><?php endforeach;?></tbody></table></div></div><?php if(isset($_GET['print'])): ?><script>window.addEventListener('load',()=>window.print());</script><?php endif; ?><?php page_end();exit;}
     }
     $st=db()->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.company_id=? AND t.txn_type="payment_in" AND t.deleted_at IS NULL ORDER BY t.id DESC LIMIT 50');$st->execute([$cid]);$rows=$st->fetchAll();
     ?><div class="page-title"><div><h1>Payment In</h1><p>Receive payments from customers, investors, lenders and other parties</p></div><a class="btn primary" href="?new=1">⊕ Add Payment-In</a></div>
@@ -76,7 +114,17 @@ if($route==='payment-in'){
       <div class="payment-line"><select name="pay_method[]" onchange="togglePaymentFields(this)"><?=payment_select_options($bankRows,'cash','')?></select><input type="date" name="pay_cheque_date[]" class="pay-cheque-date" style="display:none"><input name="pay_ref[]" placeholder="Reference / Cheque No."><input type="number" min="0" step="0.01" name="pay_amount[]" value="0" placeholder="Amount"></div>
     </div><button type="button" class="btn" onclick="addPayment()">+ Add Payment</button></div><div class="grid2" style="margin-top:12px"><div class="form-group"><label>Notes</label><textarea name="notes" rows="3" placeholder="Add description"></textarea></div><div class="metric-card"><div class="label">Total Received</div><div class="value" id="receivedPreview">৳0.00</div></div></div><div class="form-footer" style="margin:0 -16px -16px"><button type="button" class="btn" onclick="window.print()">Print / Preview</button><button class="btn primary">Save Payment-In</button></div></form></div>
     <?php endif; ?>
-    <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><input class="input" style="max-width:240px" placeholder="Search"></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>RECEIPT NO.</th><th>PARTY NAME</th><th>PAYMENT TYPE</th><th>AMOUNT</th><th>ACTION</th></tr></thead><tbody><?php foreach($rows as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td>Multiple / See receipt</td><td><?=money((float)$r['total'])?></td><td class="action"><a class="btn" href="<?=e(url('payment-in?view='.(int)$r['id']))?>">View</a></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No payment-in transactions yet.</td></tr><?php endif;?></tbody></table></div></div>
+    <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><input class="input" style="max-width:240px" placeholder="Search"></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>RECEIPT NO.</th><th>PARTY NAME</th><th>PAYMENT TYPE</th><th>AMOUNT</th><th>ACTION</th></tr></thead><tbody><?php foreach($rows as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td>Multiple / See receipt</td><td><?=money((float)$r['total'])?></td><td class="action"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <a class="btn small-btn" href="<?=e(url('payment-in?view='.(int)$r['id']))?>">View / Edit</a>
+          <details class="row-actions"><summary class="dots" aria-label="Actions">⋮</summary>
+            <div class="row-menu">
+              <a href="<?=e(url('payment-in?view='.(int)$r['id']))?>">Preview</a>
+              <a href="<?=e(url('payment-in?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+              <form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="payment_action" value="duplicate"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Duplicate</button></form>
+              <form method="post" onsubmit="return confirm('Delete this Payment-In? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="payment_action" value="delete"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form>
+            </div>
+          </details>
+        </div></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No payment-in transactions yet.</td></tr><?php endif;?></tbody></table></div></div>
     <script>
     document.addEventListener('DOMContentLoaded',()=>{const party=document.getElementById('paymentParty'),due=document.getElementById('currentDue'),note=document.getElementById('partyDue');function upd(){const d=parseFloat(party?.dataset.due||0);const roles=(party?.dataset.roles||'').split(',').map(x=>x.trim());const special=roles.includes('investor')||roles.includes('lender')||roles.includes('other');due.textContent='৳'+d.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});note.textContent=party?.value?(special?'Payment In is available for this party; amount is not limited by customer due.':'Outstanding due: '+due.textContent):'Select a party to see outstanding due.';}party?.addEventListener('change',upd);document.addEventListener('party-selected',upd);function sum(){let t=0;document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>t+=parseFloat(i.value||0));const x=document.getElementById('receivedPreview');if(x)x.textContent='৳'+t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>i.addEventListener('input',sum));window.addEventListener('input',e=>{if(e.target.matches('input[name="pay_amount[]"]'))sum();});upd();sum();});
     </script><?php page_end();exit;
