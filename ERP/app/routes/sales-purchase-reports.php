@@ -250,9 +250,7 @@ function transaction_list(string $type,string $title,string $addRoute,string $pr
 
     page_start($title);
     ?>
-    <?php if($type!=='sale'): ?>
     <div class="page-title"><div><h1><?=e($title)?></h1><p><?=e(date('d M Y',strtotime($from)))?> → <?=e(date('d M Y',strtotime($to)))?><?= $q!==''?' · Search: '.e($q):''?></p></div><a class="btn primary" href="<?=e(url($addRoute))?>">⊕ Add <?=e($addLabel)?></a></div>
-    <?php endif; ?>
     <div class="panel">
       <form class="filterbar" method="get">
         <div class="between"><span>Between</span><input type="date" name="from" value="<?=e($from)?>"><span>To</span><input type="date" name="to" value="<?=e($to)?>"></div>
@@ -260,7 +258,7 @@ function transaction_list(string $type,string $title,string $addRoute,string $pr
         <button class="btn primary" type="submit">Apply</button><a class="btn" href="<?=e($base)?>">Reset</a><button class="btn" type="button" onclick="window.print()">▤ Print</button>
       </form>
       <div class="summary-strip"><div class="summary-box paid"><div class="lbl">Paid</div><div class="val"><?=money((float)$paid)?></div></div><b>+</b><div class="summary-box unpaid"><div class="lbl">Unpaid</div><div class="val"><?=money((float)$due)?></div></div><b>=</b><div class="summary-box total"><div class="lbl">Total</div><div class="val"><?=money((float)$total)?></div></div></div>
-      <div class="panel-head"><h2>TRANSACTIONS</h2><div style="display:flex;align-items:center;gap:8px"><span class="subtle"><?=count($rows)?> result<?=count($rows)===1?'':'s'?></span><?php if($type==='sale'): ?><a class="btn primary" href="<?=e(url('sale-new'))?>">⊕ Add Sale</a><?php endif; ?></div></div>
+      <div class="panel-head"><h2>TRANSACTIONS</h2><span class="subtle"><?=count($rows)?> result<?=count($rows)===1?'':'s'?></span></div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>INVOICE NO.</th><th>PARTY NAME</th><th>TRANSACTION</th><th>PAYMENT TYPE</th><th>AMOUNT</th><th>BALANCE DUE</th><th>ACTION</th></tr></thead><tbody>
       <?php foreach($rows as $r):
         $methods=array_filter(array_map('trim',explode(',',(string)($r['payment_methods']??''))));
