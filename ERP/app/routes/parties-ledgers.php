@@ -84,6 +84,22 @@ if($route==='parties'){
             db()->prepare('INSERT INTO party_notes(company_id,party_id,user_id,note) VALUES(?,?,?,?)')->execute([$cid,$partyId,$u['id'],$note]);
             audit('create','party_note',$partyId,['note'=>$note]); flash('success','Private note added.'); redirect('parties?id='.$partyId);
         }
+        if($action==='delete'){
+            $id=(int)($_POST['id']??0);
+            try{
+                if($id<=0) throw new RuntimeException('Invalid party.');
+                $st=$pdo??db();
+                $chk=$st->prepare('SELECT id FROM parties WHERE id=? AND company_id=? AND deleted_at IS NULL LIMIT 1');
+                $chk->execute([$id,$cid]);
+                if(!$chk->fetchColumn()) throw new RuntimeException('Party not found.');
+                $st->prepare('UPDATE parties SET deleted_at=NOW() WHERE id=? AND company_id=? AND deleted_at IS NULL')->execute([$id,$cid]);
+                try{audit('delete','party',$id);}catch(Throwable $auditError){error_log('party delete audit failed: '.$auditError->getMessage());}
+                flash('success','Party moved to Recycle Bin.');
+            }catch(Throwable $e){
+                flash('error',$e->getMessage());
+            }
+            redirect('parties');
+        }
         if($action==='review_customer'){
             $partyId=(int)($_POST['party_id']??0); $rating=(int)($_POST['rating']??0); $comment=trim((string)($_POST['comment']??''));
             if($partyId<=0 || $rating<1 || $rating>5 || $comment===''){ flash('error','Customer review details are incomplete.'); redirect('parties?id='.$partyId); }
@@ -119,12 +135,6 @@ if($route==='parties'){
         $ptype=$derivePartyType($roles);
         $pdo=db();
         try{
-            if($action==='delete'){
-                $id=(int)($_POST['id']??0);
-                if($id<=0)throw new RuntimeException('Invalid party.');
-                $pdo->prepare('UPDATE parties SET deleted_at=NOW() WHERE id=? AND company_id=?')->execute([$id,$cid]);
-                audit('delete','party',$id); flash('success','Party moved to Recycle Bin.'); redirect('parties');
-            }
             if($action==='update'){
                 $id=(int)($_POST['id']??0);
                 $check=$pdo->prepare('SELECT id FROM parties WHERE company_id=? AND phone=? AND id<>? LIMIT 1');$check->execute([$cid,$phone,$id]);
