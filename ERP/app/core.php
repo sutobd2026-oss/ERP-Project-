@@ -334,7 +334,7 @@ function page_start(string $title): void {
     $u = user();
     global $route;
     $active = $route;
-    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=e($title)?> · <?=e($config['app']['name'])?></title><meta name="base-url" content="<?=e(base_url())?>"><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>?v=156">
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=e($title)?> · <?=e($config['app']['name'])?></title><meta name="base-url" content="<?=e(base_url())?>"><link rel="stylesheet" href="<?=e(url('assets/app.css'))?>?v=157">
 <style>
 .party-status-pills-v203{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px;line-height:1}
 .party-status-pill-v203{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;font-size:9.5px;font-weight:600;white-space:nowrap;line-height:1.2}
@@ -995,7 +995,7 @@ ITEMHTML;
 })();
 </script>
 HTML;
-    $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=156"></script></body></html>';
+    $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=157"></script></body></html>';
 }
 function get_items(int $cid): array {
     $pdo=db();
