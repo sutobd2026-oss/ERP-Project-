@@ -10,7 +10,8 @@ if($route==='party-search-api'){
       'customer'=>['customer'],
       'supplier'=>['supplier'],
       'both'=>['customer','supplier'],
-      'all'=>['customer','supplier','investor','lender','other'],
+      'all'=>['customer','supplier','investor','lender','borrower','employee','other'],
+      'payment_out'=>['customer','supplier','investor','lender','borrower','employee','other'],
       'customer_all'=>['customer','investor','lender','other'],
       'supplier_all'=>['supplier']
     ];
