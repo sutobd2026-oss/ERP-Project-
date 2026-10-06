@@ -1227,7 +1227,7 @@ function document_module(string $type,string $title,string $prefix,string $party
             <input class="input" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone">
             <button class="btn" type="submit">Search</button>
           </form>
-          <a class="btn primary" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add Sale Order</a>
+          <a class="btn primary" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add <?=e($type==='quotation'?'Estimate / Quotation':($type==='purchase_order'?'Purchase Order':($type==='sale_order'?'Sale Order':$title)))?></a>
         </div>
       </div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>DOCUMENT NO.</th><th><?=e(strtoupper($partyLabel))?></th><th>TOTAL</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
