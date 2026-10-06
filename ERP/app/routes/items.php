@@ -160,7 +160,7 @@ page_start('Items');
                                ->execute([$cid,$id,date('Y-m-d'),$delta,$buy>0?$buy:(float)$old['purchase_price'],'opening_adjustment','Opening stock edited']);
                         }
                     }
-                    audit('update','item',$id,['name'=>$name,'type'=>$type]);flash('success','Item updated successfully.');
+                    try{audit('update','item',$id,['name'=>$name,'type'=>$type]);}catch(Throwable $auditError){error_log('item update audit failed: '.$auditError->getMessage());}flash('success','Item updated successfully.');
                 }else{
                     $pdo->beginTransaction();
                     try {
@@ -179,7 +179,7 @@ page_start('Items');
                         if($pdo->inTransaction())$pdo->rollBack();
                         throw $txe;
                     }
-                    audit('create','item',$id,['name'=>$name,'type'=>$type,'opening_stock'=>$opening]);flash('success','Item added successfully.');
+                    try{audit('create','item',$id,['name'=>$name,'type'=>$type,'opening_stock'=>$opening]);}catch(Throwable $auditError){error_log('item create audit failed: '.$auditError->getMessage());}flash('success','Item added successfully.');
                 }
                 redirect('items?tab='.($type==='service'?'services':'products').'&view='.$id);
             }
