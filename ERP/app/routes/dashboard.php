@@ -228,7 +228,6 @@ if($route==='dashboard'){
         </div>
         <div class="metric-card"><div class="label">🛒 Purchase <span class="subtle">This Month</span></div><div class="value"><?=$dashboardMoney((float)$purchase)?></div><div class="empty"><?= $purchase>0?'Purchase transactions entered this month.':'You have no purchased items entered for selected time.' ?></div></div>
       </div>
-      <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Recent Transactions</h2><a href="<?=e(url('transactions'))?>">View all</a></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Total</th><th>Due</th></tr></thead><tbody><?php $st=db()->prepare('SELECT txn_date,document_no,txn_type,total,due FROM transactions WHERE company_id=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 8');$st->execute([$cid]);foreach($st as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['txn_type'])))?></td><td><?=$dashboardMoney((float)$r['total'])?></td><td><?=$dashboardMoney((float)$r['due'])?></td></tr><?php endforeach;if(!$st->rowCount()):?><tr><td colspan="5" class="subtle">No recent transactions.</td></tr><?php endif;?></tbody></table></div></div>
       <?php
       $dashUpdates=[];
       try{
@@ -247,6 +246,8 @@ if($route==='dashboard'){
           <div class="empty">No company updates yet.</div>
         <?php endif; ?>
       </div>
+
+      <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Recent Transactions</h2><a href="<?=e(url('transactions'))?>">View all</a></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Total</th><th>Due</th></tr></thead><tbody><?php $st=db()->prepare('SELECT txn_date,document_no,txn_type,total,due FROM transactions WHERE company_id=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 8');$st->execute([$cid]);foreach($st as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e(ucwords(str_replace('_',' ',$r['txn_type'])))?></td><td><?=$dashboardMoney((float)$r['total'])?></td><td><?=$dashboardMoney((float)$r['due'])?></td></tr><?php endforeach;if(!$st->rowCount()):?><tr><td colspan="5" class="subtle">No recent transactions.</td></tr><?php endif;?></tbody></table></div></div>
     </section>
     <aside class="right-stack">
       <div class="dashboard-sensitive-right dashboard-blur-target">
