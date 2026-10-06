@@ -79,15 +79,17 @@ page_start('Items');
     $selected=null;
     if(isset($_GET['view']) && !isset($_GET['edit'])){
         $vid=(int)$_GET['view'];
-        $st=$pdo->prepare('SELECT i.*,c.name category_name,u.name unit_name,u.symbol unit_symbol,COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm WHERE sm.company_id=i.company_id AND sm.item_id=i.id
-                     AND (sm.transaction_id IS NULL OR EXISTS (
-                         SELECT 1 FROM transactions st
-                         WHERE st.id=sm.transaction_id
-                           AND st.company_id=sm.company_id
-                           AND st.deleted_at IS NULL
-                     ))),0) current_stock FROM items i LEFT JOIN categories c ON c.id=i.category_id LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
-        $st->execute([$vid,$cid]);$selected=$st->fetch()?:null;
-        if($selected && $selected['item_type']==='product') $selected['bundle_components']=bundle_components_for_parent($pdo,$cid,(int)$selected['id']);
+        try{
+            $st=$pdo->prepare('SELECT i.*,c.name category_name,u.name unit_name,u.symbol unit_symbol,COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm WHERE sm.company_id=i.company_id AND sm.item_id=i.id
+                         AND (sm.transaction_id IS NULL OR EXISTS (
+                             SELECT 1 FROM transactions st
+                             WHERE st.id=sm.transaction_id
+                               AND st.company_id=sm.company_id
+                               AND st.deleted_at IS NULL
+                         ))),0) current_stock FROM items i LEFT JOIN categories c ON c.id=i.category_id LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
+            $st->execute([$vid,$cid]);$selected=$st->fetch()?:null;
+            if($selected && $selected['item_type']==='product') $selected['bundle_components']=bundle_components_for_parent($pdo,$cid,(int)$selected['id']);
+        }catch(Throwable $e){ error_log('Items selected view failed: '.$e->getMessage()); $selected=null; }
     }
     if($_SERVER['REQUEST_METHOD']==='POST'){
         check_csrf();
@@ -597,7 +599,11 @@ page_start('Items');
         </aside>
         <section class="item-detail-area">
         <?php if($selected):
-          $tx=$pdo->prepare('(SELECT t.id source_transaction_id,NULL stock_movement_id,t.txn_date,t.txn_type,t.document_no,ti.qty,ti.unit_price,t.status,p.name party_name FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id LEFT JOIN parties p ON p.id=t.party_id WHERE ti.item_id=? AND t.company_id=? AND t.deleted_at IS NULL) UNION ALL (SELECT NULL source_transaction_id,sm.id stock_movement_id,sm.movement_date txn_date,sm.movement_type txn_type,CONCAT("STK-",sm.id) document_no,sm.quantity qty,COALESCE(sm.unit_price,i.purchase_price) unit_price,"Final" status,COALESCE(NULLIF(sm.note,""),CASE sm.movement_type WHEN "manual_add" THEN "Stock Adjustment (Add)" WHEN "manual_reduce" THEN "Stock Adjustment (Reduce)" WHEN "opening_adjustment" THEN "Opening Stock Adjustment" ELSE REPLACE(sm.movement_type,"_"," ") END) party_name FROM stock_movements sm JOIN items i ON i.id=sm.item_id WHERE sm.item_id=? AND sm.company_id=? AND sm.movement_type NOT IN ("sale","purchase","sale_return","purchase_return")) ORDER BY txn_date DESC LIMIT 100');$tx->execute([$selected['id'],$cid,$selected['id'],$cid]);$txRows=$tx->fetchAll();
+          $txRows=[];
+          try{
+            $tx=$pdo->prepare('(SELECT t.id source_transaction_id,NULL stock_movement_id,t.txn_date,t.txn_type,t.document_no,ti.qty,ti.unit_price,t.status,p.name party_name FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id LEFT JOIN parties p ON p.id=t.party_id WHERE ti.item_id=? AND t.company_id=? AND t.deleted_at IS NULL) UNION ALL (SELECT NULL source_transaction_id,sm.id stock_movement_id,sm.movement_date txn_date,sm.movement_type txn_type,CONCAT("STK-",sm.id) document_no,sm.quantity qty,COALESCE(sm.unit_price,i.purchase_price) unit_price,"Final" status,COALESCE(NULLIF(sm.note,""),CASE sm.movement_type WHEN "manual_add" THEN "Stock Adjustment (Add)" WHEN "manual_reduce" THEN "Stock Adjustment (Reduce)" WHEN "opening_adjustment" THEN "Opening Stock Adjustment" ELSE REPLACE(sm.movement_type,"_"," ") END) party_name FROM stock_movements sm JOIN items i ON i.id=sm.item_id WHERE sm.item_id=? AND sm.company_id=? AND sm.movement_type NOT IN ("sale","purchase","sale_return","purchase_return")) ORDER BY txn_date DESC LIMIT 100');
+            $tx->execute([$selected['id'],$cid,$selected['id'],$cid]);$txRows=$tx->fetchAll();
+          }catch(Throwable $e){ error_log('Items transaction panel failed: '.$e->getMessage()); $txRows=[]; }
         ?><div class="item-detail-card panel">
             <div class="item-detail-top">
               <div><h2><?=e($selected['name'])?> <span class="item-share">↗</span></h2><div class="item-subline"><?=e($selected['code']?:($selected['barcode']?:''))?></div></div>
