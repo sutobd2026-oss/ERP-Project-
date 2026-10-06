@@ -551,15 +551,36 @@ if($route==='payment-out'){
         check_csrf();
         try{
             $party=(int)($_POST['party_id']??0);
-            if($party<=0)throw new RuntimeException('Supplier is required.');
-            $st=db()->prepare("SELECT p.id,p.name FROM parties p WHERE p.id=? AND p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role='supplier') LIMIT 1");$st->execute([$party,$cid]);$pr=$st->fetch();
-            if(!$pr)throw new RuntimeException('Invalid supplier.');
+            if($party<=0)throw new RuntimeException('Party is required.');
+            $st=db()->prepare("SELECT p.id,p.name,COALESCE((SELECT GROUP_CONCAT(pr.role ORDER BY pr.role SEPARATOR ',') FROM party_roles pr WHERE pr.party_id=p.id),'') role_list FROM parties p WHERE p.id=? AND p.company_id=? AND p.deleted_at IS NULL LIMIT 1");
+            $st->execute([$party,$cid]);$pr=$st->fetch();
+            if(!$pr)throw new RuntimeException('Invalid party.');
+            $partyRoles=$pr['role_list']!==''?array_map('trim',explode(',',$pr['role_list'])):[];
+            $allowedRoles=['supplier','lender','investor','borrower','employee','customer','other'];
+            if(!array_intersect($partyRoles,$allowedRoles))throw new RuntimeException('This party is not enabled for Payment Out.');
+            $paymentPurpose=(string)($_POST['payment_purpose']??'');
+            $purposeMap=[
+                'supplier_payment'=>['supplier','Supplier Payment','2100','Accounts Payable'],
+                'loan_repayment'=>['lender','Loan Repayment','2200','Loan Payable'],
+                'investor_payout'=>['investor','Investor Payout','3100','Investor Capital'],
+                'loan_disbursement'=>['borrower','Loan Disbursement','1300','Loan Receivable'],
+                'customer_refund'=>['customer','Customer Refund','1200','Accounts Receivable'],
+                'employee_payment'=>['employee','Employee Payment','5000','Employee / Staff Expense'],
+                'other_payment'=>['other','Other Payment','5000','General Expense'],
+            ];
+            if(!isset($purposeMap[$paymentPurpose]))throw new RuntimeException('Select a valid payment purpose.');
+            [$purposeRole,$purposeLabel,$counterCode,$counterName]=$purposeMap[$paymentPurpose];
+            if(!in_array($purposeRole,$partyRoles,true))throw new RuntimeException('The selected payment purpose does not match this party role.');
             $methods=$_POST['pay_method']??[];$amounts=$_POST['pay_amount']??[];$accounts=$_POST['pay_account']??[];$refs=$_POST['pay_ref']??($_POST['pay_reference']??[]);$cheqDates=$_POST['pay_cheque_date']??[];
             $rows=[];$paidOut=0;
             foreach($methods as $i=>$rawMethod){$a=max(0,(float)($amounts[$i]??0));if($a<=0)continue;[$m,$acct]=normalize_payment_method($pdo,$cid,(string)$rawMethod,trim($accounts[$i]??''));$ref=trim($refs[$i]??'');$cd=$cheqDates[$i]??null;if($m==='cheque'&&$ref==='')throw new RuntimeException('Cheque number is required.');$rows[]=[$m,$acct?:null,$ref?:null,$cd?:null,$a];$paidOut+=$a;}
             if($paidOut<=0)throw new RuntimeException('Enter paid amount.');
-            $st=db()->prepare('SELECT COALESCE(SUM(CASE WHEN txn_type="purchase" THEN due WHEN txn_type="payment_out" THEN -total ELSE 0 END),0) FROM transactions WHERE company_id=? AND party_id=? AND deleted_at IS NULL');$st->execute([$cid,$party]);$outstanding=max(0,(float)$st->fetchColumn());
-            if($paidOut>$outstanding+0.01)throw new RuntimeException('Paid amount cannot be greater than the supplier outstanding due ('.money($outstanding).').');
+            $outstanding=0.0;
+            if($purposeRole==='supplier'){
+                $st=db()->prepare('SELECT COALESCE(SUM(CASE WHEN txn_type="purchase" THEN due WHEN txn_type="payment_out" THEN -total ELSE 0 END),0) FROM transactions WHERE company_id=? AND party_id=? AND deleted_at IS NULL');
+                $st->execute([$cid,$party]);$outstanding=max(0,(float)$st->fetchColumn());
+                if($paidOut>$outstanding+0.01)throw new RuntimeException('Paid amount cannot be greater than the supplier outstanding due ('.money($outstanding).').');
+            }
             $date=transaction_datetime($_POST['txn_date']??null);$doc=trim($_POST['document_no']??'');$pdo=db();$pdo->beginTransaction();
             if($doc==='')$doc=next_document_in_transaction($pdo,$cid,'payment_out','PO-');
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,'payment_out',$doc,$date,null,$paidOut,$paidOut,$paidOut,0,$u['currency_code'],'final',trim($_POST['notes']??''),$u['id']]);
@@ -571,13 +592,13 @@ if($route==='payment-out'){
                 [$code,$name]=payment_account_code($m,$acct);
                 $ledger[]=[$code,$name,0,$a,$doc];
             }
-            $ledger[]=['2100','Accounts Payable',$paidOut,0,$doc];
+            $ledger[]=[$counterCode,$counterName,$paidOut,0,$doc];
             post_ledger($pdo,$cid,$tid,$date,$ledger);
             audit('create','transaction',$tid,['type'=>'payment_out','document'=>$doc,'total'=>$paidOut,'party_id'=>$party]);
             $pdo->commit();flash('success','Payment-Out '.$doc.' saved successfully.');redirect('payment-out?view='.$tid);
         }catch(Throwable $e){if($pdo&&$pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());redirect('payment-out');}
     }
-    $partyRows=db()->prepare('SELECT p.id,p.name,p.phone,COALESCE((SELECT SUM(CASE WHEN t.txn_type="purchase" THEN t.due WHEN t.txn_type="payment_out" THEN -t.total ELSE 0 END) FROM transactions t WHERE t.company_id=? AND t.party_id=p.id AND t.deleted_at IS NULL),0) outstanding FROM parties p WHERE p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role="supplier") ORDER BY p.name');
+    $partyRows=db()->prepare('SELECT p.id,p.name,p.phone,COALESCE((SELECT GROUP_CONCAT(pr.role ORDER BY pr.role SEPARATOR ",") FROM party_roles pr WHERE pr.party_id=p.id),"") role_list,COALESCE((SELECT SUM(CASE WHEN t.txn_type="purchase" THEN t.due WHEN t.txn_type="payment_out" THEN -t.total ELSE 0 END) FROM transactions t WHERE t.company_id=? AND t.party_id=p.id AND t.deleted_at IS NULL),0) outstanding FROM parties p WHERE p.company_id=? AND p.deleted_at IS NULL AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role IN ("supplier","lender","investor","borrower","employee","customer","other")) ORDER BY p.name');
     $partyRows->execute([$cid,$cid]);$parties=$partyRows->fetchAll();
     $banks=db()->prepare('SELECT id,name,bank_name,account_number FROM bank_accounts WHERE company_id=? AND active=1 ORDER BY name');$banks->execute([$cid]);$bankRows=$banks->fetchAll();
     $showNewPayment=isset($_GET['new']);
@@ -586,17 +607,28 @@ if($route==='payment-out'){
         $tid=(int)$_GET['view'];$st=db()->prepare('SELECT t.*,p.name party_name,p.phone party_phone FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.id=? AND t.company_id=? AND t.txn_type="payment_out" LIMIT 1');$st->execute([$tid,$cid]);$tx=$st->fetch();
         if($tx){$ps=db()->prepare('SELECT * FROM payment_lines WHERE transaction_id=? ORDER BY id');$ps->execute([$tid]);$payments=$ps->fetchAll();
         ?><div class="panel print-company-header" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px"><div><?php $logo=saas_company_logo_url($u['logo_path']??null); if($logo): ?><img src="<?=e($logo)?>" alt="Company logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:6px"><br><?php endif; ?><h2 style="margin:0"><?=e($u['company_name']??'')?></h2><div class="subtle">Payment Receipt</div></div><div style="text-align:right"><strong><?=e($tx['document_no'])?></strong><br><?=e(date('d/m/Y',strtotime($tx['txn_date'])))?></div></div></div><div class="page-title"><div><h1>Payment-Out <?=e($tx['document_no'])?></h1><p><?=e($tx['txn_date'])?> · <?=e($tx['party_name'])?></p></div><div><button class="btn" onclick="window.print()">Print</button><a class="btn primary" href="<?=e(url('payment-out'))?>">+ New Payment</a></div></div>
-        <div class="cards-top"><div class="metric-card"><div class="label">Paid</div><div class="value"><?=money((float)$tx['total'])?></div></div><div class="metric-card"><div class="label">Supplier</div><div class="value" style="font-size:20px"><?=e($tx['party_name'])?></div></div></div>
+        <div class="cards-top"><div class="metric-card"><div class="label">Paid</div><div class="value"><?=money((float)$tx['total'])?></div></div><div class="metric-card"><div class="label">Party</div><div class="value" style="font-size:20px"><?=e($tx['party_name'])?></div></div></div>
         <div class="panel"><div class="panel-head"><h2>Payment Details</h2></div><div class="table-wrap"><table><thead><tr><th>METHOD</th><th>ACCOUNT</th><th>REFERENCE</th><th>AMOUNT</th></tr></thead><tbody><?php foreach($payments as $r):?><tr><td><?=e(ucwords(str_replace('_',' ',$r['method'])))?></td><td><?=e($r['account_name']??'-')?></td><td><?=e($r['reference_no']??'-')?></td><td><?=money((float)$r['amount'])?></td></tr><?php endforeach;?></tbody></table></div></div><?php page_end();exit;}
     }
     $st=db()->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.company_id=? AND t.txn_type="payment_out" AND t.deleted_at IS NULL ORDER BY t.id DESC LIMIT 50');$st->execute([$cid]);$rows=$st->fetchAll();
-    ?><div class="page-title"><div><h1>Payment Out</h1><p>Make payments to suppliers</p></div><a class="btn primary" href="?new=1">⊕ Add Payment-Out</a></div>
+    ?><div class="page-title"><div><h1>Payment Out</h1><p>Pay suppliers and other eligible parties</p></div><a class="btn primary" href="?new=1">⊕ Add Payment-Out</a></div>
     <?php if($showNewPayment): ?>
-    <div class="panel" id="newPayment"><div class="panel-head"><h2>New Payment-Out</h2><span class="subtle">Multiple payment methods allowed</span></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="entry-top"><div><div class="form-group"><label>Supplier*</label><?php party_search_field('Supplier','supplier',0,'',''); ?></div><div class="subtle" id="partyDue" style="margin-top:6px">Select a supplier to see outstanding due.</div></div><div><div class="form-group"><label>Payment Number</label><input name="document_no" placeholder="Auto: PO-01"></div><div class="form-group"><label>Date*</label><input type="date" name="txn_date" value="<?=date('Y-m-d')?>" required></div></div><div class="entry-right"><div class="right-card"><div class="title">CURRENT DUE</div><div class="value" id="currentDue">৳0.00</div></div></div></div>
+    <div class="panel" id="newPayment"><div class="panel-head"><h2>New Payment-Out</h2><span class="subtle">Multiple payment methods allowed</span></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="entry-top"><div><div class="form-group"><label>Party*</label><?php party_search_field('Party','payment_out',0,'',''); ?></div>
+    <div class="form-group"><label>Payment Purpose*</label><select name="payment_purpose" id="paymentPurpose" required>
+      <option value="">Select purpose</option>
+      <option value="supplier_payment">Supplier Payment</option>
+      <option value="loan_repayment">Loan Repayment</option>
+      <option value="investor_payout">Investor Payout</option>
+      <option value="loan_disbursement">Loan Disbursement</option>
+      <option value="customer_refund">Customer Refund</option>
+      <option value="employee_payment">Employee Payment</option>
+      <option value="other_payment">Other Payment</option>
+    </select></div>
+    <div class="subtle" id="partyDue" style="margin-top:6px">Select a party to see available payment purpose and due information.</div></div><div><div class="form-group"><label>Payment Number</label><input name="document_no" placeholder="Auto: PO-01"></div><div class="form-group"><label>Date*</label><input type="date" name="txn_date" value="<?=date('Y-m-d')?>" required></div></div><div class="entry-right"><div class="right-card"><div class="title">CURRENT DUE</div><div class="value" id="currentDue">৳0.00</div></div></div></div>
     <div class="payment-box"><div class="panel-head"><h2>Payment Methods</h2><span class="subtle">Split one payment across multiple methods</span></div><div id="paymentRows"><div class="payment-line"><select name="pay_method[]" onchange="togglePaymentFields(this)"><?=payment_select_options($bankRows,'cash','')?></select><input type="date" name="pay_cheque_date[]" class="pay-cheque-date" style="display:none"><input name="pay_ref[]" placeholder="Reference / Cheque No."><input type="number" min="0" step="0.01" name="pay_amount[]" value="0" placeholder="Amount"></div></div><button type="button" class="btn" onclick="addPayment()">+ Add Payment</button></div><div class="grid2" style="margin-top:12px"><div class="form-group"><label>Notes</label><textarea name="notes" rows="3" placeholder="Add description"></textarea></div><div class="metric-card"><div class="label">Total Paid</div><div class="value" id="receivedPreview">৳0.00</div></div></div><div class="form-footer" style="margin:0 -16px -16px"><button type="button" class="btn" onclick="window.print()">Print / Preview</button><button class="btn primary">Save Payment-Out</button></div></form></div>
     <?php endif; ?>
     <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><input class="input" style="max-width:240px" placeholder="Search"></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>PAYMENT NO.</th><th>PARTY NAME</th><th>PAYMENT TYPE</th><th>AMOUNT</th><th>ACTION</th></tr></thead><tbody><?php foreach($rows as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td>Multiple / See receipt</td><td><?=money((float)$r['total'])?></td><td class="action"><a class="btn" href="<?=e(url('payment-out?view='.(int)$r['id']))?>">View</a></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No payment-out transactions yet.</td></tr><?php endif;?></tbody></table></div></div>
-    <script>document.addEventListener('DOMContentLoaded',()=>{const party=document.getElementById('paymentParty'),due=document.getElementById('currentDue'),note=document.getElementById('partyDue');function upd(){const d=parseFloat(party?.dataset.due||0);due.textContent='৳'+d.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});note.textContent=party?.value?'Outstanding due: '+due.textContent:'Select a supplier to see outstanding due.';}party?.addEventListener('change',upd);document.addEventListener('party-selected',upd);function sum(){let t=0;document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>t+=parseFloat(i.value||0));const x=document.getElementById('receivedPreview');if(x)x.textContent='৳'+t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>i.addEventListener('input',sum));window.addEventListener('input',e=>{if(e.target.matches('input[name="pay_amount[]"]'))sum();});upd();sum();});</script><?php page_end();exit;
+    <script>document.addEventListener('DOMContentLoaded',()=>{const party=document.getElementById('paymentParty'),purpose=document.getElementById('paymentPurpose'),due=document.getElementById('currentDue'),note=document.getElementById('partyDue');const options={supplier:'supplier_payment',lender:'loan_repayment',investor:'investor_payout',borrower:'loan_disbursement',customer:'customer_refund',employee:'employee_payment',other:'other_payment'};const labels={supplier:'Supplier Payment',lender:'Loan Repayment',investor:'Investor Payout',borrower:'Loan Disbursement',customer:'Customer Refund',employee:'Employee Payment',other:'Other Payment'};function upd(){const d=parseFloat(party?.dataset.due||0);const roles=(party?.dataset.roles||'').split(',').map(x=>x.trim()).filter(Boolean);if(purpose){let current=purpose.value;[...purpose.options].forEach(o=>{if(!o.value){o.hidden=false;o.disabled=false;return;}const key=Object.keys(options).find(k=>options[k]===o.value);const ok=!!key&&roles.includes(key);o.hidden=!ok;o.disabled=!ok;});if(!current||!roles.includes(Object.keys(options).find(k=>options[k]===current)??'')){const first=[...purpose.options].find(o=>o.value&&!o.disabled);purpose.value=first?.value||'';}}due.textContent='৳'+d.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});if(!party?.value){note.textContent='Select a party to choose the payment purpose.';}else if(purpose?.value==='supplier_payment'&&roles.includes('supplier')){note.textContent='Supplier outstanding due: '+due.textContent;}else{note.textContent='No automatic due limit for this payment purpose.';}}party?.addEventListener('change',upd);document.addEventListener('party-selected',upd);purpose?.addEventListener('change',upd);function sum(){let t=0;document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>t+=parseFloat(i.value||0));const x=document.getElementById('receivedPreview');if(x)x.textContent='৳'+t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}document.querySelectorAll('input[name="pay_amount[]"]').forEach(i=>i.addEventListener('input',sum));window.addEventListener('input',e=>{if(e.target.matches('input[name="pay_amount[]"]'))sum();});upd();sum();});</script><?php page_end();exit;
 }
 
 
