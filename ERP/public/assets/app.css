@@ -496,7 +496,7 @@
 /* Parties master-detail redesign v110 */
 .parties-tabs-v110{height:44px;background:#fff;border-bottom:1px solid #cfd7df;display:grid;grid-template-columns:repeat(9,minmax(85px,1fr));align-items:end;overflow-x:auto;overflow-y:hidden}
 .parties-tab-v110{height:44px;min-width:85px;display:flex;align-items:center;justify-content:center;color:#a4a4a4;font-size:14px;font-weight:700;border-bottom:3px solid transparent;white-space:nowrap;box-sizing:border-box}
-.parties-tab-v110.active{color:#5d4260;border-bottom-color:#1987f2;background:#fbfdff}
+.parties-tab-v110.active{color:#5d4260;border-bottom-color:#1987f2;background:#fff}
 .parties-layout-v110{display:grid;grid-template-columns:414px minmax(0,1fr);gap:10px;margin:10px 0 0}
 .parties-sidebar-v110,.party-detail-card-v110,.party-transactions-v110{background:#fff;border:1px solid #dbe2e9;box-shadow:0 2px 8px rgba(20,33,48,.06)}
 .party-import-card-v110{padding:8px}.party-import-card-v110>a{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid #edf0f4;border-radius:7px;box-shadow:0 2px 7px rgba(30,40,60,.07)}.party-import-card-v110 b{display:block;font-size:13px}.party-import-card-v110 small{display:block;color:#98a2b0;font-size:11px;margin-top:4px}.party-import-icon{width:30px;height:30px;border-radius:50%;background:#ffe7eb;color:#f24c63;display:grid;place-items:center;font-weight:700}.party-import-arrow{margin-left:auto;color:#2a8dd2;font-size:22px}
