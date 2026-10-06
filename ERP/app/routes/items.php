@@ -179,7 +179,7 @@ page_start('Items');
                     }
                     audit('create','item',$id,['name'=>$name,'type'=>$type,'opening_stock'=>$opening]);flash('success','Item added successfully.');
                 }
-                redirect('items?tab='.($type==='service'?'services':'products'));
+                redirect('items?tab='.($type==='service'?'services':'products').'&view='.$id);
             }
             if($action==='save_item_note'){
                 $iid=(int)($_POST['item_id']??0);
