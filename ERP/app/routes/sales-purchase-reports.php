@@ -303,8 +303,8 @@ function transaction_list(string $type,string $title,string $addRoute,string $pr
     <?php endif; ?>
     <div class="panel">
       <form class="filterbar" method="get">
-        <div class="between"><span>Between</span><input type="date" name="from" value="<?=e($from)?>"><span>To</span><input type="date" name="to" value="<?=e($to)?>"></div>
-        <input class="input" style="max-width:260px" name="q" value="<?=e($q)?>" placeholder="Search invoice, party or phone">
+        <div class="between"><input type="date" name="from" value="<?=e($from)?>"><span>To</span><input type="date" name="to" value="<?=e($to)?>"></div>
+        <input class="input sales-filter-search" name="q" value="<?=e($q)?>" placeholder="Search invoice, party or phone">
         <button class="btn primary" type="submit">Apply</button><a class="btn" href="<?=e($base)?>">Reset</a><button class="btn" type="button" onclick="window.print()">▤ Print</button><?php if($type==='sale'): ?><a class="btn primary sales-add-btn" href="<?=e(url('sale-new'))?>">⊕ Add Sale</a><?php endif; ?>
       </form>
       <div class="summary-strip"><div class="summary-box paid"><div class="lbl">Paid</div><div class="val"><?=money((float)$paid)?></div></div><b>+</b><div class="summary-box unpaid"><div class="lbl">Unpaid</div><div class="val"><?=money((float)$due)?></div></div><b>=</b><div class="summary-box total"><div class="lbl">Total</div><div class="val"><?=money((float)$total)?></div></div></div>
