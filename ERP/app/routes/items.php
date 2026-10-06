@@ -130,6 +130,13 @@ page_start('Items');
                     $barcode=(string)($keepRow['barcode']??'');
                 }
                 if($name==='')throw new RuntimeException('Item name is required.');
+                // Item names must be unique within the same company (case/space insensitive).
+                $dupSql='SELECT id FROM items WHERE company_id=? AND active=1 AND LOWER(TRIM(name))=LOWER(TRIM(?))';
+                $dupParams=[$cid,$name];
+                if($editId){ $dupSql.=' AND id<>?'; $dupParams[]=$editId; }
+                $dupSql.=' LIMIT 1';
+                $dupSt=$pdo->prepare($dupSql); $dupSt->execute($dupParams);
+                if($dupSt->fetch()) throw new RuntimeException('An item with this name already exists.');
                 $categoryIds=array_values(array_unique(array_map('intval',(array)($_POST['category_ids']??[]))));
                 if(!$categoryIds && !empty($_POST['category_id'])) $categoryIds=[(int)$_POST['category_id']];
                 if($categoryIds){
