@@ -57,7 +57,10 @@ if ($file !== null) {
             return_module('purchase_return');
             break;
         case 'quotations':
-            document_module('quotation','Estimate / Quotation','QT-','Customer',['sale_order']);
+            document_module('quotation','Estimate / Quotation','QT-','Customer',['sale_order'],true,'quotations');
+            break;
+        case 'quotations-new':
+            document_module('quotation','Estimate / Quotation','QT-','Customer',['sale_order'],false,'quotations');
             break;
         case 'sale-order':
             document_module('sale_order','Sale Order','SO-','Customer',['sale'],true,'sale-order');
@@ -67,7 +70,10 @@ if ($file !== null) {
             break;
         case 'purchase-order':
         case 'purchase_order':
-            document_module('purchase_order','Purchase Order','PO-','Supplier',['purchase']);
+            document_module('purchase_order','Purchase Order','PO-','Supplier',['purchase'],true,'purchase-order');
+            break;
+        case 'purchase-order-new':
+            document_module('purchase_order','Purchase Order','PO-','Supplier',['purchase'],false,'purchase-order');
             break;
     }
     exit;
