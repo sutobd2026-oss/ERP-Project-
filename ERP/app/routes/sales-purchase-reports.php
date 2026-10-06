@@ -674,6 +674,7 @@ function return_module(string $returnType): void {
     }
     $sourceSt=$pdo->prepare('SELECT t.id,t.document_no,t.txn_date,t.total,t.due,t.party_id,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.company_id=? AND t.txn_type=? AND t.deleted_at IS NULL ORDER BY t.id DESC LIMIT 100');
     $sourceSt->execute([$cid,$baseType]);$sources=$sourceSt->fetchAll();
+    $showNewReturn=isset($_GET['new']);
     page_start($title);
     if(isset($_GET['view'])){
         $tid=(int)$_GET['view'];
@@ -686,7 +687,8 @@ function return_module(string $returnType): void {
         <?php page_end(); exit;}
     }
     $addTitle=$isSale?'Add Sale Return':'Add Purchase Return';
-    ?><div class="page-title"><div><h1><?=e($title)?></h1><p><?=e($partyLabel)?> return against an original <?=e($baseType)?></p></div><button class="btn primary" onclick="document.getElementById('returnForm').scrollIntoView({behavior:'smooth'})">⊕ <?=$addTitle?></button></div>
+    ?><div class="page-title"><div><h1><?=e($title)?></h1><p><?=e($partyLabel)?> return against an original <?=e($baseType)?></p></div><a class="btn primary" href="<?=e(url($returnType.'?new=1'))?>">⊕ <?=$addTitle?></a></div>
+    <?php if($showNewReturn): ?>
     <div class="panel standard-entry-form" id="returnForm"><div class="panel-head"><h2><?=$addTitle?></h2><span class="subtle">Partial or full return supported · Return amount updates automatically</span></div>
     <form method="post" class="standard-return-form"><input type="hidden" name="_csrf" value="<?=csrf_token()?>">
       <div class="entry-top standard-entry-top return-entry-top"><div class="form-group"><label>Original <?=ucfirst($baseType)?>*</label><select name="source_id" id="returnSource" required><option value="">Select original <?=e($baseType)?></option><?php foreach($sources as $s):?><option value="<?=$s['id']?>" data-party="<?=e($s['party_name']??'')?>" data-total="<?=e((string)$s['total'])?>"><?=e($s['document_no'])?> · <?=e($s['party_name']??'')?> · <?=e(date('d/m/Y',strtotime($s['txn_date'])))?> · <?=money((float)$s['total'])?></option><?php endforeach;?></select></div><div class="form-group"><label>Return Number</label><input name="document_no" placeholder="Auto: <?=$prefix?>01"></div><div class="form-group"><label>Return Date*</label><input type="date" name="txn_date" value="<?=date('Y-m-d')?>" required></div></div>
@@ -695,6 +697,7 @@ function return_module(string $returnType): void {
       <div class="grid2" style="margin-top:12px"><div class="form-group"><label>Notes</label><textarea name="notes" rows="3" placeholder="Reason for return"></textarea></div><div class="metric-card"><div class="label">Return Total</div><div class="value" id="returnTotal">৳0.00</div></div></div>
       <div class="form-footer" style="margin:0 -16px -16px"><a class="btn" href="<?=e(url($returnType))?>">Cancel</a><button class="btn primary">Save <?=$isSale?'Credit Note':'Debit Note'?></button></div>
     </form></div>
+    <?php endif; ?>
     <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><input class="input" style="max-width:240px" placeholder="Search"></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>RETURN NO.</th><th>PARTY</th><th>ORIGINAL</th><th>TOTAL</th><th>ACTION</th></tr></thead><tbody><?php $rs=$pdo->prepare('SELECT r.*,p.name party_name,s.document_no source_doc FROM transactions r LEFT JOIN parties p ON p.id=r.party_id LEFT JOIN transaction_links l ON l.to_transaction_id=r.id AND l.relation_type=? LEFT JOIN transactions s ON s.id=l.from_transaction_id WHERE r.company_id=? AND r.txn_type=? AND r.deleted_at IS NULL ORDER BY r.id DESC LIMIT 100');$rs->execute([$isSale?'sale_to_return':'purchase_to_return',$cid,$returnType]);foreach($rs as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td><?=e($r['source_doc']??'-')?></td><td><?=money((float)$r['total'])?></td><td><a class="btn" href="<?=e(url($returnType.'?view='.(int)$r['id']))?>">View</a></td></tr><?php endforeach;if(!$rs):?><tr><td colspan="6" class="subtle">No returns yet.</td></tr><?php endif;?></tbody></table></div></div>
     <script>
     const source=document.getElementById('returnSource');
