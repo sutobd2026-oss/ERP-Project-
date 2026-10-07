@@ -118,7 +118,7 @@ if($route==='item-detail-api'){
             $tx->execute([$itemId,$cid,$itemId,$cid]);$txRows=$tx->fetchAll(PDO::FETCH_ASSOC);
         }catch(Throwable $e){}
 
-        foreach($txRows as &$tr){$tr['qty']=(float)$tr['qty'];$tr['unit_price']=(float)$tr['unit_price'];$tr['id']=(int)$tr['id'];$tr['source_transaction_id']=$tr['source_transaction_id']!==null?(int)$tr['source_transaction_id']:null;$tr['stock_movement_id']=$tr['stock_movement_id']!==null?(int)$tr['stock_movement_id']:null;}unset($tr);
+        foreach($txRows as &$tr){$tr['qty']=(float)$tr['qty'];$tr['unit_price']=(float)$tr['unit_price'];$tr['source_transaction_id']=$tr['source_transaction_id']!==null?(int)$tr['source_transaction_id']:null;$tr['stock_movement_id']=$tr['stock_movement_id']!==null?(int)$tr['stock_movement_id']:null;}unset($tr);
         echo json_encode(['ok'=>true,'item'=>$item,'bundle_components'=>$bundle,'transactions'=>$txRows],JSON_UNESCAPED_UNICODE);
     }catch(Throwable $e){
         http_response_code(404); echo json_encode(['ok'=>false,'error'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
