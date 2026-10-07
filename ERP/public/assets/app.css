@@ -1778,3 +1778,12 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   white-space:normal!important;
 }
 .sales-filterbar{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;padding:12px 0}.sales-filterbar .between{display:flex;align-items:center;gap:5px;flex:0 0 auto}.sales-filterbar .between input{width:162px;min-width:162px;max-width:162px;box-sizing:border-box}.sales-filterbar .sales-filter-search{flex:0 0 200px;width:200px;min-width:200px;max-width:200px;font-size:12px;box-sizing:border-box}.sales-filterbar .btn{flex:0 0 auto}.sales-filterbar .sales-add-btn{margin-left:auto;flex:0 0 auto}
+/* v239: polish item list/detail spacing after selection fix. */
+.items-workspace{grid-template-columns:320px minmax(0,1fr)!important;gap:8px!important;}
+.item-master-main{min-width:0!important;overflow:hidden!important;}
+.item-master-name{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:normal!important;line-height:1.35!important;}
+.item-master-meta{max-width:100%!important;}
+.item-master-row{grid-template-columns:minmax(0,1fr) 58px 32px!important;min-height:50px!important;padding:9px 10px!important;}
+.item-detail-card{padding:16px!important;}
+.item-info-grid-v237{row-gap:10px!important;}
+@media(max-width:900px){.items-workspace{grid-template-columns:1fr!important}.item-master-name{display:block!important;white-space:nowrap!important;-webkit-line-clamp:initial!important;}}
