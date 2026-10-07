@@ -75,6 +75,57 @@ if($route==='party-search-api'){
     echo json_encode(['ok'=>true,'items'=>$items],JSON_UNESCAPED_UNICODE);exit;
 }
 
+if($route==='item-detail-api'){
+    $u=require_login(); $cid=(int)$u['company_id']; $itemId=(int)($_GET['id']??0);
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+        if($itemId<=0) throw new RuntimeException('Invalid item.');
+        $st=db()->prepare('SELECT i.*,c.name category_name,u.name unit_name,u.symbol unit_symbol,
+          COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm WHERE sm.company_id=i.company_id AND sm.item_id=i.id
+            AND (sm.transaction_id IS NULL OR EXISTS(SELECT 1 FROM transactions st WHERE st.id=sm.transaction_id AND st.company_id=sm.company_id AND st.deleted_at IS NULL))),0) current_stock
+          FROM items i LEFT JOIN categories c ON c.id=i.category_id LEFT JOIN units u ON u.id=i.unit_id
+          WHERE i.id=? AND i.company_id=? AND i.active=1 LIMIT 1');
+        $st->execute([$itemId,$cid]); $item=$st->fetch(PDO::FETCH_ASSOC);
+        if(!$item) throw new RuntimeException('Item not found.');
+        $item['current_stock']=(float)$item['current_stock'];
+        $item['sale_price']=(float)$item['sale_price']; $item['purchase_price']=(float)$item['purchase_price'];
+        $item['wholesale_price']=(float)$item['wholesale_price']; $item['min_wholesale_qty']=(float)$item['min_wholesale_qty'];
+        $cats=[];
+        try{$cs=db()->prepare('SELECT c.id,c.name,c.type FROM item_categories ic JOIN categories c ON c.id=ic.category_id WHERE ic.item_id=? AND c.company_id=? ORDER BY c.name');$cs->execute([$itemId,$cid]);$cats=$cs->fetchAll(PDO::FETCH_ASSOC);}catch(Throwable $e){}
+        $item['categories']=$cats;
+
+        $bundle=[];
+        if($item['item_type']==='product'){
+            try{
+                $bs=db()->prepare('SELECT ib.component_item_id item_id,ib.quantity,i.name,i.sale_price,i.purchase_price,u.symbol unit_symbol
+                  FROM item_bundles ib JOIN items i ON i.id=ib.component_item_id AND i.company_id=? AND i.active=1
+                  LEFT JOIN units u ON u.id=i.unit_id WHERE ib.company_id=? AND ib.parent_item_id=? ORDER BY ib.sort_order,ib.id');
+                $bs->execute([$cid,$cid,$itemId]);$bundle=$bs->fetchAll(PDO::FETCH_ASSOC);
+            }catch(Throwable $e){}
+        }
+
+        $txRows=[];
+        try{
+            $tx=db()->prepare('(SELECT t.id source_transaction_id,NULL stock_movement_id,t.txn_date,t.txn_type,t.document_no,ti.qty,ti.unit_price,t.status,p.name party_name
+              FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id LEFT JOIN parties p ON p.id=t.party_id
+              WHERE ti.item_id=? AND t.company_id=? AND t.deleted_at IS NULL)
+              UNION ALL
+              (SELECT NULL source_transaction_id,sm.id stock_movement_id,sm.movement_date txn_date,sm.movement_type txn_type,CONCAT("STK-",sm.id) document_no,sm.quantity qty,
+                COALESCE(sm.unit_price,i.purchase_price) unit_price,"Final" status,COALESCE(NULLIF(sm.note,""),CASE sm.movement_type WHEN "manual_add" THEN "Stock Adjustment (Add)" WHEN "manual_reduce" THEN "Stock Adjustment (Reduce)" WHEN "opening_adjustment" THEN "Opening Stock Adjustment" ELSE REPLACE(sm.movement_type,"_"," ") END) party_name
+              FROM stock_movements sm JOIN items i ON i.id=sm.item_id WHERE sm.item_id=? AND sm.company_id=?
+                AND sm.movement_type NOT IN ("sale","purchase","sale_return","purchase_return"))
+              ORDER BY txn_date DESC LIMIT 100');
+            $tx->execute([$itemId,$cid,$itemId,$cid]);$txRows=$tx->fetchAll(PDO::FETCH_ASSOC);
+        }catch(Throwable $e){}
+
+        foreach($txRows as &$tr){$tr['qty']=(float)$tr['qty'];$tr['unit_price']=(float)$tr['unit_price'];$tr['id']=(int)$tr['id'];$tr['source_transaction_id']=$tr['source_transaction_id']!==null?(int)$tr['source_transaction_id']:null;$tr['stock_movement_id']=$tr['stock_movement_id']!==null?(int)$tr['stock_movement_id']:null;}unset($tr);
+        echo json_encode(['ok'=>true,'item'=>$item,'bundle_components'=>$bundle,'transactions'=>$txRows],JSON_UNESCAPED_UNICODE);
+    }catch(Throwable $e){
+        http_response_code(404); echo json_encode(['ok'=>false,'error'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 if($route==='item-search-api'){
     $u=require_login(); $cid=(int)$u['company_id'];
     // v236: item metadata must always be available to the AJAX search.
