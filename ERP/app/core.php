@@ -42,13 +42,27 @@ function ensure_party_notes_v203_schema(): void {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NULL,
             PRIMARY KEY (id),
-            KEY idx_party_notes_company_party (company_id, party_id),
             KEY idx_party_notes_user (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Migrate old installations: keep only the latest note for each party
+        // before enforcing the one-note-per-party database rule.
+        db()->exec("DELETE pn1 FROM party_notes pn1
+                    JOIN party_notes pn2
+                      ON pn2.company_id=pn1.company_id
+                     AND pn2.party_id=pn1.party_id
+                     AND pn2.id>pn1.id");
+
+        try {
+            db()->exec("CREATE UNIQUE INDEX uq_party_notes_company_party ON party_notes(company_id,party_id)");
+        } catch(Throwable $e) {
+            // Index already exists.
+        }
     } catch(Throwable $e) {
-        error_log('v203 party_notes schema: '.$e->getMessage());
+        error_log('party notes schema: '.$e->getMessage());
     }
 }
+
 ensure_party_notes_v203_schema();
 
 
