@@ -5,6 +5,9 @@ if (!file_exists($configFile)) { http_response_code(500); exit('Application is n
 $config = require $configFile;
 // sense rebrand: keep one codebase working on both the legacy /ERP path and the new subdomain.
 $config['app']['name'] = 'sense';
+// Buffer the full response so routes can safely redirect after page_start() output.
+// This is required for POST/redirect flows on pages such as Items and Parties.
+if (ob_get_level() === 0) { ob_start(); }
 date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Dhaka');
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_set_cookie_params(['httponly'=>true,'secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off','samesite'=>'Lax']);
@@ -66,7 +69,12 @@ function base_url(): string {
     return $host === 'sense.suto.bd' ? '' : rtrim((string)($config['app']['base_url']??'/ERP'),'/');
 }
 function url(string $path=''): string { $b=base_url(); $p=ltrim($path,'/'); return $b . ($p?'/'.$p:''); }
-function redirect(string $path): never { header('Location: '.url($path)); exit; }
+function redirect(string $path): never {
+    // Discard any already-rendered route shell before sending the redirect header.
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+    header('Location: '.url($path), true, 302);
+    exit;
+}
 function csrf_token(): string { if(empty($_SESSION['_csrf']))$_SESSION['_csrf']=bin2hex(random_bytes(32)); return $_SESSION['_csrf']; }
 function check_csrf(): void { if(!hash_equals($_SESSION['_csrf']??'',$_POST['_csrf']??'')){http_response_code(419);exit('Invalid CSRF token.');} }
 function flash(string $type,string $message): void { $_SESSION['_flash'][]=[$type,$message]; }
@@ -100,7 +108,20 @@ function qty(float $n): string {
     $s = number_format($n, 2, '.', '');
     return rtrim(rtrim($s, '0'), '.');
 }
-function audit(string $action,string $entity,int $id,?array $details=null): void { $u=user(); if(!$u)return; db()->prepare('INSERT INTO audit_logs(company_id,user_id,action,entity_type,entity_id,details,ip_address) VALUES(?,?,?,?,?,?,?)')->execute([$u['company_id'],$u['id'],$action,$entity,$id,$details?json_encode($details,JSON_UNESCAPED_UNICODE):null,$_SERVER['REMOTE_ADDR']??null]); }
+function audit(string $action,string $entity,int $id,?array $details=null): void {
+    $u=user();
+    if(!$u)return;
+    try {
+        db()->prepare('INSERT INTO audit_logs(company_id,user_id,action,entity_type,entity_id,details,ip_address) VALUES(?,?,?,?,?,?,?)')->execute([
+            $u['company_id'],$u['id'],$action,$entity,$id,
+            $details?json_encode($details,JSON_UNESCAPED_UNICODE):null,
+            $_SERVER['REMOTE_ADDR']??null
+        ]);
+    } catch (Throwable $e) {
+        // Audit logging must never break a successful ERP operation or its redirect.
+        error_log('audit log failed: '.$e->getMessage());
+    }
+}
 function company_id(): int { $u=require_login(); return (int)$u['company_id']; }
 function setting(string $key, ?string $default=null, ?int $cid=null): ?string { $u=user(); $cid=$cid??($u['company_id']??null); if(!$cid)return $default; try{$st=db()->prepare('SELECT setting_value FROM company_settings WHERE company_id=? AND setting_key=? LIMIT 1');$st->execute([(int)$cid,$key]);$v=$st->fetchColumn();return $v===false?$default:(string)$v;}catch(Throwable $e){return $default;} }
 function save_setting(int $cid,string $key,string $value): void { db()->prepare('INSERT INTO company_settings(company_id,setting_key,setting_value) VALUES(?,?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)')->execute([$cid,$key,$value]); }
