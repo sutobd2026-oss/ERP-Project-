@@ -796,6 +796,9 @@ function page_end(): void {
 .party-result-name{font-weight:600;color:#18324f}
 .party-result-meta{font-size:12px;color:#718096;margin-top:2px}
 .party-search-empty{padding:12px;color:#718096;font-size:13px}
+.party-search-results .party-result-review,.party-search-results .party-result-note{margin-top:4px;font-size:11px;line-height:1.35;white-space:normal;overflow:hidden;text-overflow:ellipsis}
+.party-search-results .party-result-review{color:#8a5b00}
+.party-search-results .party-result-note{color:#64748b}
 </style>
 HTML;
     $itemApi=e(url('item-search-api'));
@@ -967,7 +970,7 @@ ITEMHTML;
       const res=await fetch(u.toString(),{credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store'});
       const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));
       if(!Array.isArray(data.items)||!data.items.length){results.innerHTML='<div class="party-search-empty">No matching party found.</div>';results.hidden=false;placeResults(box);return;}
-      results.innerHTML=data.items.map(it=>'<button type="button" class="party-result" data-id="'+esc(it.id)+'" data-name="'+esc(it.name)+'" data-phone="'+esc(it.phone||'')+'" data-due="'+esc(it.outstanding||0)+'" data-roles="'+esc(it.roles||'')+'"><div class="party-result-name">'+esc(it.name)+'</div><div class="party-result-meta">'+esc(it.phone||'')+(it.outstanding!==undefined?' · Due '+Number(it.outstanding||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2}):'')+'</div></button>').join('');
+      results.innerHTML=data.items.map(it=>'<button type="button" class="party-result" data-id="'+esc(it.id)+'" data-name="'+esc(it.name)+'" data-phone="'+esc(it.phone||'')+'" data-due="'+esc(it.outstanding||0)+'" data-roles="'+esc(it.roles||'')+'"><div class="party-result-name">'+esc(it.name)+'</div><div class="party-result-meta">'+esc(it.phone||'')+(it.outstanding!==undefined?' · Due '+Number(it.outstanding||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2}):'')+'</div>'+((it.latest_review_comment||it.latest_review_rating)?'<div class="party-result-review">★ '+esc(it.latest_review_rating||'')+(it.latest_review_comment?' · '+esc(String(it.latest_review_comment).slice(0,110)):'')+'</div>':'')+(it.latest_note?'<div class="party-result-note">📝 '+esc(String(it.latest_note).slice(0,110))+'</div>':'')+'</button>').join('');
       results.hidden=false;placeResults(box);
     }catch(err){results.innerHTML='<div class="party-search-empty">Search failed. Please try again.</div>';results.hidden=false;placeResults(box);console.error('Party live search:',err);}
   }
