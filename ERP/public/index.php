@@ -12,7 +12,7 @@ if (!in_array($route, $publicRoutes, true)) {
 
 $routeFiles = [
     'login'=>'auth.php', 'platform-login'=>'auth.php', 'platform-logout'=>'auth.php', 'platform-audit'=>'auth.php', 'register'=>'auth.php', 'forgot-password'=>'auth.php', 'reset-password'=>'auth.php',
-    'party-search-api'=>'api.php', 'item-search-api'=>'api.php', 'bundle-components-api'=>'api.php', 'inline-party-create'=>'api.php', 'inline-product-create'=>'api.php',
+    'party-search-api'=>'api.php', 'party-detail-api'=>'api.php', 'item-search-api'=>'api.php', 'bundle-components-api'=>'api.php', 'inline-party-create'=>'api.php', 'inline-product-create'=>'api.php',
     'logout'=>'general.php', 'support'=>'general.php', 'platform-control'=>'general.php', 'serial-search-api'=>'general.php', 'transactions'=>'general.php',
     'dashboard'=>'dashboard.php',
     'parties'=>'parties-ledgers.php', 'party-ledger'=>'parties-ledgers.php', 'item-ledger'=>'parties-ledgers.php',
