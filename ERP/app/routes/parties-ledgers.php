@@ -105,18 +105,18 @@ if($route==='parties'){
             if($partyId<=0 || $rating<1 || $rating>5 || $comment===''){ flash('error','Customer review details are incomplete.'); redirect('parties'); }
             $chk=db();
             $st=$chk->prepare('SELECT id,phone FROM parties WHERE id=? AND company_id=? AND deleted_at IS NULL LIMIT 1'); $st->execute([$partyId,$cid]); $partyForReview=$st->fetch();
-            if(!$partyForReview){ flash('error','Customer not found.'); redirect('parties?id='.$partyId); }
+            if(!$partyForReview){ flash('error','Customer not found.'); redirect('parties'); }
             $st=$chk->prepare('SELECT 1 FROM party_roles pr WHERE pr.party_id=? AND pr.role="customer" LIMIT 1'); $st->execute([$partyId]);
-            if(!$st->fetchColumn()){ flash('error','Reviews can only be given to Customers.'); redirect('parties?id='.$partyId); }
+            if(!$st->fetchColumn()){ flash('error','Reviews can only be given to Customers.'); redirect('parties'); }
             $verified=verified_customer_transaction($chk,$cid,$partyId);
-            if(!$verified){ flash('error','A verified transaction is required before giving a public review.'); redirect('parties?id='.$partyId); }
+            if(!$verified){ flash('error','A verified transaction is required before giving a public review.'); redirect('parties'); }
             $phone=(string)preg_replace('/\D+/','',(string)($partyForReview['phone']??''));
-            if($phone===''){ flash('error','Customer phone number is required for public reviews.'); redirect('parties?id='.$partyId); }
+            if($phone===''){ flash('error','Customer phone number is required for public reviews.'); redirect('parties'); }
             $st=$chk->prepare('SELECT id FROM company_reviews WHERE reviewer_company_id=? AND customer_phone=? AND status<>"deleted" LIMIT 1'); $st->execute([$cid,$phone]);
-            if($st->fetchColumn()){ flash('error','Your company has already reviewed this customer.'); redirect('parties?id='.$partyId); }
+            if($st->fetchColumn()){ flash('error','Your company has already reviewed this customer.'); redirect('parties'); }
             $chk->prepare('INSERT INTO company_reviews(reviewer_company_id,subject_company_id,party_id,customer_phone,rating,comment,status,created_by,verified_transaction_type,verified_transaction_id) VALUES(?,NULL,?,?,?,? ,"published",?,?,?)')->execute([$cid,$partyId,$phone,$rating,$comment,$u['id'],$verified['type'],$verified['id']]);
             audit('create','company_review',$partyId,['customer_phone'=>$phone,'rating'=>$rating,'verified_transaction_type'=>$verified['type'],'verified_transaction_id'=>$verified['id']]);
-            flash('success','Customer public review submitted.'); redirect('parties?id='.$partyId);
+            flash('success','Customer public review submitted.'); redirect('parties');
         }
         $name=trim($_POST['name']??'');
         $phone=preg_replace('/\D+/','',$_POST['phone']??'');
