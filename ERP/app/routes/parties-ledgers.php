@@ -92,7 +92,10 @@ if($route==='parties'){
                 audit('update','party_note',$partyId,['note'=>$note,'note_id'=>$noteId]);
                 flash('success','Private note updated.');
             }else{
-                db()->prepare('INSERT INTO party_notes(company_id,party_id,user_id,note) VALUES(?,?,?,?)')
+                // UNIQUE(company_id,party_id) + upsert guarantees one note per party,
+                // including concurrent Add Note requests.
+                db()->prepare('INSERT INTO party_notes(company_id,party_id,user_id,note) VALUES(?,?,?,?)
+                  ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),note=VALUES(note),updated_at=NOW()')
                   ->execute([$cid,$partyId,$u['id'],$note]);
                 audit('create','party_note',$partyId,['note'=>$note]);
                 flash('success','Private note added.');
