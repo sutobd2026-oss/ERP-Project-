@@ -174,7 +174,7 @@ if($route==='dashboard'){
                      AND st2.deleted_at IS NULL
                ))
              GROUP BY sm2.item_id) sm ON sm.item_id=i.id WHERE i.company_id=? AND i.item_type="product" AND i.active=1');$st->execute([$cid,$cid]);$stockValue=(float)$st->fetchColumn();
-    $chartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke):string{
+    $chartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke)use($currency):string{
         $n=count($vals);if($n<2)return '';
         $max=max($vals);$min=min($vals);
         if(abs($max-$min)<0.000001){$min=0;$max=max(1,$max);}
@@ -204,7 +204,7 @@ if($route==='dashboard'){
         $svg.='</svg>';
         return $svg;
     };
-    $barChartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke):string{
+    $barChartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke)use($currency):string{
         $n=count($vals);if($n<1)return '';
         $max=max($vals);$max=max(1,$max);
         $left=10;$right=10;$top=12;$bottom=20;$pw=$w-$left-$right;$ph=$h-$top-$bottom;$gap=max(2,min(7,($pw/max(1,$n))/4));$barW=max(3,($pw/max(1,$n))-$gap);
@@ -215,10 +215,10 @@ if($route==='dashboard'){
         foreach($vals as $i=>$v){
             $x=$left+$i*($pw/max(1,$n))+(($pw/max(1,$n))-$barW)/2;
             $bh=($v/$max)*$ph;$y=$top+$ph-$bh;
-            $svg.='<rect x="'.round($x,1).'" y="'.round($y,1).'" width="'.round($barW,1).'" height="'.round(max(1,$bh),1).'" rx="'.round(min(5,$barW/2),1).'" fill="url(#'.$gid.' )"><title>'.e((string)($labels[$i]??'')).' · '.$currency.number_format((float)$v,2,'.',',').'</title></rect>';
+            $svg.='<rect x="'.round($x,1).'" y="'.round($y,1).'" width="'.round($barW,1).'" height="'.round(max(1,$bh),1).'" rx="'.round(min(5,$barW/2),1).'" fill="url(#'.$gid.')"><title>'.e((string)($labels[$i]??'')).' · '.$currency.number_format((float)$v,2,'.',',').'</title></rect>';
         }
         $svg.='</svg>';
-        return str_replace('url(#'.$gid.' )','url(#'.$gid.')',$svg);
+        return $svg;
     };
     $report=function(array $d):string{return date('d M',strtotime($d['start'])).' to '.date('d M',strtotime($d['end']));};
     $rangeForm=function(string $name,string $current,string $otherName,string $other)use($rangeOptions):string{
