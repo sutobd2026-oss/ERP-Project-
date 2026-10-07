@@ -579,7 +579,7 @@ page_start('Items');
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
               <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-item-id="<?=e((string)$r['id'])?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
                 <?php $itemTxCountSt=$pdo->prepare('SELECT COUNT(*) FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE ti.item_id=? AND t.company_id=?');$itemTxCountSt->execute([(int)$r['id'],$cid]);$itemTxCount=(int)$itemTxCountSt->fetchColumn(); ?>
-                <a class="item-row-link-v111 item-master-main" href="<?=e(url('items?tab='.$tab))?>">
+                <a class="party-row-link-v111 item-master-main" href="<?=e(url('items?tab='.$tab))?>" onclick="event.preventDefault();selectItem(<?=((int)$r['id'])?>)">
                   <span class="item-master-name"><?=e($r['name'])?></span>
                   <?php if($r['code']||$r['barcode']): ?><span class="item-master-meta"><?=e($r['code']?:$r['barcode'])?></span><?php endif; ?>
                 </a>
@@ -886,7 +886,7 @@ window.SutoTxV72=(function(){
   };
 
   document.addEventListener('click',function(e){
-    const link=e.target.closest('.item-row-link-v111');
+    const link=e.target.closest('.party-row-link-v111');
     if(!link)return;
     e.preventDefault();
     const row=link.closest('.item-master-row');
