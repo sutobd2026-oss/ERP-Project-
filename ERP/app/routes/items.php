@@ -579,7 +579,7 @@ page_start('Items');
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
               <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-item-id="<?=e((string)$r['id'])?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
                 <?php $itemTxCountSt=$pdo->prepare('SELECT COUNT(*) FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE ti.item_id=? AND t.company_id=?');$itemTxCountSt->execute([(int)$r['id'],$cid]);$itemTxCount=(int)$itemTxCountSt->fetchColumn(); ?>
-                <a class="item-master-main" href="<?=e(url('items?tab='.$tab))?>" onclick="return senseSelectItem(<?=((int)$r['id'])?>,event)">
+                <a class="item-row-link-v111 item-master-main" href="<?=e(url('items?tab='.$tab))?>">
                   <span class="item-master-name"><?=e($r['name'])?></span>
                   <?php if($r['code']||$r['barcode']): ?><span class="item-master-meta"><?=e($r['code']?:$r['barcode'])?></span><?php endif; ?>
                 </a>
@@ -885,19 +885,27 @@ window.SutoTxV72=(function(){
     }catch(e){alert(e.message||'Could not load item dialog.');}
   };
 
-  window.senseSelectItem=function(id,e){
-    if(e){e.preventDefault();e.stopPropagation();}
-    return selectItem(id).then(function(){return false;}).catch(function(){return false;});
-  };
-  document.addEventListener('click',e=>{
-    const edit=e.target.closest('.item-master-actions a');
-    if(edit){const m=(edit.getAttribute('href')||'').match(/[?&]edit=(\d+)/);if(m){e.preventDefault();senseLoadItemDialog('edit',Number(m[1]),'itemModal');}}
-  },true);
-  document.addEventListener('DOMContentLoaded',()=>{
-    const p=new URLSearchParams(location.search), view=Number(p.get('view')||0), saved=JSON.parse(localStorage.getItem('sense.selectedItem')||'null');
-    const row=view?document.querySelector('.item-master-row[data-item-id="'+CSS.escape(String(view))+'"]'):saved&&saved.tab===tab()?document.querySelector('.item-master-row[data-item-id="'+CSS.escape(String(saved.id))+'"]'):null;
-    if(row)selectItem(Number(row.dataset.itemId));
+  document.addEventListener('click',function(e){
+    const link=e.target.closest('.item-row-link-v111');
+    if(!link)return;
+    e.preventDefault();
+    const row=link.closest('.item-master-row');
+    selectItem(row?.dataset.itemId);
   });
+  document.addEventListener('DOMContentLoaded',function(){
+    try{
+      const keepTab=tab();
+      history.replaceState({},'',location.pathname+(keepTab?'?tab='+encodeURIComponent(keepTab):''));
+    }catch(_){}
+    const saved=localStorage.getItem('sense.selectedItem');
+    let savedObj=null;
+    try{savedObj=saved?JSON.parse(saved):null;}catch(_){savedObj=null;}
+    const row=savedObj&&savedObj.tab===tab()
+      ?document.querySelector('.item-master-row[data-item-id="'+CSS.escape(String(savedObj.id))+'"]')
+      :document.querySelector('.item-master-row.selected');
+    if(row)selectItem(row.dataset.itemId);
+  });
+
 })();
 </script>
 <?php if($edit):?><script>document.addEventListener('DOMContentLoaded',()=>openModal('itemModal'))</script><?php endif; page_end();exit;
