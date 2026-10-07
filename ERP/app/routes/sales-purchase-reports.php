@@ -302,7 +302,7 @@ function transaction_list(string $type,string $title,string $addRoute,string $pr
     <div class="page-title"><div><h1><?=e($title)?></h1><p><?=e(date('d M Y',strtotime($from)))?> → <?=e(date('d M Y',strtotime($to)))?><?= $q!==''?' · Search: '.e($q):''?></p></div><a class="btn primary" href="<?=e(url($addRoute))?>">⊕ Add <?=e($addLabel)?></a></div>
     <?php endif; ?>
     <div class="panel">
-      <form class="filterbar" method="get">
+      <form class="filterbar sales-filterbar" method="get">
         <div class="between"><input type="date" name="from" value="<?=e($from)?>"><span>To</span><input type="date" name="to" value="<?=e($to)?>"></div>
         <input class="input sales-filter-search" name="q" value="<?=e($q)?>" placeholder="Search invoice, party or phone">
         <button class="btn primary" type="submit">Apply</button><a class="btn" href="<?=e($base)?>">Reset</a><button class="btn" type="button" onclick="window.print()">▤ Print</button><?php if($type==='sale'): ?><a class="btn primary sales-add-btn" href="<?=e(url('sale-new'))?>">⊕ Add Sale</a><?php endif; ?>
