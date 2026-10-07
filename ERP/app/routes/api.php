@@ -1,5 +1,51 @@
 <?php
 /* sense modular v1 route module extracted from the current public/index.php master. */
+if($route==='party-detail-api'){
+    $u=require_login(); $cid=(int)$u['company_id']; $pid=(int)($_GET['id']??0);
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+        if($pid<=0) throw new RuntimeException('Invalid party.');
+        $st=db()->prepare('SELECT p.*,COALESCE((SELECT GROUP_CONCAT(pr.role ORDER BY pr.role SEPARATOR ", ") FROM party_roles pr WHERE pr.party_id=p.id),"") role_list,
+          COALESCE((SELECT SUM(CASE WHEN t.txn_type="sale" THEN t.due WHEN t.txn_type="payment_in" THEN -t.total WHEN t.txn_type="purchase" THEN -t.due WHEN t.txn_type="payment_out" THEN t.total ELSE 0 END) FROM transactions t WHERE t.company_id=p.company_id AND t.party_id=p.id AND t.deleted_at IS NULL),0) calculated_balance
+          FROM parties p WHERE p.id=? AND p.company_id=? AND p.deleted_at IS NULL LIMIT 1');
+        $st->execute([$pid,$cid]); $party=$st->fetch(PDO::FETCH_ASSOC);
+        if(!$party) throw new RuntimeException('Party not found.');
+        $party['roles']=$party['role_list']!==''?array_map('trim',explode(',',$party['role_list'])):[];
+        $party['customer_label_ids']=[]; $party['customer_label_names']=[];
+        try{
+            $ls=db()->prepare('SELECT cl.id,cl.name FROM party_customer_labels pcl JOIN customer_labels cl ON cl.id=pcl.label_id WHERE pcl.party_id=? AND cl.company_id=? ORDER BY cl.name');
+            $ls->execute([$pid,$cid]);
+            while($lr=$ls->fetch(PDO::FETCH_ASSOC)){ $party['customer_label_ids'][]=(int)$lr['id']; $party['customer_label_names'][]=(string)$lr['name']; }
+        }catch(Throwable $e){}
+        $notes=[];
+        try{
+            $ns=db()->prepare('SELECT pn.*,u.name user_name FROM party_notes pn LEFT JOIN users u ON u.id=pn.user_id WHERE pn.company_id=? AND pn.party_id=? ORDER BY pn.id DESC LIMIT 50');
+            $ns->execute([$cid,$pid]); $notes=$ns->fetchAll(PDO::FETCH_ASSOC);
+        }catch(Throwable $e){}
+        $reviews=[]; $reviewPhone=''; $hasReview=false; $verified=null;
+        if(in_array('customer',$party['roles'],true)){
+            try{
+                $reviewPhone=(string)preg_replace('/\D+/','',(string)($party['phone']??''));
+                if($reviewPhone!==''){
+                    $rs=db()->prepare('SELECT cr.*,c.name reviewer_name FROM company_reviews cr JOIN companies c ON c.id=cr.reviewer_company_id WHERE cr.customer_phone=? AND cr.status="published" ORDER BY cr.id DESC LIMIT 50');
+                    $rs->execute([$reviewPhone]); $reviews=$rs->fetchAll(PDO::FETCH_ASSOC);
+                    foreach($reviews as $rv){if((int)$rv['reviewer_company_id']===$cid){$hasReview=true;break;}}
+                }
+            }catch(Throwable $e){}
+            try{$verified=verified_customer_transaction(db(),$cid,$pid);}catch(Throwable $e){$verified=null;}
+        }
+        $txs=[];
+        $tx=$dbTx=db()->prepare('SELECT id,txn_type,document_no,txn_date,total,paid,due,status FROM transactions WHERE company_id=? AND party_id=? AND deleted_at IS NULL ORDER BY txn_date DESC,id DESC LIMIT 200');
+        $tx->execute([$cid,$pid]); $txs=$tx->fetchAll(PDO::FETCH_ASSOC);
+        $balance=(float)($party['opening_balance']??0)+(float)($party['calculated_balance']??0);
+        echo json_encode(['ok'=>true,'party'=>$party,'balance'=>$balance,'notes'=>$notes,'reviews'=>$reviews,'has_public_review'=>$hasReview,'verified_transaction'=>$verified,'transactions'=>$txs],JSON_UNESCAPED_UNICODE);
+    }catch(Throwable $e){
+        http_response_code(404);
+        echo json_encode(['ok'=>false,'error'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 if($route==='party-search-api'){
     $u=require_login(); $cid=(int)$u['company_id'];
     header('Content-Type: application/json; charset=utf-8');
