@@ -579,7 +579,7 @@ page_start('Items');
             <?php $visibleCount=0; foreach($items as $r): if(($tab==='products'&&$r['item_type']!=='product')||($tab==='services'&&$r['item_type']!=='service')||$r['active']!=1)continue; $visibleCount++; ?>
               <div class="item-master-row <?=($selected&&$selected['id']==$r['id'])?'selected':''?>" data-item-id="<?=e((string)$r['id'])?>" data-name="<?=e(strtolower($r['name'].' '.$r['code'].' '.$r['barcode']))?>">
                 <?php $itemTxCountSt=$pdo->prepare('SELECT COUNT(*) FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE ti.item_id=? AND t.company_id=?');$itemTxCountSt->execute([(int)$r['id'],$cid]);$itemTxCount=(int)$itemTxCountSt->fetchColumn(); ?>
-                <a class="item-master-main" href="<?=e(url('items?tab='.$tab.'&view='.$r['id']))?>">
+                <a class="item-master-main" href="javascript:void(0)" onclick="return SutoItemsSelect(this)" data-item-id="<?=$r['id']?>">
                   <span class="item-master-name"><?=e($r['name'])?></span>
                   <?php if($r['code']||$r['barcode']): ?><span class="item-master-meta"><?=e($r['code']?:$r['barcode'])?></span><?php endif; ?>
                 </a>
@@ -885,9 +885,17 @@ window.SutoTxV72=(function(){
     }catch(e){alert(e.message||'Could not load item dialog.');}
   };
 
+  window.SutoItemsSelect=function(el){
+    try{
+      const row=el?.closest('.item-master-row');
+      const id=row?.dataset.itemId||el?.dataset.itemId;
+      if(id)selectItem(id);
+    }catch(_){}
+    return false;
+  };
   document.addEventListener('click',e=>{
     const main=e.target.closest('.item-master-main');
-    if(main){e.preventDefault();const row=main.closest('.item-master-row');if(row)selectItem(row.dataset.itemId);return;}
+    if(main){e.preventDefault();e.stopPropagation();const row=main.closest('.item-master-row');if(row)selectItem(row.dataset.itemId);return;}
     const edit=e.target.closest('.item-master-actions a');
     if(edit){const m=(edit.getAttribute('href')||'').match(/[?&]edit=(\d+)/);if(m){e.preventDefault();senseLoadItemDialog('edit',Number(m[1]),'itemModal');}}
   },true);
