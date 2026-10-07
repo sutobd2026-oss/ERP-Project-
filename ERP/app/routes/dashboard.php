@@ -69,7 +69,12 @@ if($route==='dashboard'){
             $map=[];foreach($st as $r)$map[(string)$r['period']]=(float)$r['total'];
             foreach($labels as $i=>$lbl){$key=date('Y-m',strtotime(date('Y').'-01-01 +'.$i.' months'));$values[$i]=$map[$key]??0.0;}
         }else{
-            for($ts=$startTs;$ts<=$endTs;$ts+=86400){$labels[]=date('d M',$ts);$values[]=0.0;}
+            // This Month shows the full calendar month on the chart, including
+            // future days as zero, while the report/total still uses today's date.
+            $labelEnd=$end;
+            if($rangeKey==='this_month') $labelEnd=date('Y-m-t',$startTs);
+            $labelEndTs=strtotime($labelEnd);
+            for($ts=$startTs;$ts<=$labelEndTs;$ts+=86400){$labels[]=date('d M',$ts);$values[]=0.0;}
             $st=db()->prepare('SELECT DATE(txn_date) period,COALESCE(SUM(total),0) total FROM transactions WHERE company_id=? AND txn_type=? AND txn_date>=? AND txn_date<? AND deleted_at IS NULL GROUP BY DATE(txn_date) ORDER BY period');
             $endExclusive=date('Y-m-d',strtotime($end.' +1 day')); $st->execute([$cid,$type,$start,$endExclusive]);
             $idx=[];foreach($labels as $i=>$lbl){$idx[date('Y-m-d',$startTs+($i*86400))]=$i;}
