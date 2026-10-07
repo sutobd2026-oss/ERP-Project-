@@ -841,6 +841,64 @@ window.SutoTxV72=(function(){
   return {toggle:toggle,close:close};
 })();
 </script>
+<script>
+(function(){
+  const api='<?=e(url('item-detail-api'))?>', base='<?=e(url('items'))?>', detail=document.querySelector('.item-detail-area');
+  if(!detail)return;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const money=v=>'৳'+Number(v||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const qty=v=>Number(v||0).toLocaleString('en-BD',{minimumFractionDigits:0,maximumFractionDigits:3});
+  const dt=v=>{const d=new Date(String(v||'').replace(' ','T'));return Number.isNaN(d.getTime())?String(v||'').slice(0,10):String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();};
+  const tab=()=>new URLSearchParams(location.search).get('tab')||'products';
+
+  function activeRow(id){
+    document.querySelectorAll('.item-master-row').forEach(r=>r.classList.toggle('selected',String(r.dataset.itemId)===String(id)));
+  }
+
+  function render(d){
+    const i=d.item||{}, b=d.bundle_components||[], tx=d.transactions||[];
+    activeRow(i.id);
+    const stock=Number(i.current_stock||0), sv=i.item_type==='service'?0:Number(i.purchase_price||0)*stock;
+    let h='<div class="item-detail-card panel"><div class="item-detail-top"><div><h2>'+esc(i.name)+' <span class="item-share">↗</span></h2><div class="item-subline">'+esc(i.code||i.barcode||'')+'</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+(i.barcode?'<span class="subtle">Barcode: <b>'+esc(i.barcode)+'</b></span>':'')+'<a class="btn" href="<?=e(url('item-ledger'))?>?item='+i.id+'">ITEM STOCK LEDGER</a>'+(i.item_type==='product'?'<button type="button" class="btn primary" onclick="senseLoadItemDialog('view','+i.id+','itemBundleModal')">Manage Bundle</button>':'')+'<button type="button" class="btn" onclick="senseLoadItemDialog('view','+i.id+','itemNoteModal')">'+(String(i.item_note||'').trim()?'Edit Note':'+ Add Note')+'</button><button type="button" class="btn primary adjust-btn" onclick="senseLoadItemDialog('view','+i.id+','adjustModal')">☷ ADJUST ITEM</button></div></div><div class="item-price-grid item-info-grid-v237"><div class="item-inline-meta-row-v237"><span><strong>DESCRIPTION:</strong> '+(i.description?esc(i.description):'—')+'</span><span><strong>WARRANTY:</strong> '+esc(i.warranty||'—')+'</span><span><strong>LOCATION:</strong> '+esc(i.location||'—')+'</span>'+(i.item_note?'<span class="item-note-inline-v238"><strong>NOTE:</strong> '+esc(i.item_note)+'</span>':'')+'</div><div class="item-info-value-v237"><span>SALE PRICE:</span> <b>'+money(i.sale_price)+'</b></div><div class="item-info-value-v237 stock-right"><span>STOCK QUANTITY:</span> <b class="'+(stock<0?'negative-value':'positive-value')+'">'+(i.item_type==='service'?'—':qty(stock))+'</b></div><div class="item-info-value-v237"><span>PURCHASE PRICE:</span> <b>'+money(i.purchase_price)+'</b></div><div class="item-info-value-v237 stock-right"><span>STOCK VALUE:</span> <b>'+money(sv)+'</b></div></div></div>';
+    if(i.item_type==='product'&&b.length){h+='<div class="panel item-bundle-card" style="margin-top:10px"><div class="panel-head"><div><h2>BUNDLE / INCLUDED FREE ITEMS</h2><span class="subtle">Included items are free on the sale invoice and reduce their own stock when supplied.</span></div></div><div class="table-wrap"><table><thead><tr><th>FREE ITEM</th><th>QTY</th></tr></thead><tbody>'+b.map(x=>'<tr><td>└─ '+esc(x.name)+'</td><td>'+qty(x.quantity)+' '+esc(x.unit_symbol||'')+'</td></tr>').join('')+'</tbody></table></div></div>';}
+    h+='<div class="item-transactions panel"><div class="panel-head"><h2>TRANSACTIONS</h2><div class="tx-tools"><input class="input" id="itemTxSearchAjax" placeholder="⌕ Search"><span class="export-icon">▣</span></div></div><div class="table-wrap"><table><thead><tr><th></th><th>TYPE</th><th>NO</th><th>NAME</th><th>DATE</th><th>QUANTITY</th><th>PRICE/UNIT</th><th>STATUS</th><th></th></tr></thead><tbody>';
+    if(tx.length) tx.forEach(x=>{const t=String(x.txn_type||''),label=({sale:'Sale',purchase:'Purchase',payment_in:'Payment In',payment_out:'Payment Out',manual_add:'Stock Adjustment',manual_reduce:'Stock Adjustment',opening_stock:'Opening Stock',opening_adjustment:'Opening Stock Adjustment'})[t]||t.replace(/_/g,' '),sid=Number(x.source_transaction_id||0),doc=x.document_no||'—',docUrl=t==='sale'&&sid?'<?=e(url('sales'))?>?view='+sid:t==='purchase'&&sid?'<?=e(url('purchase'))?>?view='+sid:''; h+='<tr><td><span class="tx-dot"></span></td><td>'+esc(label)+'</td><td>'+(docUrl?'<a class="tx-doc-link" href="'+esc(docUrl)+'">'+esc(doc)+'</a>':esc(doc))+'</td><td>'+esc(x.party_name||label)+'</td><td>'+dt(x.txn_date)+'</td><td>'+qty(x.qty)+' '+esc(i.unit_symbol||'')+'</td><td>'+money(x.unit_price)+'</td><td><span class="tx-status">'+esc(x.status||'')+'</span></td><td class="tx-more" style="width:52px;text-align:center"><button type="button" class="dots" aria-label="Actions">⋮</button></td></tr>';});
+    else h+='<tr><td colspan="9" class="subtle">No transactions for this item yet.</td></tr>';
+    h+='</tbody></table></div></div>';
+    detail.innerHTML=h; localStorage.setItem('sense.selectedItem',JSON.stringify({id:Number(i.id),tab:tab()}));
+    try{const u=new URL(location.href);u.searchParams.delete('view');u.searchParams.delete('edit');u.searchParams.delete('stock_view');history.replaceState({},'',u.pathname+(u.search?'?'+u.searchParams.toString():''));}catch(_){}
+  }
+
+  async function selectItem(id){
+    detail.innerHTML='<div class="panel empty-detail"><div class="empty-icon">▣</div><h2>Loading Item…</h2><p class="subtle">Please wait.</p></div>';
+    try{const res=await fetch(api+'?id='+encodeURIComponent(id),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}}),d=await res.json();if(!res.ok||!d?.ok)throw new Error(d?.error||'Item could not be loaded.');render(d);}
+    catch(e){detail.innerHTML='<div class="panel empty-detail"><div class="empty-icon">!</div><h2>Unable to load item</h2><p class="subtle">'+esc(e.message||'Please reload the Items page.')+'</p></div>';}
+  }
+
+  window.senseLoadItemDialog=async function(mode,id,modalId){
+    try{
+      const q='?tab='+encodeURIComponent(tab())+(mode==='edit'?'&edit=':'&view=')+encodeURIComponent(id);
+      const res=await fetch(base+q,{credentials:'same-origin',cache:'no-store'}),html=await res.text(),doc=new DOMParser().parseFromString(html,'text/html'),fresh=doc.getElementById(modalId);
+      if(!fresh)throw new Error('Item dialog could not be loaded.');
+      document.getElementById(modalId)?.replaceWith(fresh);
+      openModal(modalId);
+    }catch(e){alert(e.message||'Could not load item dialog.');}
+  };
+
+  document.addEventListener('click',e=>{
+    const main=e.target.closest('.item-master-main');
+    if(main){e.preventDefault();const row=main.closest('.item-master-row');if(row)selectItem(row.dataset.itemId);return;}
+    const edit=e.target.closest('.item-master-actions a');
+    if(edit){const m=(edit.getAttribute('href')||'').match(/[?&]edit=(\d+)/);if(m){e.preventDefault();senseLoadItemDialog('edit',Number(m[1]),'itemModal');}}
+  },true);
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const p=new URLSearchParams(location.search), view=Number(p.get('view')||0), saved=JSON.parse(localStorage.getItem('sense.selectedItem')||'null');
+    const row=view?document.querySelector('.item-master-row[data-item-id="'+CSS.escape(String(view))+'"]'):saved&&saved.tab===tab()?document.querySelector('.item-master-row[data-item-id="'+CSS.escape(String(saved.id))+'"]'):null;
+    if(row)selectItem(Number(row.dataset.itemId));
+  });
+})();
+</script>
 <?php if($edit):?><script>document.addEventListener('DOMContentLoaded',()=>openModal('itemModal'))</script><?php endif; page_end();exit;
 }
 
