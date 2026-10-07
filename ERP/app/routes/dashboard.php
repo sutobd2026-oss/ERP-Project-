@@ -6,6 +6,18 @@ if($route==='dashboard'){
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
     echo '<style>
       .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
+      .dashboard-chart-wrap{height:178px;position:relative;margin-top:14px;padding:0 2px}
+      .dashboard-chart-svg{display:block;width:100%;height:100%;overflow:visible}
+      .dashboard-chart-point{opacity:.06;transition:opacity .15s ease,transform .15s ease}
+      .dashboard-chart-point:hover{opacity:1}
+      .dashboard-chart-bars{height:158px}
+      .dashboard-chart-bars rect{transition:opacity .15s ease,transform .15s ease}
+      .dashboard-chart-bars rect:hover{opacity:.82}
+      .dashboard-report{margin-top:2px}
+      .sales-card .chart-baseline,.expense-card .chart-baseline{display:none}
+      .sales-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:19px;height:1px;background:rgba(148,163,184,.12)}
+      .expense-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:19px;height:1px;background:rgba(148,163,184,.12)}
+
       .dashboard-cash-link .cash-negative-value{color:#ef4444!important}
       .dashboard-cash-link.cash-negative-warning .title:after{content:" ⚠";color:#ef4444;font-size:12px;margin-left:4px}
     </style>';
@@ -162,10 +174,51 @@ if($route==='dashboard'){
                      AND st2.deleted_at IS NULL
                ))
              GROUP BY sm2.item_id) sm ON sm.item_id=i.id WHERE i.company_id=? AND i.item_type="product" AND i.active=1');$st->execute([$cid,$cid]);$stockValue=(float)$st->fetchColumn();
-    $chartSvg=function(array $vals,int $w,int $h,string $stroke):string{
-        $n=count($vals);if($n<2)return '';$max=max($vals);$min=min($vals);if(abs($max-$min)<0.000001){$min=0;$max=max(1,$max);} $range=$max-$min;
-        $pad=6;$pw=$w-12;$ph=$h-24;$pts=[];foreach($vals as $i=>$v){$x=$pad+($i/max(1,$n-1))*$pw;$y=10+($ph-(($v-$min)/$range)*$ph);$pts[]=round($x,1).','.round($y,1);} $poly=implode(' ',$pts);$baseY=10+$ph;$area=$pad.','.$baseY.' '.$poly.' '.($w-$pad).','.$baseY;$gid='c'.substr(md5($poly.$stroke.$w.$h),0,10);
-        return '<svg class="dashboard-chart-svg" viewBox="0 0 '.$w.' '.$h.'" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="'.$gid.'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'.$stroke.'" stop-opacity="0.18"/><stop offset="100%" stop-color="'.$stroke.'" stop-opacity="0.02"/></linearGradient></defs><polygon points="'.$area.'" fill="url(#'.$gid.')"></polygon><polyline points="'.$poly.'" fill="none" stroke="'.$stroke.'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>';
+    $chartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke):string{
+        $n=count($vals);if($n<2)return '';
+        $max=max($vals);$min=min($vals);
+        if(abs($max-$min)<0.000001){$min=0;$max=max(1,$max);}
+        $range=max(0.000001,$max-$min);
+        $left=10;$right=10;$top=12;$bottom=20;$pw=$w-$left-$right;$ph=$h-$top-$bottom;$pts=[];
+        foreach($vals as $i=>$v){
+            $x=$left+($i/max(1,$n-1))*$pw;
+            $y=$top+($ph-(($v-$min)/$range)*$ph);
+            $pts[]=['x'=>$x,'y'=>$y,'v'=>(float)$v,'label'=>(string)($labels[$i]??'')];
+        }
+        $path='M '.round($pts[0]['x'],1).' '.round($pts[0]['y'],1);
+        for($i=1;$i<$n;$i++){
+            $p0=$pts[$i-1];$p1=$pts[$i];$dx=($p1['x']-$p0['x'])/3;
+            $path.=' C '.round($p0['x']+$dx,1).' '.round($p0['y'],1).' '.round($p1['x']-$dx,1).' '.round($p1['y'],1).' '.round($p1['x'],1).' '.round($p1['y'],1);
+        }
+        $baseY=$top+$ph;
+        $area=$path.' L '.round($pts[$n-1]['x'],1).' '.$baseY.' L '.$left.' '.$baseY.' Z';
+        $gid='g'.substr(md5($path.$stroke.$w.$h),0,10);
+        $svg='<svg class="dashboard-chart-svg dashboard-chart-line" viewBox="0 0 '.$w.' '.$h.'" preserveAspectRatio="none" aria-label="Chart">';
+        $svg.='<defs><linearGradient id="'.$gid.'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'.$stroke.'" stop-opacity="0.16"/><stop offset="100%" stop-color="'.$stroke.'" stop-opacity="0.01"/></linearGradient></defs>';
+        foreach([0.22,0.52,0.82] as $gy){$yy=round($top+$ph*$gy,1);$svg.='<line x1="'.$left.'" y1="'.$yy.'" x2="'.($w-$right).'" y2="'.$yy.'" stroke="#94a3b8" stroke-opacity="0.10" stroke-width="1"/>';}
+        $svg.='<path d="'.$area.'" fill="url(#'.$gid.')" stroke="none"></path>';
+        $svg.='<path d="'.$path.'" fill="none" stroke="'.$stroke.'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>';
+        foreach($pts as $p){
+            $svg.='<circle class="dashboard-chart-point" cx="'.round($p['x'],1).'" cy="'.round($p['y'],1).'" r="4" fill="#fff" stroke="'.$stroke.'" stroke-width="2"><title>'.e($p['label']).' · '.$currency.number_format($p['v'],2,'.',',').'</title></circle>';
+        }
+        $svg.='</svg>';
+        return $svg;
+    };
+    $barChartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke):string{
+        $n=count($vals);if($n<1)return '';
+        $max=max($vals);$max=max(1,$max);
+        $left=10;$right=10;$top=12;$bottom=20;$pw=$w-$left-$right;$ph=$h-$top-$bottom;$gap=max(2,min(7,($pw/max(1,$n))/4));$barW=max(3,($pw/max(1,$n))-$gap);
+        $gid='b'.substr(md5(implode(',',$vals).$stroke.$w.$h),0,10);
+        $svg='<svg class="dashboard-chart-svg dashboard-chart-bars" viewBox="0 '.$w.' '.$h.'" preserveAspectRatio="none" aria-label="Chart">';
+        $svg.='<defs><linearGradient id="'.$gid.'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'.$stroke.'" stop-opacity="0.95"/><stop offset="100%" stop-color="'.$stroke.'" stop-opacity="0.52"/></linearGradient></defs>';
+        foreach([0.22,0.52,0.82] as $gy){$yy=round($top+$ph*$gy,1);$svg.='<line x1="'.$left.'" y1="'.$yy.'" x2="'.($w-$right).'" y2="'.$yy.'" stroke="#94a3b8" stroke-opacity="0.10" stroke-width="1"/>';}
+        foreach($vals as $i=>$v){
+            $x=$left+$i*($pw/max(1,$n))+(($pw/max(1,$n))-$barW)/2;
+            $bh=($v/$max)*$ph;$y=$top+$ph-$bh;
+            $svg.='<rect x="'.round($x,1).'" y="'.round($y,1).'" width="'.round($barW,1).'" height="'.round(max(1,$bh),1).'" rx="'.round(min(5,$barW/2),1).'" fill="url(#'.$gid.' )"><title>'.e((string)($labels[$i]??'')).' · '.$currency.number_format((float)$v,2,'.',',').'</title></rect>';
+        }
+        $svg.='</svg>';
+        return str_replace('url(#'.$gid.' )','url(#'.$gid.')',$svg);
     };
     $report=function(array $d):string{return date('d M',strtotime($d['start'])).' to '.date('d M',strtotime($d['end']));};
     $rangeForm=function(string $name,string $current,string $otherName,string $other)use($rangeOptions):string{
@@ -194,14 +247,14 @@ if($route==='dashboard'){
           <div class="big-money"><?=$dashboardMoney((float)$saleData['total'])?></div>
           <div class="subtle">Total Sale (<?=e($saleRangeLabel)?>)</div>
           <div class="growth <?= $saleGrowth<0?'negative':'' ?>"><?=($saleGrowth>=0?'↑ ':'↓ ').number_format(abs($saleGrowth),2)?> % <span class="subtle">Growth vs previous period</span></div>
-          <div class="chart dashboard-chart-wrap"><?= $chartSvg($saleData['values'],620,170,'#10b981') ?><div class="chart-baseline"></div></div>
+          <div class="chart dashboard-chart-wrap"><?= $chartSvg($saleData['values'],$saleData['labels'],620,178,'#10b981') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($saleData))?></div>
         </div>
         <div class="expense-card">
           <div class="card-head"><h3>▤ Expenses</h3><?=$rangeForm('expense_range',$expenseRange,'sale_range',$saleRange)?></div>
           <div class="big-money"><?=$dashboardMoney((float)$expenseData['total'])?></div>
           <div class="subtle">Total Expenses (<?=e($expenseRangeLabel)?>)</div>
-          <div class="chart dashboard-chart-wrap expense-chart"><?= $chartSvg($expenseData['values'],460,150,'#10b981') ?><div class="chart-baseline"></div></div>
+          <div class="chart dashboard-chart-wrap expense-chart"><?= $barChartSvg($expenseData['values'],$expenseData['labels'],460,158,'#f59e0b') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($expenseData))?></div>
         </div>
       </div>
