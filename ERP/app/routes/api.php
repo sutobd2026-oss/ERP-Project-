@@ -63,9 +63,12 @@ if($route==='party-search-api'){
     ];
     $wanted=$rolesMap[$role]??['customer'];
     $ph=implode(',',array_fill(0,count($wanted),'?'));
-    $sql='SELECT p.id,p.name,p.phone,
+    $sql='SELECT p.id,p.name,p.phone,p.email,
       COALESCE((SELECT GROUP_CONCAT(pr.role ORDER BY pr.role SEPARATOR ",") FROM party_roles pr WHERE pr.party_id=p.id),"") roles,
-      COALESCE((SELECT SUM(CASE WHEN t.txn_type="sale" THEN t.due WHEN t.txn_type="payment_in" THEN -t.total WHEN t.txn_type="purchase" THEN -t.due WHEN t.txn_type="payment_out" THEN t.total ELSE 0 END) FROM transactions t WHERE t.company_id=p.company_id AND t.party_id=p.id AND t.deleted_at IS NULL),0) outstanding
+      COALESCE((SELECT SUM(CASE WHEN t.txn_type="sale" THEN t.due WHEN t.txn_type="payment_in" THEN -t.total WHEN t.txn_type="purchase" THEN -t.due WHEN t.txn_type="payment_out" THEN t.total ELSE 0 END) FROM transactions t WHERE t.company_id=p.company_id AND t.party_id=p.id AND t.deleted_at IS NULL),0) outstanding,
+      (SELECT pn.note FROM party_notes pn WHERE pn.company_id=p.company_id AND pn.party_id=p.id ORDER BY pn.id DESC LIMIT 1) latest_note,
+      (SELECT cr.rating FROM company_reviews cr WHERE cr.customer_phone=REPLACE(REPLACE(REPLACE(REPLACE(p.phone,"-","")," ",""),"+",""),"(","") AND cr.status="published" ORDER BY cr.id DESC LIMIT 1) latest_review_rating,
+      (SELECT cr.comment FROM company_reviews cr WHERE cr.customer_phone=REPLACE(REPLACE(REPLACE(REPLACE(p.phone,"-","")," ",""),"+",""),"(","") AND cr.status="published" ORDER BY cr.id DESC LIMIT 1) latest_review_comment
       FROM parties p WHERE p.company_id=? AND p.deleted_at IS NULL
       AND EXISTS(SELECT 1 FROM party_roles xr WHERE xr.party_id=p.id AND xr.role IN ('.$ph.'))
       AND (p.name LIKE ? OR p.phone LIKE ? OR p.email LIKE ?)
