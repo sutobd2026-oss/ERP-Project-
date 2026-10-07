@@ -469,7 +469,7 @@ if($route==='parties'){
               <div class="party-address-v110">Address: <?=e($selected['address']??'')?></div>
             </div>
             <div class="party-action-row-v202">
-              <button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal('partyNoteModal')">+ Add Note</button>
+              <button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal('partyNoteModal')"><?=!empty($partyNotes)?'Edit Note':'+ Add Note'?></button>
               <?php if(in_array('customer',$selectedRoles,true)): ?>
                 <button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal('partyReviewModal')">★ Add Review</button>
               <?php endif; ?>
@@ -479,7 +479,7 @@ if($route==='parties'){
             <div class="party-private-notes-v202">
               <div class="party-compact-head-v202">
                 <div><b>PRIVATE NOTES</b><span>Only your company can see these.</span></div>
-                <button type="button" class="party-link-btn-v202" onclick="openModal('partyNoteModal')">+ Note</button>
+                <button type="button" class="party-link-btn-v202" onclick="openModal('partyNoteModal')"><?=!empty($partyNotes)?'Edit Note':'+ Note'?></button>
               </div>
               <div class="party-notes-list-v202">
                 <?php foreach(array_slice($partyNotes,0,2) as $pn): ?>
@@ -571,9 +571,9 @@ if($route==='parties'){
         const p=d.party||{}, roles=Array.isArray(p.roles)?p.roles:[], roleText=roles.map(x=>roleNames[x]||x).join(' · ');
         const phone=String(p.phone||''), wa=phone.replace(/\D+/g,'');
         const balance=Number(d.balance||0);
-        let html='<div class="party-detail-card-v110 party-detail-card-v202"><div class="party-detail-top-v110 party-detail-top-v202"><div><div class="party-heading-v204"><h2>@ '+esc(p.name||'')+'</h2><div class="party-contact-actions-v204">'+(phone?'<a class="call" href="tel:'+esc(phone)+'" title="Call">☎ Call</a>':'')+(wa?'<a class="whatsapp" href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener" title="WhatsApp">◔ WhatsApp</a>':'')+(String(p.email||'').trim()?'<a class="email" href="mailto:'+esc(p.email||'')+'" title="Email">✉ Email</a>':'')+'</div></div><div class="party-role-line-v110">'+esc(roleText)+'</div></div><div class="party-address-v110">Address: '+esc(p.address||'')+'</div></div><div class="party-action-row-v202"><button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyNoteModal\')">+ Add Note</button>'+(roles.includes('customer')?'<button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyReviewModal\')">★ Add Review</button>':'')+'</div>';
+        let html='<div class="party-detail-card-v110 party-detail-card-v202"><div class="party-detail-top-v110 party-detail-top-v202"><div><div class="party-heading-v204"><h2>@ '+esc(p.name||'')+'</h2><div class="party-contact-actions-v204">'+(phone?'<a class="call" href="tel:'+esc(phone)+'" title="Call">☎ Call</a>':'')+(wa?'<a class="whatsapp" href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener" title="WhatsApp">◔ WhatsApp</a>':'')+(String(p.email||'').trim()?'<a class="email" href="mailto:'+esc(p.email||'')+'" title="Email">✉ Email</a>':'')+'</div></div><div class="party-role-line-v110">'+esc(roleText)+'</div></div><div class="party-address-v110">Address: '+esc(p.address||'')+'</div></div><div class="party-action-row-v202"><button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyNoteModal\')">'+(hasNote?'Edit Note':'+ Add Note')+'</button>'+(roles.includes('customer')?'<button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyReviewModal\')">★ Add Review</button>':'')+'</div>';
         if(Array.isArray(d.notes)&&d.notes.length){
-          html+='<div class="party-private-notes-v202"><div class="party-compact-head-v202"><div><b>PRIVATE NOTES</b><span>Only your company can see these.</span></div><button type="button" class="party-link-btn-v202" onclick="openModal(\'partyNoteModal\')">+ Note</button></div><div class="party-notes-list-v202">';
+          html+='<div class="party-private-notes-v202"><div class="party-compact-head-v202"><div><b>PRIVATE NOTES</b><span>Only your company can see these.</span></div><button type="button" class="party-link-btn-v202" onclick="openModal(\'partyNoteModal\')">Edit Note</button></div><div class="party-notes-list-v202">';
           d.notes.slice(0,2).forEach(n=>{html+='<div class="party-note-row-v202"><div class="party-note-text-v202">'+esc(n.note||'')+'</div><small>'+esc(n.user_name||'User')+' · '+esc(dateN(n.created_at))+'</small></div>';});
           if(d.notes.length>2)html+='<div class="party-more-v202">+ '+(d.notes.length-2)+' more notes</div>';
           html+='</div></div>';
