@@ -82,7 +82,7 @@ if($route==='parties'){
             $chk=db()->prepare('SELECT id FROM parties WHERE id=? AND company_id=? AND deleted_at IS NULL LIMIT 1'); $chk->execute([$partyId,$cid]);
             if(!$chk->fetchColumn()){ flash('error','Party not found.'); redirect('parties'); }
             db()->prepare('INSERT INTO party_notes(company_id,party_id,user_id,note) VALUES(?,?,?,?)')->execute([$cid,$partyId,$u['id'],$note]);
-            audit('create','party_note',$partyId,['note'=>$note]); flash('success','Private note added.'); redirect('parties?id='.$partyId);
+            audit('create','party_note',$partyId,['note'=>$note]); flash('success','Private note added.'); redirect('parties');
         }
         if($action==='delete'){
             $id=(int)($_POST['id']??0);
@@ -102,7 +102,7 @@ if($route==='parties'){
         }
         if($action==='review_customer'){
             $partyId=(int)($_POST['party_id']??0); $rating=(int)($_POST['rating']??0); $comment=trim((string)($_POST['comment']??''));
-            if($partyId<=0 || $rating<1 || $rating>5 || $comment===''){ flash('error','Customer review details are incomplete.'); redirect('parties?id='.$partyId); }
+            if($partyId<=0 || $rating<1 || $rating>5 || $comment===''){ flash('error','Customer review details are incomplete.'); redirect('parties'); }
             $chk=db();
             $st=$chk->prepare('SELECT id,phone FROM parties WHERE id=? AND company_id=? AND deleted_at IS NULL LIMIT 1'); $st->execute([$partyId,$cid]); $partyForReview=$st->fetch();
             if(!$partyForReview){ flash('error','Customer not found.'); redirect('parties?id='.$partyId); }
@@ -168,12 +168,12 @@ if($route==='parties'){
             $pdo->commit();
             audit('create','party',$id,['name'=>$name,'phone'=>$phone,'roles'=>$roles]); flash('success','Party added successfully.');
         }catch(PDOException $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getCode()==='23000'?'This phone number already belongs to another party.':'Could not save party.');}
-        redirect('parties?'.http_build_query(array_filter(['type'=>(string)($_POST['party_tab']??'all'),'id'=>(int)$id,'label_id'=>(int)($_POST['party_label_id']??0)],static fn($v)=>$v!=='' && $v!==0)));
+        redirect('parties');
     }
     $q=trim($_GET['q']??'');
     $type=$_GET['type']??'all';
     $labelId=(int)($_GET['label_id']??0);
-    $selectedId=(int)($_GET['id']??0);
+    $selectedId=0; // Party selection is handled client-side; /parties stays the canonical URL.
     $editRequested=(int)($_GET['edit']??0);
     if($editRequested>0)$selectedId=$editRequested;
     $txq=trim($_GET['txq']??'');
@@ -517,6 +517,99 @@ if($route==='parties'){
     <div class="modal-backdrop" id="partyReviewModal" onclick="if(event.target===this)closeModal('partyReviewModal')"><div class="modal"><div class="modal-head"><h2>Add Customer Public Review</h2><button class="close" type="button" onclick="closeModal('partyReviewModal')">×</button></div><?php if(!$selectedVerifiedTransaction): ?><div class="form-body"><div class="subtle" style="font-size:14px;line-height:1.55"><b>A verified transaction is required before you can publish a review for this Customer.</b><br><br>Eligible transactions:<br>• Sale Invoice<br>• Confirmed Sale Order / Delivery Challan<br>• Purchase Bill<br>• Payment In / Payment Out</div><?php if($partyReviewLoadError): ?><div class="subtle" style="margin-top:8px;color:#b45309"><?=e($partyReviewLoadError)?></div><?php endif; ?></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('partyReviewModal')">Close</button></div><?php else: ?><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="party_action" value="review_customer"><input type="hidden" name="party_id" value="<?=$selectedId?>"><div class="form-group"><label>Customer</label><input value="<?=e($selected['name']??'')?> · <?=e($selected['phone']??'')?>" disabled></div><div class="form-group"><label>Verified Transaction</label><input value="<?=e(ucwords(str_replace('_',' ',(string)$selectedVerifiedTransaction['type'])))?> · <?=e($selectedVerifiedTransaction['document_no']??'')?>" disabled></div><div class="form-group"><label>Rating*</label><select name="rating" required><option value="5">★★★★★</option><option value="4">★★★★☆</option><option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option><option value="1">★☆☆☆☆</option></select></div><div class="form-group"><label>Review*</label><textarea name="comment" rows="5" required placeholder="Write your review..."></textarea></div><div class="subtle">This review is public to other sense companies that use the same customer phone number. Customer approval or company linking is not required.</div><?php if($selectedHasPublicReview): ?><div class="subtle" style="margin-top:8px;color:#b45309">Your company has already reviewed this customer. You cannot submit another review.</div><?php endif; ?></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('partyReviewModal')">Cancel</button><button class="btn primary" <?= $selectedHasPublicReview?'disabled':'' ?>>Submit Review</button></div></form><?php endif; ?></div></div>
     <div class="modal-backdrop" id="partyModal" onclick="if(event.target===this)closeModal('partyModal')"><div class="modal"><div class="modal-head"><h2 id="partyModalTitle">Add Party</h2><button class="close" type="button" onclick="closeModal('partyModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="party_action" id="party_action" value="create"><input type="hidden" name="party_tab" value="<?=e($type)?>"><input type="hidden" name="party_label_id" value="<?=e((string)$labelId)?>"><input type="hidden" name="id" id="party_id"><div class="grid2"><div class="form-group"><label>Party Name*</label><input name="name" id="party_name" required></div><div class="form-group"><label>Phone Number*</label><input name="phone" id="party_phone" required maxlength="11" inputmode="numeric" pattern="(013|014|015|016|017|018|019)[0-9]{8}" placeholder="01712345678"></div><div class="form-group"><label>Email ID</label><input type="email" name="email" id="party_email"></div><div class="form-group span2"><label>Party Role(s)*</label><div class="party-role-grid"><?php foreach($roleLabels as $rv=>$rl):?><label class="check-role"><input type="checkbox" name="party_roles[]" value="<?=e($rv)?>" id="party_role_<?=$rv?>"><span><?=e($rl)?></span></label><?php endforeach;?></div><div class="subtle">A party can have multiple roles.</div></div><div class="form-group span2" id="customerLabelGroup"><label>Customer Labels</label><div class="customer-label-picker"><div id="customerLabelChoices" class="customer-label-choices"><?php foreach($customerLabels as $cl): ?><label class="customer-label-choice"><input type="checkbox" name="customer_label_ids[]" value="<?=e((string)$cl['id'])?>" data-label-name="<?=e($cl['name'])?>"><span><?=e($cl['name'])?></span></label><?php endforeach; ?></div><button type="button" class="btn small-btn" onclick="openModal('customerLabelManager')">Manage Labels</button></div><div class="subtle">Select one or multiple labels for this customer.</div></div><div class="form-group span2"><label>Billing / Contact Address</label><textarea name="address" id="party_address"></textarea></div><div class="form-group"><label>Opening Balance</label><input type="number" step="0.01" name="opening_balance" id="party_opening" value="0"></div><div class="form-group"><label>Opening Balance Type</label><select name="opening_balance_type" id="party_opening_type"><option value="receivable">Receivable</option><option value="payable">Payable</option><option value="capital">Investment / Capital</option><option value="loan_given">Loan Given</option><option value="loan_taken">Loan Taken</option></select></div><div class="form-group"><label>Credit Limit</label><input type="number" step="0.01" name="credit_limit" id="party_limit" value="0"></div></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('partyModal')">Cancel</button><button class="btn" type="submit" name="save_new" onclick="document.getElementById('party_action').value='create'">Save & New</button><button class="btn primary" type="submit">Save</button></div></form></div></div>
     <div class="modal-backdrop" id="customerLabelManager" onclick="if(event.target===this)closeModal('customerLabelManager')"><div class="modal"><div class="modal-head"><h2>Manage Customer Labels</h2><button class="close" type="button" onclick="closeModal('customerLabelManager')">×</button></div><div class="form-body"><form method="post" class="customer-label-add-form"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="party_action" value="add_customer_label"><div class="form-group"><label>New Label</label><input name="label_name" maxlength="100" placeholder="e.g. VIP Customer"></div><button class="btn primary" type="submit">Add Label</button></form><div class="customer-label-manager-list" style="margin-top:14px"><?php if($customerLabels): foreach($customerLabels as $cl): ?><div class="customer-label-manager-row"><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="party_action" value="rename_customer_label"><input type="hidden" name="label_id" value="<?=e((string)$cl['id'])?>"><input name="label_name" value="<?=e($cl['name'])?>" maxlength="100"><button class="btn small-btn" type="submit">Edit</button></form><form method="post" onsubmit="return confirm('Delete this customer label? Existing customer assignments will be removed.');"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="party_action" value="delete_customer_label"><input type="hidden" name="label_id" value="<?=e((string)$cl['id'])?>"><button class="btn small-btn" type="submit">Delete</button></form></div><?php endforeach; else: ?><div class="subtle">No customer labels created yet.</div><?php endif; ?></div></div></div></div>
+    <script>
+    (function(){
+      const api='<?=e(url('party-detail-api'))?>';
+      const root=document.querySelector('.parties-layout-v110');
+      const detail=root?.querySelector('.party-detail-v110');
+      if(!root||!detail)return;
+
+      const roleNames={customer:'Customer',supplier:'Supplier',investor:'Investor',lender:'Lender',borrower:'Borrower',employee:'Employee',other:'Other'};
+      const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]||m));
+      const moneyN=v=>'৳'+Number(v||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2});
+      const dateN=v=>{if(!v)return '—';const d=new Date(String(v).replace(' ','T'));return Number.isNaN(d.getTime())?String(v).slice(0,10):String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();};
+
+      function updateRowState(id){
+        document.querySelectorAll('.party-list-row-v110').forEach(r=>r.classList.toggle('active',String(r.dataset.partyId)===String(id)));
+      }
+      function updateNoteModal(id){
+        document.querySelectorAll('#partyNoteModal input[name="id"]').forEach(x=>x.value=String(id||''));
+      }
+      function updateReviewModal(d){
+        const modal=document.getElementById('partyReviewModal');
+        if(!modal)return;
+        const p=d.party||{}, customer=(p.roles||[]).includes('customer'), verified=d.verified_transaction, csrf=modal.querySelector('input[name="_csrf"]')?.value||document.querySelector('#partyModal input[name="_csrf"]')?.value||'';
+        const inner=modal.querySelector('.modal');
+        if(!inner)return;
+        let html='<div class="modal-head"><h2>Add Customer Public Review</h2><button class="close" type="button" onclick="closeModal(\'partyReviewModal\')">×</button></div>';
+        if(!customer){
+          html+='<div class="form-body"><div class="subtle">Public reviews are available for Customers only.</div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal(\'partyReviewModal\')">Close</button></div>';
+        }else if(!verified){
+          html+='<div class="form-body"><div class="subtle" style="font-size:14px;line-height:1.55"><b>A verified transaction is required before you can publish a review for this Customer.</b><br><br>Eligible transactions:<br>• Sale Invoice<br>• Confirmed Sale Order / Delivery Challan<br>• Purchase Bill<br>• Payment In / Payment Out</div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal(\'partyReviewModal\')">Close</button></div>';
+        }else{
+          const already=!!d.has_public_review;
+          html+='<form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="'+esc(csrf)+'"><input type="hidden" name="party_action" value="review_customer"><input type="hidden" name="party_id" value="'+esc(p.id)+'"><div class="form-group"><label>Customer</label><input value="'+esc(p.name||'')+' · '+esc(p.phone||'')+'" disabled></div><div class="form-group"><label>Verified Transaction</label><input value="'+esc(String(verified.type||'').replace(/_/g,' '))+' · '+esc(verified.document_no||'')+'" disabled></div><div class="form-group"><label>Rating*</label><select name="rating" required><option value="5">★★★★★</option><option value="4">★★★★☆</option><option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option><option value="1">★☆☆☆☆</option></select></div><div class="form-group"><label>Review*</label><textarea name="comment" rows="5" required placeholder="Write your review..."></textarea></div><div class="subtle">This review is public to other sense companies that use the same customer phone number.</div>'+(already?'<div class="subtle" style="margin-top:8px;color:#b45309">Your company has already reviewed this customer. You cannot submit another review.</div>':'')+'</div><div class="form-footer"><button type="button" class="btn" onclick="closeModal(\'partyReviewModal\')">Cancel</button><button class="btn primary" '+(already?'disabled':'')+'>Submit Review</button></div></form>';
+        }
+        inner.innerHTML=html;
+      }
+      function render(d){
+        const p=d.party||{}, roles=Array.isArray(p.roles)?p.roles:[], roleText=roles.map(x=>roleNames[x]||x).join(' · ');
+        const phone=String(p.phone||''), wa=phone.replace(/\D+/g,'');
+        const balance=Number(d.balance||0);
+        let html='<div class="party-detail-card-v110 party-detail-card-v202"><div class="party-detail-top-v110 party-detail-top-v202"><div><div class="party-heading-v204"><h2>@ '+esc(p.name||'')+'</h2><div class="party-contact-actions-v204">'+(phone?'<a class="call" href="tel:'+esc(phone)+'" title="Call">☎ Call</a>':'')+(wa?'<a class="whatsapp" href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener" title="WhatsApp">◔ WhatsApp</a>':'')+(String(p.email||'').trim()?'<a class="email" href="mailto:'+esc(p.email||'')+'" title="Email">✉ Email</a>':'')+'</div></div><div class="party-role-line-v110">'+esc(roleText)+'</div></div><div class="party-address-v110">Address: '+esc(p.address||'')+'</div></div><div class="party-action-row-v202"><button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyNoteModal\')">+ Add Note</button>'+(roles.includes('customer')?'<button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyReviewModal\')">★ Add Review</button>':'')+'</div>';
+        if(Array.isArray(d.notes)&&d.notes.length){
+          html+='<div class="party-private-notes-v202"><div class="party-compact-head-v202"><div><b>PRIVATE NOTES</b><span>Only your company can see these.</span></div><button type="button" class="party-link-btn-v202" onclick="openModal(\'partyNoteModal\')">+ Note</button></div><div class="party-notes-list-v202">';
+          d.notes.slice(0,2).forEach(n=>{html+='<div class="party-note-row-v202"><div class="party-note-text-v202">'+esc(n.note||'')+'</div><small>'+esc(n.user_name||'User')+' · '+esc(dateN(n.created_at))+'</small></div>';});
+          if(d.notes.length>2)html+='<div class="party-more-v202">+ '+(d.notes.length-2)+' more notes</div>';
+          html+='</div></div>';
+        }
+        html+='<div class="party-detail-grid-v110 party-detail-grid-v202"><div><span>Phone:</span> '+esc(phone)+'</div><div><span>Email:</span> '+esc(p.email||'')+'</div><div><span>Credit Limit:</span> '+moneyN(p.credit_limit)+'</div><div><span>Current Balance:</span> <strong class="'+(balance<0?'balance-negative':'balance-positive')+'">'+moneyN(Math.abs(balance))+'</strong></div></div></div>';
+        if(roles.includes('customer')){
+          html+='<div class="party-reviews-compact-v202"><div class="party-compact-head-v202"><div><b>CUSTOMER PUBLIC REVIEWS</b><span>'+Number(d.reviews?.length||0)+' Review'+(Number(d.reviews?.length||0)===1?'':'s')+' · Public</span></div><button type="button" class="party-link-btn-v202" onclick="openModal(\'partyReviewModal\')">★ Review</button></div><div class="party-reviews-list-v202">';
+          if(d.reviews?.length){d.reviews.forEach(rv=>{html+='<div class="party-review-row-v202"><div class="party-review-top-v202"><strong>'+esc('★'.repeat(Number(rv.rating||0))+'☆'.repeat(Math.max(0,5-Number(rv.rating||0))))+'</strong><span>'+esc(rv.reviewer_name||'')+'</span><small>'+esc(dateN(rv.created_at))+'</small></div><div class="party-review-comment-v202">'+esc(rv.comment||'')+'</div><small class="party-review-meta-v202">Verified '+esc(String(rv.verified_transaction_type||'').replace(/_/g,' '))+'</small></div>';});}
+          else html+='<div class="party-review-empty-v202">No public reviews yet.</div>';
+          html+='</div></div>';
+        }
+        html+='<div class="party-transactions-v110"><div class="party-trans-head-v110"><h2>TRANSACTIONS</h2><div></div></div><div class="party-tx-wrap-v110"><table><thead><tr><th></th><th>TYPE</th><th>NUMBER</th><th>DATE</th><th>TOTAL</th><th>BALANCE / UNUSED</th><th>STATUS</th><th></th></tr></thead><tbody>';
+        if(Array.isArray(d.transactions)&&d.transactions.length){
+          d.transactions.forEach(tr=>{const inTypes=['payment_in','sale_return'];const isIn=inTypes.includes(tr.txn_type);const bal=Number(tr.due||0);html+='<tr><td><span class="party-tx-dot-v110 '+(isIn?'in':'out')+'"></span></td><td>'+esc(String(tr.txn_type||'').replace(/_/g,' '))+'</td><td>'+esc(tr.document_no||'')+'</td><td>'+esc(dateN(tr.txn_date))+'</td><td class="'+(isIn?'tx-in':'tx-out')+'">'+moneyN(tr.total)+'</td><td>'+moneyN(Math.abs(bal))+'</td><td><span class="status '+(tr.status==='paid'?'paid':'open')+'">'+esc(String(tr.status||''))+'</span></td><td class="party-tx-action-v110"><button type="button" class="dots" aria-label="Actions">⋮</button><div class="row-menu"><a href="<?=e(url('party-ledger'))?>?id='+encodeURIComponent(p.id)+'">View Ledger</a></div></td></tr>';});
+        }else html+='<tr><td colspan="8" class="subtle">No transactions for this party yet.</td></tr>';
+        html+='</tbody></table></div></div>';
+        detail.innerHTML=html;
+        updateRowState(p.id);
+        updateNoteModal(p.id);
+        updateReviewModal(d);
+        localStorage.setItem('sense.selectedParty',String(p.id));
+      }
+      async function selectParty(id, push){
+        if(!id)return;
+        detail.innerHTML='<div class="party-no-selection-v110"><h2>Loading Party…</h2><p>Please wait.</p></div>';
+        try{
+          const res=await fetch(api+'?id='+encodeURIComponent(id),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+          const d=await res.json();
+          if(!res.ok||!d?.ok)throw new Error(d?.error||'Party could not be loaded.');
+          render(d);
+          const clean=location.pathname||'/parties';
+          if(location.search)history.replaceState({party:id},'',clean);
+        }catch(err){
+          detail.innerHTML='<div class="party-no-selection-v110"><h2>Unable to load party</h2><p>'+esc(err.message||'Please reload the Parties page.')+'</p></div>';
+        }
+      }
+      document.addEventListener('click',function(e){
+        const link=e.target.closest('.party-row-link-v111');
+        if(!link)return;
+        e.preventDefault();
+        const row=link.closest('.party-list-row-v110');
+        selectParty(row?.dataset.partyId, false);
+      });
+      document.addEventListener('DOMContentLoaded',function(){
+        try{history.replaceState({},'',location.pathname||'/parties');}catch(_){}
+        const saved=localStorage.getItem('sense.selectedParty');
+        const row=saved?document.querySelector('.party-list-row-v110[data-party-id="'+CSS.escape(saved)+'"]'):document.querySelector('.party-list-row-v110.active');
+        if(row)selectParty(row.dataset.partyId,false);
+      });
+    })();
+    </script>
     <script>
     document.getElementById('partyListSearchBtn')?.addEventListener('click',()=>{const f=document.getElementById('partyListSearchForm');f?.classList.toggle('show');f?.querySelector('input[name="q"]')?.focus();});
     document.addEventListener('click',e=>{const menu=e.target.closest('.party-row-menu-v110,.party-dots-v110');if(menu)return;document.querySelectorAll('.party-row-menu-v110.show').forEach(x=>x.classList.remove('show'));});
