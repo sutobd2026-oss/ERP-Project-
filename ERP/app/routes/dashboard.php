@@ -247,7 +247,7 @@ if($route==='dashboard'){
           <div class="big-money"><?=$dashboardMoney((float)$saleData['total'])?></div>
           <div class="subtle">Total Sale (<?=e($saleRangeLabel)?>)</div>
           <div class="growth <?= $saleGrowth<0?'negative':'' ?>"><?=($saleGrowth>=0?'↑ ':'↓ ').number_format(abs($saleGrowth),2)?> % <span class="subtle">Growth vs previous period</span></div>
-          <div class="chart dashboard-chart-wrap"><?= $chartSvg($saleData['values'],$saleData['labels'],620,178,'#10b981') ?><div class="chart-baseline"></div></div>
+          <div class="chart dashboard-chart-wrap"><?= $barChartSvg($saleData['values'],$saleData['labels'],620,178,'#10b981') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($saleData))?></div>
         </div>
         <div class="expense-card">
