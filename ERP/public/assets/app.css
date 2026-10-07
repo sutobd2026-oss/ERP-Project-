@@ -1777,3 +1777,4 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .item-inline-meta-row-v237 .item-note-inline-v238{
   white-space:normal!important;
 }
+.sales-filterbar{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;padding:12px 0}.sales-filterbar .between{display:flex;align-items:center;gap:5px;flex:0 0 auto}.sales-filterbar .between input{width:162px;min-width:162px;max-width:162px;box-sizing:border-box}.sales-filterbar .sales-filter-search{flex:0 0 200px;width:200px;min-width:200px;max-width:200px;font-size:12px;box-sizing:border-box}.sales-filterbar .btn{flex:0 0 auto}.sales-filterbar .sales-add-btn{margin-left:auto;flex:0 0 auto}
