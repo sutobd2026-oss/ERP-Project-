@@ -118,14 +118,17 @@ page_start('Items');
                 audit('update','item_bundle',$parentId,['component_count'=>count($clean)]);flash('success',count($clean)?'Bundle items saved successfully.':'Bundle items cleared.');redirect('items?tab='.$tab.'&view='.$parentId);
             }
             if($action==='save_item'){
+                // Edit forms submit back without the ?edit=ID query string.
+                // Prefer the posted item_id so the current item is excluded from duplicate-name validation.
+                $saveEditId=(int)($_POST['item_id']??$editId);
                 $type=($_POST['item_type']??'product')==='service'?'service':'product';
                 $name=trim($_POST['name']??'');
                 $code=trim($_POST['code']??'');
                 // Barcode is managed separately from Add/Edit Item. Preserve an existing barcode on edit.
                 $barcode='';
-                if($editId){
+                if($saveEditId){
                     $keep=$pdo->prepare('SELECT barcode FROM items WHERE id=? AND company_id=? LIMIT 1');
-                    $keep->execute([$editId,$cid]);
+                    $keep->execute([$saveEditId,$cid]);
                     $keepRow=$keep->fetch();
                     $barcode=(string)($keepRow['barcode']??'');
                 }
@@ -133,7 +136,7 @@ page_start('Items');
                 // Item names must be unique within the same company (case/space insensitive).
                 $dupSql='SELECT id FROM items WHERE company_id=? AND active=1 AND LOWER(TRIM(name))=LOWER(TRIM(?))';
                 $dupParams=[$cid,$name];
-                if($editId){ $dupSql.=' AND id<>?'; $dupParams[]=$editId; }
+                if($saveEditId){ $dupSql.=' AND id<>?'; $dupParams[]=$saveEditId; }
                 $dupSql.=' LIMIT 1';
                 $dupSt=$pdo->prepare($dupSql); $dupSt->execute($dupParams);
                 if($dupSt->fetch()) throw new RuntimeException('An item with this name already exists.');
@@ -150,10 +153,10 @@ page_start('Items');
                 $unitId=(int)($_POST['unit_id']??0)?:null;
                 $sale=(float)($_POST['sale_price']??0);$wh=(float)($_POST['wholesale_price']??0);$minWh=(float)($_POST['min_wholesale_qty']??0);$buy=(float)($_POST['purchase_price']??0);
                 $opening=$type==='product'?(float)($_POST['opening_stock']??0):0;$low=$type==='product'?(float)($_POST['low_stock_limit']??0):0;
-                if($editId){
-                    $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? LIMIT 1');$st->execute([$editId,$cid]);$old=$st->fetch();if(!$old)throw new RuntimeException('Item not found.');
-                    $pdo->prepare('UPDATE items SET item_type=?,name=?,code=?,barcode=?,serial_tracked=?,category_id=?,unit_id=?,sale_price=?,wholesale_price=?,min_wholesale_qty=?,purchase_price=?,low_stock_limit=?,description=?,item_note=?,warranty=?,location=? WHERE id=? AND company_id=?')->execute([$type,$name,$code?:null,$barcode?:null,($type==='product' && !empty($_POST['serial_tracked']))?1:0,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$low,trim($_POST['description']??'')?:null,trim($_POST['item_note']??'')?:null,trim($_POST['warranty']??'')?:null,trim($_POST['location']??'')?:null,$editId,$cid]);
-                    $id=$editId;
+                if($saveEditId){
+                    $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? LIMIT 1');$st->execute([$saveEditId,$cid]);$old=$st->fetch();if(!$old)throw new RuntimeException('Item not found.');
+                    $pdo->prepare('UPDATE items SET item_type=?,name=?,code=?,barcode=?,serial_tracked=?,category_id=?,unit_id=?,sale_price=?,wholesale_price=?,min_wholesale_qty=?,purchase_price=?,low_stock_limit=?,description=?,item_note=?,warranty=?,location=? WHERE id=? AND company_id=?')->execute([$type,$name,$code?:null,$barcode?:null,($type==='product' && !empty($_POST['serial_tracked']))?1:0,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$low,trim($_POST['description']??'')?:null,trim($_POST['item_note']??'')?:null,trim($_POST['warranty']??'')?:null,trim($_POST['location']??'')?:null,$saveEditId,$cid]);
+                    $id=$saveEditId;
                     $pdo->prepare('DELETE FROM item_categories WHERE item_id=?')->execute([$id]);
                     if($categoryIds){
                         $insCat=$pdo->prepare('INSERT IGNORE INTO item_categories(item_id,category_id) VALUES(?,?)');
@@ -671,7 +674,7 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
 <?php if(!empty($selected['bundle_components'])): foreach($selected['bundle_components'] as $bc): ?><tr class="bundle-config-row"><td><select name="component_item_id[]" required><option value="">Select product</option><?php foreach($items as $opt): if($opt['item_type']!=='product'||(int)$opt['id']===(int)$selected['id']||!(int)$opt['active'])continue; ?><option value="<?=$opt['id']?>" <?=((int)$opt['id']===(int)$bc['item_id'])?'selected':''?>><?=e($opt['name'])?></option><?php endforeach; ?></select></td><td><input type="number" name="component_qty[]" min="0.001" step="0.001" value="<?=e((string)$bc['quantity'])?>" required></td><td><button type="button" class="btn small-btn" onclick="this.closest('tr').remove()">×</button></td></tr><?php endforeach; else: ?><tr class="bundle-config-row"><td><select name="component_item_id[]"><option value="">Select product</option><?php foreach($items as $opt): if($opt['item_type']!=='product'||(int)$opt['id']===(int)$selected['id']||!(int)$opt['active'])continue; ?><option value="<?=$opt['id']?>"><?=e($opt['name'])?></option><?php endforeach; ?></select></td><td><input type="number" name="component_qty[]" min="0.001" step="0.001" value="1"></td><td><button type="button" class="btn small-btn" onclick="this.closest('tr').remove()">×</button></td></tr><?php endif; ?>
 </tbody></table></div><div style="margin-top:10px"><button type="button" class="btn" onclick="addBundleConfigRow()">+ Add Free Item</button></div></div><div class="form-footer"><button type="button" class="btn" onclick="closeModal('itemBundleModal')">Cancel</button><button class="btn primary">Save Bundle</button></div></form></div></div>
     <?php endif; ?>
-    <div class="modal-backdrop" id="itemModal"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group">
+    <div class="modal-backdrop" id="itemModal"><div class="modal"><div class="modal-head"><h2><?= $edit?'Edit Item':'Add Item' ?></h2><button class="close" onclick="closeModal('itemModal')">×</button></div><form method="post"><div class="form-body"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_item"><?php if($edit): ?><input type="hidden" name="item_id" value="<?= (int)$edit['id'] ?>"><?php endif; ?><div class="item-form-top"><div class="form-group"><label>Item Name*</label><input name="name" required value="<?=e($edit['name']??'')?>"></div><div class="form-group">
 <label>Category</label>
 <details class="item-category-dropdown" id="itemCategoryDropdown">
   <summary class="item-category-trigger">
