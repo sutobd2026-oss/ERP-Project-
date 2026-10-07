@@ -1981,3 +1981,8 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
   .item-info-grid-v237{grid-template-columns:1fr!important;}
   .item-inline-meta-row-v237{grid-column:auto!important;}
 }
+
+/* v242: Item note badge in master list. */
+.item-note-list-v241{display:block!important;margin-top:4px!important;color:#8a5b00!important;font-size:10.5px!important;line-height:1.35!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important;}
+.item-note-list-v241 b{font-size:9.5px!important;letter-spacing:.02em!important;color:#a56b00!important;}
+.item-master-row.selected .item-note-list-v241{color:#805a00!important;}
