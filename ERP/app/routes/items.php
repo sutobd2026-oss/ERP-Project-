@@ -582,6 +582,7 @@ page_start('Items');
                 <a class="item-master-main" href="<?=e(url('items?tab='.$tab))?>">
                   <span class="item-master-name"><?=e($r['name'])?></span>
                   <?php if($r['code']||$r['barcode']): ?><span class="item-master-meta"><?=e($r['code']?:$r['barcode'])?></span><?php endif; ?>
+                  <?php if(trim((string)($r['item_note']??''))!==''): ?><span class="item-note-list-v241"><b>NOTE:</b> <?=e((string)$r['item_note'])?></span><?php endif; ?>
                 </a>
                 <span class="item-master-qty <?=((float)$r['current_stock']<0)?'neg':'positive'?> <?=((float)$r['current_stock']>0)?'pos':''?>"><?= $r['item_type']==='service' ? '—' : qty((float)$r['current_stock']) ?></span>
                 <div class="item-master-actions">
