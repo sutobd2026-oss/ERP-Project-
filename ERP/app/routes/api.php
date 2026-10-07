@@ -258,6 +258,12 @@ if($route==='inline-product-create'){
         $opening=max(0,(float)($_POST['opening_stock']??0)); $low=max(0,(float)($_POST['low_stock_limit']??0));
         $serial=!empty($_POST['serial_tracked'])?1:0; $desc=trim((string)($_POST['description']??''));
         if($name==='')throw new RuntimeException('Product name is required.');
+        // Keep inline Add Product consistent with the main Item form:
+        // product names must be unique within the same company, ignoring
+        // case and surrounding whitespace.
+        $dup=$pdo->prepare('SELECT id FROM items WHERE company_id=? AND active=1 AND LOWER(TRIM(name))=LOWER(TRIM(?)) LIMIT 1');
+        $dup->execute([$cid,$name]);
+        if($dup->fetchColumn())throw new RuntimeException('A product with this name already exists.');
         $pdo->beginTransaction();
         $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,serial_tracked,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit,description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
             ->execute([$cid,'product',$name,$code?:null,null,$serial,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$opening,$low,$desc]);
