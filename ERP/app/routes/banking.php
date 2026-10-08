@@ -195,6 +195,8 @@ if($route==='bank-accounts'){
         $q=$pdo->prepare($sql);$q->execute($args);$transactions=$q->fetchAll(PDO::FETCH_ASSOC);
     }
     $selectedBalance=$selected?bank_balance($cid,(int)$selected['id']):0.0;
+    $totalBankValue=0.0;
+    foreach($banks as $bankRow){ $totalBankValue+=bank_balance($cid,(int)$bankRow['id']); }
 
     $viewCount=[];
     foreach($banks as $b){
@@ -210,7 +212,10 @@ if($route==='bank-accounts'){
       .bank-page-v122{height:calc(100vh - 80px);min-height:520px;display:grid;grid-template-columns:420px minmax(0,1fr);gap:10px;overflow:hidden;margin:-1px -2px -2px}
       .bank-left-v122,.bank-right-v122{background:#fff;border:1px solid #dfe5ec;min-width:0;min-height:0;box-shadow:0 1px 4px rgba(20,33,48,.06)}
       .bank-left-v122{display:flex;flex-direction:column;overflow:hidden}
-      .bank-left-top-v122{padding:16px 14px;border-bottom:1px solid #e4e8ed;display:flex;justify-content:flex-end;align-items:center;background:#fff}
+      .bank-left-top-v122{padding:14px 14px;border-bottom:1px solid #e4e8ed;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#fff}
+      .bank-total-wrap-v151{min-width:0}
+      .bank-total-label-v151{font-size:11px;color:#8a96a6;line-height:1.2}
+      .bank-total-value-v151{margin-top:3px;font-size:19px;line-height:1.15;font-weight:700;color:#10b981;white-space:nowrap}
       .bank-add-v122{background:#f7a61a;border:1px solid #f7a61a;color:#fff;border-radius:22px;padding:10px 16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
       .bank-add-v122:hover{filter:brightness(.98)}
       .bank-list-head-v122{display:grid;grid-template-columns:1fr 110px 30px;padding:11px 14px;background:#f8fafc;border-bottom:1px solid #dfe5ec;color:#596779;font-size:12px;font-weight:700}
@@ -238,7 +243,7 @@ if($route==='bank-accounts'){
     </style>
     <div class="bank-page-v122">
       <section class="bank-left-v122">
-        <div class="bank-left-top-v122"><button type="button" class="bank-add-v122" onclick="document.getElementById('bankAddModalV122').classList.add('show')">⊕ Add Bank</button></div>
+        <div class="bank-left-top-v122"><div class="bank-total-wrap-v151"><div class="bank-total-label-v151">TOTAL BANK VALUE</div><div class="bank-total-value-v151"><?=money($totalBankValue)?></div></div><button type="button" class="bank-add-v122" onclick="document.getElementById('bankAddModalV122').classList.add('show')">⊕ Add Bank</button></div>
         <div class="bank-list-head-v122"><span>ACCOUNT NAME</span><span style="text-align:right">AMOUNT</span><span></span></div>
         <div class="bank-list-v122">
           <?php foreach($banks as $b): $bid=(int)$b['id']; $bal=bank_balance($cid,$bid); $used=($viewCount[$bid]??0)>0; ?>
