@@ -262,18 +262,60 @@ $route = $route ?: 'dashboard';
 /** v125: platform control / SaaS operations schema. */
 function ensure_platform_schema(): void {
     static $done=false; if($done)return; $done=true; $pdo=db();
+
+    // Platform Control depends on these company billing/plan fields. Repair older
+    // installations cumulatively so one missing optional column cannot blank the
+    // Companies & Usage screen.
     try{
         $cols=$pdo->query("SHOW COLUMNS FROM companies")->fetchAll(PDO::FETCH_COLUMN,0);
-        if(!in_array('account_status',$cols,true))$pdo->exec("ALTER TABLE companies ADD COLUMN account_status VARCHAR(20) NOT NULL DEFAULT 'active'");
-        if(!in_array('plan_name',$cols,true))$pdo->exec("ALTER TABLE companies ADD COLUMN plan_name VARCHAR(80) NOT NULL DEFAULT 'Trial'");
-        if(!in_array('subscription_expires_at',$cols,true))$pdo->exec("ALTER TABLE companies ADD COLUMN subscription_expires_at DATETIME NULL");
-    }catch(Throwable $e){}
+        $companyCols=[
+            ['account_status',"VARCHAR(20) NOT NULL DEFAULT 'active'"],
+            ['plan_name',"VARCHAR(80) NOT NULL DEFAULT 'Free'"],
+            ['billing_cycle',"VARCHAR(20) NULL"],
+            ['subscription_amount',"DECIMAL(14,2) NOT NULL DEFAULT 0"],
+            ['subscription_started_at',"DATETIME NULL"],
+            ['subscription_expires_at',"DATETIME NULL"],
+            ['plan_converted_at',"DATETIME NULL"],
+            ['plan_converted_by',"INT UNSIGNED NULL"]
+        ];
+        foreach($companyCols as $def){
+            if(!in_array($def[0],$cols,true)){
+                try{$pdo->exec("ALTER TABLE companies ADD COLUMN {$def[0]} {$def[1]}");}catch(Throwable $e){error_log('platform company column repair '.$def[0].': '.$e->getMessage());}
+            }
+        }
+        // Earlier versions used Trial while the current SaaS policy uses Free.
+        try{$pdo->exec("UPDATE companies SET plan_name='Free' WHERE plan_name IS NULL OR plan_name='' OR plan_name='Trial'");}catch(Throwable $e){}
+    }catch(Throwable $e){error_log('platform companies schema repair: '.$e->getMessage());}
+
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS platform_admins (id INT UNSIGNED NOT NULL AUTO_INCREMENT,username VARCHAR(100) NOT NULL,email VARCHAR(191) NULL,name VARCHAR(150) NOT NULL,password_hash VARCHAR(255) NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'active',last_login_at DATETIME NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(id),UNIQUE KEY uq_pa_username(username),UNIQUE KEY uq_pa_email(email)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");$n=(int)$pdo->query('SELECT COUNT(*) FROM platform_admins')->fetchColumn();if($n===0){$pdo->prepare('INSERT INTO platform_admins(username,email,name,password_hash,status) VALUES(?,?,?,?,"active")')->execute(['platformadmin','platform@suto.bd','Suto Platform Admin','$2y$12$ewE20wVSVoyaqBc7EkR8NODwLUxiMpfHLelqnu/sdmuZckpoHMDd.']);}}catch(Throwable $e){}
+
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS platform_login_events (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,user_id INT UNSIGNED NOT NULL,company_id INT UNSIGNED NOT NULL,ip_address VARCHAR(64) NULL,user_agent VARCHAR(500) NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY idx_ple_company(company_id,created_at),KEY idx_ple_user(user_id,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}catch(Throwable $e){}
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS platform_sessions (session_id VARCHAR(191) NOT NULL,user_id INT UNSIGNED NOT NULL,company_id INT UNSIGNED NOT NULL,last_seen_at DATETIME NOT NULL,created_at DATETIME NOT NULL,ip_address VARCHAR(64) NULL,user_agent VARCHAR(500) NULL,PRIMARY KEY(session_id),KEY idx_ps_company(company_id,last_seen_at),KEY idx_ps_last_seen(last_seen_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}catch(Throwable $e){}
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS platform_announcements (id INT UNSIGNED NOT NULL AUTO_INCREMENT,title VARCHAR(191) NOT NULL,body TEXT NOT NULL,type VARCHAR(20) NOT NULL DEFAULT 'notice',target_type VARCHAR(20) NOT NULL DEFAULT 'all',target_company_id INT UNSIGNED NULL,priority INT NOT NULL DEFAULT 0,is_active TINYINT(1) NOT NULL DEFAULT 1,starts_at DATETIME NOT NULL,ends_at DATETIME NULL,created_by INT UNSIGNED NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY idx_pa_active(is_active,starts_at,ends_at),KEY idx_pa_company(target_company_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}catch(Throwable $e){}
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS platform_announcement_reads (announcement_id INT UNSIGNED NOT NULL,user_id INT UNSIGNED NOT NULL,read_at DATETIME NOT NULL,PRIMARY KEY(announcement_id,user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}catch(Throwable $e){}
     try{$pdo->exec("CREATE TABLE IF NOT EXISTS support_tickets (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,company_id INT UNSIGNED NOT NULL,user_id INT UNSIGNED NULL,subject VARCHAR(191) NOT NULL,category VARCHAR(40) NOT NULL DEFAULT 'bug',message TEXT NOT NULL,priority VARCHAR(20) NOT NULL DEFAULT 'normal',status VARCHAR(20) NOT NULL DEFAULT 'open',admin_reply TEXT NULL,admin_replied_by INT UNSIGNED NULL,admin_replied_at DATETIME NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY(id),KEY idx_st_company(company_id,created_at),KEY idx_st_status(status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");}catch(Throwable $e){}
+
+    // Billing history introduced with manual Free/Paid plan management.
+    try{
+        $pdo->exec("CREATE TABLE IF NOT EXISTS company_billing_records (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            company_id INT UNSIGNED NOT NULL,
+            plan_name VARCHAR(80) NOT NULL DEFAULT 'Free',
+            billing_cycle VARCHAR(20) NOT NULL DEFAULT 'monthly',
+            amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+            payment_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            starts_at DATETIME NOT NULL,
+            ends_at DATETIME NULL,
+            converted_by INT UNSIGNED NULL,
+            note TEXT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(id),
+            KEY idx_cbr_company(company_id,id),
+            KEY idx_cbr_status(payment_status),
+            KEY idx_cbr_dates(starts_at,ends_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }catch(Throwable $e){error_log('platform billing table repair: '.$e->getMessage());}
+}
 }
 ensure_platform_schema();
 platform_touch_current_session();
