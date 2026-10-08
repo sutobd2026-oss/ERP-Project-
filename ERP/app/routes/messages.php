@@ -259,7 +259,7 @@ if($route==='messages'){
           if(!company||!user)return;
           const cid=Number(company.value||0); user.innerHTML='<option value="">Select user</option>';
           users.filter(x=>Number(x.company_id)===cid && Number(x.id)!==<?=json_encode((int)$u['id'])?>).forEach(x=>{
-            const o=document.createElement('option'); o.value=x.id; o.textContent=x.name+' · '+(x.role||'User')+' · '+x.email;
+            const o=document.createElement('option'); o.value=x.id; o.textContent=x.name;
             if(Number(selectedUser)===Number(x.id))o.selected=true; user.appendChild(o);
           });
         }
