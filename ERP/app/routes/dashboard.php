@@ -6,17 +6,27 @@ if($route==='dashboard'){
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
     echo '<style>
       .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
-      .dashboard-chart-wrap{height:178px;position:relative;margin-top:14px;padding:0 2px}
+      .dashboard-chart-wrap{height:112px;position:relative;margin-top:9px;padding:0 2px}
       .dashboard-chart-svg{display:block;width:100%;height:100%;overflow:visible}
       .dashboard-chart-point{opacity:.06;transition:opacity .15s ease,transform .15s ease}
       .dashboard-chart-point:hover{opacity:1}
-      .dashboard-chart-bars{height:158px}
+      .dashboard-chart-bars{height:112px}
       .dashboard-chart-bars rect{transition:opacity .15s ease,transform .15s ease}
       .dashboard-chart-bars rect:hover{opacity:.82}
-      .dashboard-report{margin-top:2px}
+      .dashboard-report{margin-top:1px}
+      .dashboard-chart-head{display:flex;align-items:center;gap:10px}
+      .dashboard-chart-head h3{display:flex;align-items:center;gap:8px;margin:0;white-space:nowrap}
+      .dashboard-chart-total{display:inline-flex;align-items:baseline}
+      .dashboard-chart-total .dash-money-main{font-size:21px!important;line-height:1.05!important;font-weight:700}
+      .dashboard-chart-total .dash-money-dec{font-size:12px!important;line-height:1!important}
+      .dashboard-chart-total.expense-total .dash-money-main{font-size:21px!important}
+      .dashboard-chart-wrap .dashboard-chart-bars{position:absolute;left:0;right:0;bottom:0}
       .sales-card .chart-baseline,.expense-card .chart-baseline{display:none}
-      .sales-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:19px;height:1px;background:rgba(148,163,184,.12)}
-      .expense-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:19px;height:1px;background:rgba(148,163,184,.12)}
+      .sales-card .dashboard-chart-wrap:after,.expense-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:20px;height:1px;background:rgba(148,163,184,.12)}
+      @media(max-width:700px){
+        .dashboard-chart-total .dash-money-main{font-size:18px!important}
+        .dashboard-chart-total .dash-money-dec{font-size:11px!important}
+      }
 
       .dashboard-cash-link .cash-negative-value{color:#ef4444!important}
       .dashboard-cash-link.cash-negative-warning .title:after{content:" ⚠";color:#ef4444;font-size:12px;margin-left:4px}
@@ -246,18 +256,20 @@ if($route==='dashboard'){
     <section class="dashboard-blur-target">
       <div class="cards-top">
         <div class="sales-card">
-          <div class="card-head"><h3>▱ Sale</h3><?=$rangeForm('sale_range',$saleRange,'expense_range',$expenseRange)?></div>
-          <div class="big-money"><?=$dashboardMoney((float)$saleData['total'])?></div>
-          <div class="subtle">Total Sale (<?=e($saleRangeLabel)?>)</div>
+          <div class="card-head dashboard-chart-head">
+            <h3>▱ Sale <span class="dashboard-chart-total"><?=$dashboardMoney((float)$saleData['total'])?></span></h3>
+            <?=$rangeForm('sale_range',$saleRange,'expense_range',$expenseRange)?>
+          </div>
           <div class="growth <?= $saleGrowth<0?'negative':'' ?>"><?=($saleGrowth>=0?'↑ ':'↓ ').number_format(abs($saleGrowth),2)?> % <span class="subtle">Growth vs previous period</span></div>
-          <div class="chart dashboard-chart-wrap"><?= $barChartSvg($saleData['values'],$saleData['labels'],620,178,'#10b981') ?><div class="chart-baseline"></div></div>
+          <div class="chart dashboard-chart-wrap"><?= $barChartSvg($saleData['values'],$saleData['labels'],620,112,'#10b981') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($saleData))?></div>
         </div>
         <div class="expense-card">
-          <div class="card-head"><h3>▤ Expenses</h3><?=$rangeForm('expense_range',$expenseRange,'sale_range',$saleRange)?></div>
-          <div class="big-money"><?=$dashboardMoney((float)$expenseData['total'])?></div>
-          <div class="subtle">Total Expenses (<?=e($expenseRangeLabel)?>)</div>
-          <div class="chart dashboard-chart-wrap expense-chart"><?= $barChartSvg($expenseData['values'],$expenseData['labels'],460,158,'#f59e0b') ?><div class="chart-baseline"></div></div>
+          <div class="card-head dashboard-chart-head">
+            <h3>▤ Expenses <span class="dashboard-chart-total expense-total"><?=$dashboardMoney((float)$expenseData['total'])?></span></h3>
+            <?=$rangeForm('expense_range',$expenseRange,'sale_range',$saleRange)?>
+          </div>
+          <div class="chart dashboard-chart-wrap expense-chart"><?= $barChartSvg($expenseData['values'],$expenseData['labels'],460,112,'#f59e0b') ?><div class="chart-baseline"></div></div>
           <div class="subtle dashboard-report">Report: From <?=e($report($expenseData))?></div>
         </div>
       </div>
