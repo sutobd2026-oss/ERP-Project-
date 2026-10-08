@@ -16,7 +16,7 @@ if($route==='dashboard'){
       .dashboard-chart-bars rect:hover{opacity:.82}
       .dashboard-report{margin-top:1px}
       .sales-card .growth{margin-top:9px}
-      .dashboard-chart-head{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+      .dashboard-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .dashboard-chart-head h3{display:flex;align-items:center;gap:8px;margin:0;white-space:nowrap}
       .dashboard-chart-head .dashboard-chart-label{position:absolute;left:0;bottom:0;display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;color:var(--text);z-index:3}
       .dashboard-chart-total{display:inline-flex;align-items:baseline}
