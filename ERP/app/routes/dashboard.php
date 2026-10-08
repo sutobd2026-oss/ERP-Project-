@@ -10,6 +10,11 @@ if($route==='dashboard'){
       .current-net-worth-card{border-color:#bfe8d7!important;background:#f6fffb!important}
       .current-net-worth-card .title{font-weight:700;color:#166534}
       .current-net-worth-card .value{font-size:22px}
+      .current-net-worth-card.net-worth-negative{border-color:#fca5a5!important;background:#fff7f7!important}
+      .current-net-worth-card.net-worth-negative .title{color:#b91c1c}
+      .current-net-worth-card.net-worth-negative .value{color:#ef4444!important}
+      .current-net-worth-card.net-worth-negative .title:after{content:" ⚠";color:#ef4444;font-size:12px;margin-left:4px}
+      .current-net-worth-formula{margin-top:5px;font-size:11px;color:#8792a2;line-height:1.3;white-space:nowrap}
       .dashboard-chart-wrap{height:112px;position:relative;margin-top:auto;padding:0 2px}
       .dashboard-chart-svg{display:block;width:100%;height:100%;overflow:visible}
       .dashboard-chart-point{opacity:.06;transition:opacity .15s ease,transform .15s ease}
@@ -351,7 +356,7 @@ if($route==='dashboard'){
     <aside class="right-stack">
       <div class="dashboard-sensitive-right dashboard-blur-target">
         <div class="right-head">Pinned cards</div>
-        <div class="right-card current-net-worth-card"><span class="pin-star">★</span><div class="title">Current Net Worth</div><div class="value"><?=$dashboardMoney((float)$currentNetWorth)?></div></div>
+        <div class="right-card current-net-worth-card <?=((float)$currentNetWorth<0)?'net-worth-negative':''?>"><span class="pin-star">★</span><div class="title">Current Net Worth</div><div class="value"><?=$dashboardMoney((float)$currentNetWorth)?></div><div class="current-net-worth-formula">Stock + Receivable + Cash &amp; Bank − Payable</div></div>
         <div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
         <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link <?=((float)$cash<0)?'cash-negative-warning':''?>"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value cash-in-hand-value <?=((float)$cash<0)?'cash-negative-value':''?>"><?=$dashboardMoney((float)$cash)?></div></a>
         <div class="right-head">Stock Inventory</div><div class="right-card low"><div class="title">Low Stocks</div><?php if($low):foreach($low as $l):?><div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span><?=e($l['name'])?></span><span style="color:#ef4444"><?=number_format((float)$l['stock'],0)?></span></div><?php endforeach;else:?><div class="subtle" style="margin-top:10px">No low stock items.</div><?php endif;?></div>
