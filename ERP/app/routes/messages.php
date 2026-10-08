@@ -137,6 +137,30 @@ if($route==='messages'){
         $selectedThread=$threads[0]['key'];
         $selectedMessages=array_reverse($threadMessages[$selectedThread]);
     }
+
+    // v231: opening a conversation marks all incoming messages in that thread as seen.
+    // This keeps the conversation badge and the global unread counter in sync.
+    if($selectedThread!=='' && preg_match('/^(\d+)-(\d+)$/',$selectedThread,$seenMatch)){
+        $seenA=(int)$seenMatch[1]; $seenB=(int)$seenMatch[2];
+        $seenPartner=0;
+        if($seenA===(int)$u['id']) $seenPartner=$seenB;
+        elseif($seenB===(int)$u['id']) $seenPartner=$seenA;
+        if($seenPartner>0){
+            try{
+                $pdo->prepare('UPDATE messages SET read_at=COALESCE(read_at,NOW()) WHERE sender_id=? AND receiver_id=? AND read_at IS NULL')
+                    ->execute([$seenPartner,(int)$u['id']]);
+                foreach($selectedMessages as &$seenMessage){
+                    if((int)$seenMessage['receiver_id']===(int)$u['id'] && empty($seenMessage['read_at'])) $seenMessage['read_at']=date('Y-m-d H:i:s');
+                }
+                unset($seenMessage);
+                foreach($threads as &$seenThread){
+                    if($seenThread['key']===$selectedThread) $seenThread['unread']=0;
+                }
+                unset($seenThread);
+            }catch(Throwable $e){error_log('v231 message auto-seen: '.$e->getMessage());}
+        }
+    }
+
     $selectedPartnerUserId=0;
     $selectedPartnerCompanyId=0;
     if($selectedThread!=='' && preg_match('/^(\d+)-(\d+)$/',$selectedThread,$tm)){
