@@ -316,7 +316,6 @@ function ensure_platform_schema(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }catch(Throwable $e){error_log('platform billing table repair: '.$e->getMessage());}
 }
-}
 ensure_platform_schema();
 platform_touch_current_session();
 
