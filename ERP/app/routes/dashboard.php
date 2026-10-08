@@ -6,7 +6,7 @@ if($route==='dashboard'){
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
     echo '<style>
       .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
-      .dashboard-chart-wrap{height:112px;position:relative;margin-top:9px;padding:0 2px}
+      .dashboard-chart-wrap{height:112px;position:relative;margin-top:auto;padding:0 2px}
       .dashboard-chart-svg{display:block;width:100%;height:100%;overflow:visible}
       .dashboard-chart-point{opacity:.06;transition:opacity .15s ease,transform .15s ease}
       .dashboard-chart-point:hover{opacity:1}
@@ -14,6 +14,7 @@ if($route==='dashboard'){
       .dashboard-chart-bars rect{transition:opacity .15s ease,transform .15s ease}
       .dashboard-chart-bars rect:hover{opacity:.82}
       .dashboard-report{margin-top:1px}
+      .sales-card .growth{margin-top:9px}
       .dashboard-chart-head{display:flex;align-items:center;gap:10px}
       .dashboard-chart-head h3{display:flex;align-items:center;gap:8px;margin:0;white-space:nowrap}
       .dashboard-chart-total{display:inline-flex;align-items:baseline}
