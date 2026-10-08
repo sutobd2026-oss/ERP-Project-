@@ -7,6 +7,9 @@ if($route==='dashboard'){
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
     echo '<style>
       .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
+      .current-net-worth-card{border-color:#bfe8d7!important;background:#f6fffb!important}
+      .current-net-worth-card .title{font-weight:700;color:#166534}
+      .current-net-worth-card .value{font-size:22px}
       .dashboard-chart-wrap{height:112px;position:relative;margin-top:auto;padding:0 2px}
       .dashboard-chart-svg{display:block;width:100%;height:100%;overflow:visible}
       .dashboard-chart-point{opacity:.06;transition:opacity .15s ease,transform .15s ease}
@@ -194,6 +197,15 @@ if($route==='dashboard'){
                      AND st2.deleted_at IS NULL
                ))
              GROUP BY sm2.item_id) sm ON sm.item_id=i.id WHERE i.company_id=? AND i.item_type="product" AND i.active=1');$st->execute([$cid,$cid]);$stockValue=(float)$st->fetchColumn();
+    // Current Net Worth = Stock Value + Receivable + Cash & Bank - Payable.
+    $totalBank=0.0;
+    try{
+        $bst=$pdo->prepare('SELECT id FROM bank_accounts WHERE company_id=? AND active=1 ORDER BY id');
+        $bst->execute([$cid]);
+        foreach($bst->fetchAll(PDO::FETCH_COLUMN) as $bankId){ $totalBank+=bank_balance($cid,(int)$bankId); }
+    }catch(Throwable $e){ $totalBank=0.0; error_log('dashboard bank balance: '.$e->getMessage()); }
+    $totalCashBank=(float)$cash+$totalBank;
+    $currentNetWorth=(float)$stockValue+(float)$receive+$totalCashBank-(float)$pay;
     $chartSvg=function(array $vals,array $labels,int $w,int $h,string $stroke)use($currency):string{
         $n=count($vals);if($n<2)return '';
         $max=max($vals);$min=min($vals);
@@ -338,7 +350,9 @@ if($route==='dashboard'){
     </section>
     <aside class="right-stack">
       <div class="dashboard-sensitive-right dashboard-blur-target">
-        <div class="right-head">Pinned cards</div><div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
+        <div class="right-head">Pinned cards</div>
+        <div class="right-card current-net-worth-card"><span class="pin-star">★</span><div class="title">Current Net Worth</div><div class="value"><?=$dashboardMoney((float)$currentNetWorth)?></div></div>
+        <div class="right-card"><span class="pin-star">★</span><div class="title">Stock Value</div><div class="value"><?=$dashboardMoney((float)$stockValue)?></div></div>
         <a href="<?=e(url('cash'))?>" class="right-card dashboard-cash-link <?=((float)$cash<0)?'cash-negative-warning':''?>"><span class="pin-star">★</span><div class="title">Cash In hand</div><div class="value cash-in-hand-value <?=((float)$cash<0)?'cash-negative-value':''?>"><?=$dashboardMoney((float)$cash)?></div></a>
         <div class="right-head">Stock Inventory</div><div class="right-card low"><div class="title">Low Stocks</div><?php if($low):foreach($low as $l):?><div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px"><span><?=e($l['name'])?></span><span style="color:#ef4444"><?=number_format((float)$l['stock'],0)?></span></div><?php endforeach;else:?><div class="subtle" style="margin-top:10px">No low stock items.</div><?php endif;?></div>
         <div class="right-head">Cash & Bank</div><div class="right-card"><div class="title">Bank Accounts</div><div class="value"><?=(int)db()->query('SELECT COUNT(*) FROM bank_accounts WHERE company_id='.(int)$cid)->fetchColumn()?></div></div>
