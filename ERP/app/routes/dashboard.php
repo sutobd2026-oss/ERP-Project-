@@ -18,11 +18,12 @@ if($route==='dashboard'){
       .sales-card .growth{margin-top:9px}
       .dashboard-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .dashboard-chart-head h3{display:flex;align-items:center;gap:8px;margin:0;white-space:nowrap}
-      .dashboard-chart-label{position:absolute;left:0;bottom:0;display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;color:var(--text);z-index:3;line-height:1}
+      .dashboard-chart-label{display:flex;align-items:center;gap:6px;font-size:20px;font-weight:700;color:var(--text);line-height:1;white-space:nowrap}
       .dashboard-chart-total{display:inline-flex;align-items:baseline}
       .dashboard-chart-wrap{position:relative}
-      .dashboard-chart-wrap .dashboard-chart-label{pointer-events:none}
       .dashboard-chart-wrap .dashboard-chart-bars{z-index:1}
+      .dashboard-chart-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;font-size:20px;line-height:1.1}
+      .dashboard-chart-footer .dashboard-report{font-size:20px;white-space:nowrap;margin:0}
       .dashboard-chart-total .dash-money-main{font-size:21px!important;line-height:1.05!important;font-weight:700}
       .dashboard-chart-total .dash-money-dec{font-size:12px!important;line-height:1!important}
       .dashboard-chart-total.expense-total .dash-money-main{font-size:21px!important}
@@ -270,9 +271,11 @@ if($route==='dashboard'){
           <div class="chart dashboard-chart-wrap">
             <?= $barChartSvg($saleData['values'],$saleData['labels'],620,112,'#10b981') ?>
             <div class="chart-baseline"></div>
-            <div class="dashboard-chart-label">▱ Sale</div>
           </div>
-          <div class="subtle dashboard-report">Report: From <?=e($report($saleData))?></div>
+          <div class="dashboard-chart-footer">
+            <div class="dashboard-chart-label">▱ Sale</div>
+            <div class="subtle dashboard-report">Report: From <?=e($report($saleData))?></div>
+          </div>
         </div>
         <div class="expense-card">
           <div class="card-head dashboard-chart-head">
@@ -282,9 +285,11 @@ if($route==='dashboard'){
           <div class="chart dashboard-chart-wrap expense-chart">
             <?= $barChartSvg($expenseData['values'],$expenseData['labels'],460,112,'#f59e0b') ?>
             <div class="chart-baseline"></div>
-            <div class="dashboard-chart-label">▤ Expenses</div>
           </div>
-          <div class="subtle dashboard-report">Report: From <?=e($report($expenseData))?></div>
+          <div class="dashboard-chart-footer">
+            <div class="dashboard-chart-label">▤ Expenses</div>
+            <div class="subtle dashboard-report">Report: From <?=e($report($expenseData))?></div>
+          </div>
         </div>
       </div>
       <div class="mid-cards">
