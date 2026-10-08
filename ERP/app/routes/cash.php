@@ -304,6 +304,109 @@ if($route==='cash'){
       .cash-search-wrap{width:100%;}
       .cash-toolbar{width:100%;}
     }
+    /* v151: Deposit/Withdraw popup redesign — scoped to the Cash page. */
+    .cash-head-actions-v150{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .cash-move-btn-v150{
+      min-width:88px;min-height:38px;padding:9px 15px!important;
+      border:1px solid transparent!important;border-radius:8px!important;
+      font-size:13px!important;font-weight:700!important;line-height:1!important;
+      box-shadow:0 2px 6px rgba(15,23,42,.08);cursor:pointer;
+    }
+    .cash-deposit-v150{background:#10b981!important;color:#fff!important;border-color:#10b981!important}
+    .cash-withdraw-v150{background:#ef6b73!important;color:#fff!important;border-color:#ef6b73!important}
+    .cash-move-btn-v150:hover{filter:brightness(.98);transform:translateY(-1px)}
+    .cash-transfer-modal-v151{padding:18px!important}
+    .cash-transfer-modal-v151 .cash-transfer-box-v151{
+      width:min(560px,100%);
+      max-height:min(88vh,680px);
+      display:flex;flex-direction:column;
+      background:#fff;border:1px solid #e2e8f0;border-radius:14px;
+      box-shadow:0 24px 70px rgba(15,23,42,.24);
+      overflow:hidden;
+    }
+    .cash-transfer-head-v151{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:16px;padding:18px 22px;
+      border-bottom:1px solid #edf1f5;background:#fff;
+    }
+    .cash-transfer-title-wrap-v151{display:flex;align-items:center;gap:11px;min-width:0}
+    .cash-transfer-icon-v151{
+      width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;
+      border-radius:9px;font-size:17px;font-weight:800;
+      background:#ecfdf5;color:#059669;
+    }
+    .cash-transfer-modal-v151.cash-transfer-withdraw-v151 .cash-transfer-icon-v151{
+      background:#fff1f2;color:#e11d48;
+    }
+    .cash-transfer-head-v151 h2{
+      margin:0;font-size:18px;line-height:1.2;font-weight:700;color:#1f3445;
+    }
+    .cash-transfer-subtitle-v151{
+      margin-top:3px;font-size:11px;line-height:1.35;color:#8a97a6;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .cash-transfer-close-v151{
+      width:34px!important;height:34px!important;min-width:34px!important;
+      border:0!important;border-radius:8px!important;background:transparent!important;
+      color:#64748b!important;font-size:24px!important;line-height:1!important;
+      padding:0!important;cursor:pointer;
+    }
+    .cash-transfer-close-v151:hover{background:#f1f5f9!important;color:#334155!important}
+    .cash-transfer-body-v151{padding:22px}
+    .cash-transfer-grid-v151{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+    .cash-transfer-field-v151{min-width:0}
+    .cash-transfer-field-v151 label{
+      display:block;margin:0 0 6px;font-size:11px;font-weight:600;
+      color:#637387;letter-spacing:.1px;
+    }
+    .cash-transfer-field-v151 select,
+    .cash-transfer-field-v151 input{
+      width:100%;height:42px;box-sizing:border-box;
+      border:1px solid #d8e0e8;border-radius:8px;background:#fff;
+      color:#24384a;padding:0 11px;outline:0;font-size:13px;
+      transition:border-color .15s,box-shadow .15s,background .15s;
+    }
+    .cash-transfer-field-v151 select:focus,
+    .cash-transfer-field-v151 input:focus{
+      border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.10);
+    }
+    .cash-transfer-field-v151 select:disabled,
+    .cash-transfer-field-v151 input:disabled{
+      background:#f8fafc;color:#8190a1;cursor:not-allowed;
+    }
+    .cash-transfer-field-v151 input::placeholder{color:#a0acba}
+    .cash-transfer-full-v151{grid-column:1/-1}
+    .cash-transfer-help-v151{margin-top:5px;font-size:10px;color:#9aa6b4}
+    .cash-transfer-foot-v151{
+      padding:14px 22px 18px;border-top:1px solid #edf1f5;
+      display:flex;justify-content:flex-end;gap:8px;background:#fff;
+    }
+    .cash-transfer-secondary-v151,
+    .cash-transfer-primary-v151{
+      min-width:92px;height:38px;padding:0 15px;border-radius:8px;
+      font-size:13px;font-weight:600;cursor:pointer;
+    }
+    .cash-transfer-secondary-v151{
+      border:1px solid #d7e0e8;background:#fff;color:#475569;
+    }
+    .cash-transfer-secondary-v151:hover{background:#f8fafc}
+    .cash-transfer-primary-v151{
+      border:1px solid #10b981;background:#10b981;color:#fff;
+      box-shadow:0 2px 6px rgba(16,185,129,.18);
+    }
+    .cash-transfer-primary-v151:hover{filter:brightness(.98)}
+    .cash-transfer-modal-v151.cash-transfer-withdraw-v151 .cash-transfer-primary-v151{
+      border-color:#ef6b73;background:#ef6b73;box-shadow:0 2px 6px rgba(239,107,115,.18);
+    }
+    @media(max-width:620px){
+      .cash-transfer-modal-v151{padding:12px!important}
+      .cash-transfer-modal-v151 .cash-transfer-box-v151{max-height:94vh;border-radius:12px}
+      .cash-transfer-head-v151,.cash-transfer-body-v151{padding-left:16px;padding-right:16px}
+      .cash-transfer-grid-v151{grid-template-columns:1fr;gap:13px}
+      .cash-transfer-full-v151{grid-column:auto}
+      .cash-transfer-foot-v151{padding-left:16px;padding-right:16px}
+      .cash-transfer-subtitle-v151{max-width:240px}
+    }
     </style>
     <div class="cash-page">
       <div class="cash-page-head">
@@ -390,7 +493,7 @@ if($route==='cash'){
         </div>
       </div>
 
-      <div class="bank-modal-v122 bank-transfer-modal-v147" id="cashBankTransferModalV150" onclick="if(event.target===this)closeCashBankTransferV150()" aria-hidden="true"><div class="bank-transfer-box-v147"><div class="bank-transfer-head-v147"><h2 id="cashBankTransferTitleV150">Deposit</h2><button type="button" class="bank-modal-close-v122" onclick="closeCashBankTransferV150()">×</button></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="bank_to_bank_transfer"><input type="hidden" name="from_account" id="cashBankFromHiddenV150" value="cash"><input type="hidden" name="to_account" id="cashBankToHiddenV150" value=""><div class="bank-transfer-body-v147"><div class="bank-transfer-grid-v147"><div class="bank-transfer-field-v147"><label>From</label><select id="cashBankFromV150" required disabled><option value="cash">Cash In Hand</option><?php foreach($cashBanks as $b): ?><option value="bank:<?=e((string)$b['id'])?>"><?=e($b['name'])?></option><?php endforeach; ?></select></div><div class="bank-transfer-field-v147"><label>To</label><select id="cashBankToV150" required><option value="">Select bank account</option><?php foreach($cashBanks as $b): ?><option value="bank:<?=e((string)$b['id'])?>"><?=e($b['name'])?></option><?php endforeach; ?></select></div><div class="bank-transfer-field-v147"><label>Amount</label><input type="number" name="amount" min="0.01" step="0.01" placeholder="Amount" required onwheel="this.blur()"></div><div class="bank-transfer-field-v147"><label>Adjustment Date</label><input type="date" name="adjustment_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="bank-transfer-field-v147 bank-transfer-full-v147"><label>Add Description</label><input type="text" name="notes" maxlength="255" placeholder="Optional"></div></div></div><div class="bank-transfer-foot-v147"><button type="button" class="bank-secondary-v122" onclick="closeCashBankTransferV150()">Cancel</button><button class="bank-primary-v122">Save</button></div></form></div></div>
+      <div class="bank-modal-v122 bank-transfer-modal-v147 cash-transfer-modal-v151" id="cashBankTransferModalV150" onclick="if(event.target===this)closeCashBankTransferV150()" aria-hidden="true"><div class="cash-transfer-box-v151"><div class="cash-transfer-head-v151"><div class="cash-transfer-title-wrap-v151"><span class="cash-transfer-icon-v151" id="cashBankTransferIconV150">↓</span><div><h2 id="cashBankTransferTitleV150">Deposit</h2><div class="cash-transfer-subtitle-v151" id="cashBankTransferSubtitleV150">Move money from Cash In Hand to a bank account.</div></div></div><button type="button" class="cash-transfer-close-v151" onclick="closeCashBankTransferV150()">×</button></div><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="bank_to_bank_transfer"><input type="hidden" name="from_account" id="cashBankFromHiddenV150" value="cash"><input type="hidden" name="to_account" id="cashBankToHiddenV150" value=""><div class="cash-transfer-body-v151"><div class="cash-transfer-grid-v151"><div class="cash-transfer-field-v151"><label>From</label><select id="cashBankFromV150" required disabled><option value="cash">Cash In Hand</option><?php foreach($cashBanks as $b): ?><option value="bank:<?=e((string)$b['id'])?>"><?=e($b['name'])?></option><?php endforeach; ?></select></div><div class="cash-transfer-field-v151"><label>To</label><select id="cashBankToV150" required><option value="">Select bank account</option><?php foreach($cashBanks as $b): ?><option value="bank:<?=e((string)$b['id'])?>"><?=e($b['name'])?></option><?php endforeach; ?></select></div><div class="cash-transfer-field-v151"><label>Amount</label><input type="number" name="amount" min="0.01" step="0.01" placeholder="0.00" required onwheel="this.blur()"></div><div class="cash-transfer-field-v151"><label>Adjustment Date</label><input type="date" name="adjustment_date" value="<?=e(date('Y-m-d'))?>" required></div><div class="cash-transfer-field-v151 cash-transfer-full-v151"><label>Add Description</label><input type="text" name="notes" maxlength="255" placeholder="Optional description"><div class="cash-transfer-help-v151">Optional note for this cash transfer.</div></div></div></div><div class="cash-transfer-foot-v151"><button type="button" class="cash-transfer-secondary-v151" onclick="closeCashBankTransferV150()">Cancel</button><button class="cash-transfer-primary-v151" id="cashBankTransferSaveV150">Deposit</button></div></form></div></div>
 
       <div class="modal-backdrop" id="cashModal" onclick="if(event.target===this)closeModal('cashModal')">
         <div class="modal cash-adjust-modal">
