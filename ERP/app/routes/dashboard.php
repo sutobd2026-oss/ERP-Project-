@@ -3,6 +3,7 @@
 if($route==='dashboard'){
     page_start('Home');
     $cid=(int)$u['company_id'];
+    $pdo=db();
     $currency=$u['currency_code']==='BDT'?'৳':$u['currency_code'];
     echo '<style>
       .dashboard-cash-link.cash-negative-warning{border-color:#fca5a5!important;background:#fff7f7!important}
