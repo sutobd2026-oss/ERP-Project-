@@ -23,10 +23,10 @@ if($route==='dashboard'){
       .dashboard-chart-wrap{position:relative}
       .dashboard-chart-wrap .dashboard-chart-bars{z-index:1}
       .dashboard-chart-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;font-size:20px;line-height:1.1}
-      .dashboard-chart-footer .dashboard-report{font-size:20px;white-space:nowrap;margin:0}
-      .dashboard-chart-total .dash-money-main{font-size:21px!important;line-height:1.05!important;font-weight:700}
+      .dashboard-chart-footer .dashboard-report{font-size:14px;white-space:nowrap;margin:0}
+      .dashboard-chart-total .dash-money-main{font-size:20px!important;line-height:1.05!important;font-weight:700}
       .dashboard-chart-total .dash-money-dec{font-size:12px!important;line-height:1!important}
-      .dashboard-chart-total.expense-total .dash-money-main{font-size:21px!important}
+      .dashboard-chart-total.expense-total .dash-money-main{font-size:20px!important}
       .dashboard-chart-wrap .dashboard-chart-bars{position:absolute;left:0;right:0;bottom:0}
       .sales-card .chart-baseline,.expense-card .chart-baseline{display:none}
       .sales-card .dashboard-chart-wrap:after,.expense-card .dashboard-chart-wrap:after{content:"";position:absolute;left:10px;right:10px;bottom:20px;height:1px;background:rgba(148,163,184,.12)}
