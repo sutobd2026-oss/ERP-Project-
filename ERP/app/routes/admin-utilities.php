@@ -451,6 +451,27 @@ if($route==='import-items'){
     </div>
     <?php page_end(); exit;
 }
+if($route==='export-parties'){
+    $u=require_login(); $cid=(int)$u['company_id'];
+    if(isset($_GET['template'])){
+        $fp=fopen('php://temp','w+');
+        fputcsv($fp,['Party Name','Phone','Email','Party Type','Address','Opening Balance','Credit Limit']);
+        rewind($fp);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="suto-party-template.csv"');
+        fpassthru($fp); exit;
+    }
+    $st=db()->prepare('SELECT p.name,p.phone,p.email,COALESCE((SELECT GROUP_CONCAT(pr.role ORDER BY pr.role SEPARATOR ", ") FROM party_roles pr WHERE pr.party_id=p.id),"customer") roles,p.address,p.opening_balance,p.credit_limit FROM parties p WHERE p.company_id=? AND p.deleted_at IS NULL ORDER BY p.name');
+    $st->execute([$cid]); $rows=$st->fetchAll(PDO::FETCH_NUM);
+    $fp=fopen('php://temp','w+');
+    fputcsv($fp,['Party Name','Phone','Email','Party Type','Address','Opening Balance','Credit Limit']);
+    foreach($rows as $row)fputcsv($fp,$row);
+    rewind($fp);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="suto-parties-'.date('Ymd-His').'.csv"');
+    fpassthru($fp); exit;
+}
+
 if($route==='import-parties'){
     $u=require_login(); $cid=(int)$u['company_id']; $pdo=db();
 
@@ -680,6 +701,7 @@ if($route==='import-parties'){
       <div><h1>Import Parties</h1><p>Import customers, suppliers and other parties from CSV or XLSX.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <a class="btn" href="<?=e(url('export-parties'))?>">Download current parties CSV</a>
+        <a class="btn" href="<?=e(url('export-parties').'?template=1')?>">CSV Template</a>
       </div>
     </div>
     <div class="panel">
