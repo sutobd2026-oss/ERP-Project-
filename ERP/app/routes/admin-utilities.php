@@ -452,10 +452,248 @@ if($route==='import-items'){
     <?php page_end(); exit;
 }
 if($route==='import-parties'){
-    $u=require_login();$cid=(int)$u['company_id'];if($_SERVER['REQUEST_METHOD']==='POST'){check_csrf();if(empty($_FILES['csv']['tmp_name'])){flash('error','Choose a CSV file.');redirect('import-parties');} $fh=fopen($_FILES['csv']['tmp_name'],'r');$header=fgetcsv($fh);$count=0;$pdo=db();try{$pdo->beginTransaction();while(($r=fgetcsv($fh))!==false){$name=trim($r[0]??'');$phone=preg_replace('/\D+/','',$r[1]??'');if($name==='' || !preg_match('/^(013|014|015|016|017|018|019)\d{8}$/',$phone))continue;$rawRoles=trim($r[3]??'customer');$roleMap=['customer','supplier','investor','lender','borrower','employee','other'];$roles=array_values(array_unique(array_intersect($roleMap,array_filter(array_map('trim',preg_split('/[,|]+/',$rawRoles))))));if(!$roles){$roles=['customer'];} $ptype=in_array('customer',$roles,true)&&in_array('supplier',$roles,true)?'both':(in_array('supplier',$roles,true)?'supplier':'customer');$pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$cid,$name,$phone,trim($r[2]??'')?:null,$ptype,trim($r[4]??'')?:null,(float)($r[5]??0),'receivable',(float)($r[6]??0)]);$pid=(int)$pdo->lastInsertId();$pri=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)');foreach($roles as $rr)$pri->execute([$pid,$rr]);$count++;audit('import','party',$pid,['name'=>$name,'phone'=>$phone,'roles'=>$roles]);} $pdo->commit();flash('success',$count.' parties imported.');}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error','Import failed: '.$e->getMessage());}redirect('import-parties');}
-    page_start('Import Parties'); ?><div class="page-title"><div><h1>Import Parties</h1><p>Import customers/suppliers from CSV.</p></div></div><div class="panel"><p class="subtle">CSV columns: Party Name, Phone, Email, Party Type, Address, Opening Balance, Credit Limit.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><div class="form-group"><label>CSV file</label><input type="file" name="csv" accept=".csv,text/csv" required></div><button class="btn primary">Import Parties</button></form></div><?php page_end();exit;
-}
+    $u=require_login(); $cid=(int)$u['company_id']; $pdo=db();
 
+    $partyFields=[
+        'name'=>'Party Name',
+        'phone'=>'Phone',
+        'email'=>'Email',
+        'roles'=>'Party Type / Roles',
+        'address'=>'Address',
+        'opening'=>'Opening Balance',
+        'credit'=>'Credit Limit'
+    ];
+    $partyDefaultMapping=function(array $header)use($partyFields):array{
+        $aliases=[
+            'name'=>['party name','name','party','contact name','customer name','supplier name','business name'],
+            'phone'=>['phone','mobile','phone number','mobile number','contact number','telephone'],
+            'email'=>['email','email address','e mail'],
+            'roles'=>['party type','type','role','roles','party role','party roles','category'],
+            'address'=>['address','location','billing address'],
+            'opening'=>['opening balance','opening due','opening amount','balance','opening'],
+            'credit'=>['credit limit','credit amount','limit']
+        ];
+        $norm=array_map(fn($v)=>sense_item_import_norm((string)$v),$header);
+        $map=[];
+        foreach($partyFields as $key=>$label){
+            $map[$key]=-1;
+            foreach($aliases[$key]??[sense_item_import_norm($label)] as $alias){
+                $idx=array_search(sense_item_import_norm($alias),$norm,true);
+                if($idx!==false){$map[$key]=(int)$idx;break;}
+            }
+        }
+        return $map;
+    };
+
+    $reviewParties=function(array $rowsData,?array $mapping=null)use($cid,$pdo,$partyFields,$partyDefaultMapping):array{
+        $header=$rowsData[0]??[];
+        $mapping=$mapping??$partyDefaultMapping($header);
+        $get=function(array $row,string $key)use($mapping):string{
+            $idx=(int)($mapping[$key]??-1);
+            return $idx>=0?trim((string)($row[$idx]??'')):'';
+        };
+        $allowedRoles=['customer','supplier','investor','lender','borrower','employee','other'];
+        $rows=[];$errors=[];$line=1;
+        foreach(array_slice($rowsData,1) as $raw){
+            $line++;
+            $name=$get($raw,'name');
+            if($name==='')continue;
+            $phone=preg_replace('/\D+/','',$get($raw,'phone'));
+            $email=$get($raw,'email');
+            $rolesRaw=strtolower($get($raw,'roles'));
+            $roles=array_values(array_unique(array_intersect($allowedRoles,array_filter(array_map('trim',preg_split('/[,|]+/',$rolesRaw)?:[])))));
+            if(!$roles)$roles=['customer'];
+            $partyType=in_array('customer',$roles,true)&&in_array('supplier',$roles,true)?'both':(in_array('supplier',$roles,true)?'supplier':'customer');
+            $address=$get($raw,'address');
+            $openingRaw=$get($raw,'opening');
+            $creditRaw=$get($raw,'credit');
+            $issues=[];
+            if(!preg_match('/^(013|014|015|016|017|018|019)\d{8}$/',$phone))$issues[]='Phone must be a valid 11-digit Bangladesh mobile number.';
+            if($email!==''&&!filter_var($email,FILTER_VALIDATE_EMAIL))$issues[]='Invalid email address.';
+            if($openingRaw!==''&&!is_numeric(str_replace([',','৳',' '],'',$openingRaw)))$issues[]='Opening Balance must be numeric.';
+            if($creditRaw!==''&&!is_numeric(str_replace([',','৳',' '],'',$creditRaw)))$issues[]='Credit Limit must be numeric.';
+            $opening=(float)str_replace([',','৳',' '],'',$openingRaw);
+            $credit=(float)str_replace([',','৳',' '],'',$creditRaw);
+            if($credit<0)$issues[]='Credit Limit cannot be negative.';
+            $rows[]=[
+                'line'=>$line,'name'=>$name,'phone'=>$phone,'email'=>$email,'roles'=>$roles,
+                'roles_text'=>implode(', ',array_map('ucfirst',$roles)),'party_type'=>$partyType,
+                'address'=>$address,'opening'=>$opening,'credit'=>$credit,'issues'=>$issues
+            ];
+            if($issues)$errors[]='Line '.$line.': '.implode(' ',$issues);
+        }
+        if(!$rows)$errors[]='No party records were found. Make sure the first row contains column headings and data starts on the second row.';
+        return [$rows,$errors,$mapping,$header];
+    };
+
+    $renderPartyReview=function(array $rowsData,array $mapping,array $reviewRows,array $errors,string $token)use($partyFields):void{
+        $header=$rowsData[0]??[];
+        page_start('Review Party Import'); ?>
+        <div class="page-title">
+          <div><h1>Review Party Import</h1><p>Check the party data and column mapping before importing. Nothing has been added yet.</p></div>
+          <a class="btn" href="<?=e(url('import-parties'))?>">Cancel</a>
+        </div>
+        <form method="post" class="panel" style="margin-bottom:12px">
+          <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+          <input type="hidden" name="import_action" value="remap">
+          <input type="hidden" name="token" value="<?=e($token)?>">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <strong>Column Mapping</strong>
+            <span class="subtle">Choose the file column for each Sense field. Unneeded columns can be ignored.</span>
+          </div>
+          <div class="grid3" style="margin-top:12px">
+            <?php foreach($partyFields as $key=>$label): ?>
+              <div class="form-group">
+                <label><?=e($label)?></label>
+                <select name="map[<?=e($key)?>]">
+                  <option value="-1">— Ignore / Empty —</option>
+                  <?php foreach($header as $ci=>$h): ?>
+                    <option value="<?=$ci?>" <?=((int)($mapping[$key]??-1)===(int)$ci)?'selected':''?>><?=e((string)$h)?> (Column <?=e(sense_item_import_col_letter((int)$ci))?>)</option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="form-footer"><button class="btn primary" type="submit">Apply Column Mapping</button></div>
+        </form>
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <strong><?=count($reviewRows)?> party record(s) found</strong>
+            <span class="subtle"><?=count($errors)?count($errors).' issue(s) found':'Ready to import'?></span>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;max-height:62vh;overflow:auto">
+            <table>
+              <thead><tr><th>LINE</th><th>PARTY NAME</th><th>PHONE</th><th>EMAIL</th><th>TYPE / ROLES</th><th>ADDRESS</th><th>OPENING BALANCE</th><th>CREDIT LIMIT</th><th>STATUS</th></tr></thead>
+              <tbody>
+                <?php foreach($reviewRows as $r): ?>
+                  <tr>
+                    <td><?=e((string)$r['line'])?></td><td><?=e($r['name'])?></td><td><?=e($r['phone'])?></td><td><?=e($r['email'])?></td>
+                    <td><?=e($r['roles_text'])?></td><td><?=e($r['address'])?></td><td><?=money((float)$r['opening'])?></td><td><?=money((float)$r['credit'])?></td>
+                    <td><?php if($r['issues']): ?><span style="color:#dc2626;font-weight:700"><?=e(implode('; ',$r['issues']))?></span><?php else: ?><span style="color:#059669;font-weight:700">Ready</span><?php endif; ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <?php if($errors): ?>
+            <div class="panel" style="margin-top:12px;border-color:#fecaca;background:#fff7f7">
+              <strong style="color:#b91c1c">Import cannot be confirmed until the issues are fixed.</strong>
+              <div style="margin-top:8px;color:#7f1d1d"><?php foreach($errors as $er): ?><div><?=e($er)?></div><?php endforeach; ?></div>
+            </div>
+          <?php endif; ?>
+          <div class="form-footer" style="margin-top:12px">
+            <a class="btn" href="<?=e(url('import-parties'))?>">Cancel</a>
+            <?php if(!$errors): ?>
+              <form method="post">
+                <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                <input type="hidden" name="import_action" value="confirm">
+                <input type="hidden" name="token" value="<?=e($token)?>">
+                <button class="btn primary" type="submit">Confirm &amp; Add <?=count($reviewRows)?> Parties</button>
+              </form>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php page_end(); exit;
+    };
+
+    if($_SERVER['REQUEST_METHOD']==='POST'){
+        check_csrf();
+        $action=(string)($_POST['import_action']??'preview');
+
+        if(in_array($action,['confirm','remap'],true)){
+            $token=(string)($_POST['token']??'');
+            $payload=$_SESSION['party_import_preview'][$token]??null;
+            if(!is_array($payload)||!isset($payload['rows'])){
+                flash('error','Import review expired. Please upload the file again.');
+                redirect('import-parties');
+            }
+            $rowsData=$payload['rows'];
+            $mapping=$payload['mapping']??$partyDefaultMapping($rowsData[0]??[]);
+            if($action==='remap'){
+                $cols=count($rowsData[0]??[]);
+                foreach($partyFields as $key=>$label){
+                    $v=isset($_POST['map'][$key])?(int)$_POST['map'][$key]:-1;
+                    $mapping[$key]=($v>=0&&$v<$cols)?$v:-1;
+                }
+                $_SESSION['party_import_preview'][$token]=['rows'=>$rowsData,'mapping'=>$mapping];
+                [$reviewRows,$errors,$mapping,$header]=$reviewParties($rowsData,$mapping);
+                $renderPartyReview($rowsData,$mapping,$reviewRows,$errors,$token);
+            }
+
+            unset($_SESSION['party_import_preview'][$token]);
+            try{
+                [$reviewRows,$errors,$mapping,$header]=$reviewParties($rowsData,$mapping);
+                if($errors)throw new RuntimeException('Please correct the highlighted party rows before confirming the import.');
+                $pdo->beginTransaction(); $count=0;
+                foreach($reviewRows as $r){
+                    $pdo->prepare('INSERT INTO parties(company_id,name,phone,email,party_type,address,opening_balance,opening_balance_type,credit_limit) VALUES(?,?,?,?,?,?,?,?,?)')
+                        ->execute([$cid,$r['name'],$r['phone'],$r['email']!==''?$r['email']:null,$r['party_type'],$r['address']!==''?$r['address']:null,(float)$r['opening'],'receivable',(float)$r['credit']]);
+                    $pid=(int)$pdo->lastInsertId();
+                    $pri=$pdo->prepare('INSERT INTO party_roles(party_id,role) VALUES(?,?)');
+                    foreach($r['roles'] as $role)$pri->execute([$pid,$role]);
+                    $count++;
+                    audit('import','party',$pid,['name'=>$r['name'],'phone'=>$r['phone'],'roles'=>$r['roles'],'line'=>$r['line']]);
+                }
+                $pdo->commit();
+                flash('success',$count.' parties imported successfully.');
+            }catch(Throwable $e){
+                if($pdo->inTransaction())$pdo->rollBack();
+                flash('error','Import failed: '.$e->getMessage());
+            }
+            redirect('import-parties');
+        }
+
+        $upload=$_FILES['csv']??[];
+        if(empty($upload['tmp_name'])||($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK){
+            flash('error','Choose a valid CSV or XLSX file.');
+            redirect('import-parties');
+        }
+        $ext=strtolower(pathinfo((string)($upload['name']??''),PATHINFO_EXTENSION));
+        if(!in_array($ext,['csv','xlsx'],true)){
+            flash('error','Only .CSV and .XLSX files are supported.');
+            redirect('import-parties');
+        }
+        try{
+            $rowsData=[];
+            if($ext==='xlsx'){
+                $rowsData=sense_read_xlsx_rows((string)$upload['tmp_name']);
+            }else{
+                $fh=fopen((string)$upload['tmp_name'],'r');
+                if(!$fh)throw new RuntimeException('Unable to read CSV file.');
+                while(($row=fgetcsv($fh))!==false)$rowsData[]=$row;
+                fclose($fh);
+                if(isset($rowsData[0][0]))$rowsData[0][0]=preg_replace('/^\xEF\xBB\xBF/','',(string)$rowsData[0][0]);
+            }
+            if(count($rowsData)<2)throw new RuntimeException('The file must contain a header row and at least one party row.');
+            [$reviewRows,$errors,$mapping,$header]=$reviewParties($rowsData);
+            $token=bin2hex(random_bytes(16));
+            $_SESSION['party_import_preview'][$token]=['rows'=>$rowsData,'mapping'=>$mapping];
+            $renderPartyReview($rowsData,$mapping,$reviewRows,$errors,$token);
+        }catch(Throwable $e){
+            flash('error','Could not read the file: '.$e->getMessage());
+            redirect('import-parties');
+        }
+    }
+
+    page_start('Import Parties'); ?>
+    <div class="page-title">
+      <div><h1>Import Parties</h1><p>Import customers, suppliers and other parties from CSV or XLSX.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn" href="<?=e(url('export-parties'))?>">Download current parties CSV</a>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="subtle">Supported files: <strong>.CSV</strong> and <strong>.XLSX</strong>. Upload your file, match the columns, review the rows and then confirm the import.</p>
+      <p class="subtle">Recommended columns: Party Name, Phone, Email, Party Type, Address, Opening Balance, Credit Limit.</p>
+      <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+        <input type="hidden" name="import_action" value="preview">
+        <div class="form-group"><label>CSV / XLSX file</label><input type="file" name="csv" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></div>
+        <button class="btn primary">Upload &amp; Review</button>
+      </form>
+    </div>
+    <?php page_end(); exit;
+}
 if($route==='barcode'){
     $u=require_login();$cid=(int)$u['company_id'];$q=trim($_GET['q']??'');$rows=[];if($q!==''){$st=db()->prepare('SELECT id,name,code,barcode,sale_price FROM items WHERE company_id=? AND active=1 AND (name LIKE ? OR code LIKE ? OR barcode LIKE ?) ORDER BY name LIMIT 100');$like='%'.$q.'%';$st->execute([$cid,$like,$like,$like]);$rows=$st->fetchAll();}
     page_start('Generate Barcode'); ?><div class="page-title"><div><h1>Generate Barcode</h1><p>Find an item and generate a printable barcode label.</p></div></div><div class="panel"><form class="search-inline" method="get"><input name="q" value="<?=e($q)?>" placeholder="Search item name, code or barcode"><button class="btn primary">Search</button></form></div><div class="grid3" style="margin-top:14px"><?php foreach($rows as $r):?><div class="panel barcode-card"><h2><?=e($r['name'])?></h2><div class="barcode-lines"><?=e($r['barcode']?:($r['code']?:'NO-CODE'))?></div><p class="subtle"><?=e($r['barcode']?:($r['code']?:'Generate code in item settings'))?></p><button class="btn" onclick="window.print()">Print Label</button></div><?php endforeach;if($q!==''&&!$rows):?><div class="panel"><p class="subtle">No matching items.</p></div><?php endif;?></div><?php page_end();exit;
