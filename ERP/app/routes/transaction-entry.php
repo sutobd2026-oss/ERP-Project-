@@ -85,6 +85,7 @@ if(in_array($route,['sale-new','purchase-new'],true)){
 document.body.dataset.txntype=<?=json_encode($type)?>;
 window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
 </script>
+<?php if($isSale): ?>
 <div class="page-title <?= $isSale ? 'sale-invoice-page-title' : '' ?>">
   <div class="sale-invoice-title-main">
     <div class="sale-invoice-title-icon" aria-hidden="true">
@@ -98,6 +99,7 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
   </div>
   <a class="btn sale-back-btn" href="<?=e(url($isSale?'sales':'purchase'))?>"><span aria-hidden="true">←</span><span>Back to List</span></a>
 </div>
+<?php endif; ?>
 <form id="txnForm" class="transaction-form txn-compact <?= $isSale ? 'sale-invoice-ui' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
 <div class="panel">
