@@ -414,6 +414,7 @@ function page_start(string $title): void {
       'sales'=>['label'=>'Sales Invoice','route'=>'sales'],
       'sale-new'=>['label'=>'New Sale','route'=>'sales'],
       'delivery-challans'=>['label'=>'Delivery Challan','route'=>'delivery-challans'],
+      'delivery-challan-new'=>['label'=>'New Delivery Challan','route'=>'delivery-challans'],
       'parties'=>['label'=>'Party','route'=>'parties'],
       'items'=>['label'=>'Item','route'=>'items'],
       'purchase'=>['label'=>'Purchase','route'=>'purchase'],
