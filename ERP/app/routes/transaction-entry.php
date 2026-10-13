@@ -23,11 +23,63 @@ if(in_array($route,['sale-new','purchase-new'],true)){
     $items=get_items($cid);
     $itemMetaById=[]; foreach($items as $it0){$itemMetaById[(int)$it0['id']]=$it0;}
     $banks=db()->prepare('SELECT id,name,bank_name,account_number FROM bank_accounts WHERE company_id=? AND active=1 ORDER BY name'); $banks->execute([$cid]); $bankRows=$banks->fetchAll();
+    $formRestore=[];
+    if(!$isSale && !$editTx && (string)($_GET['restore']??'')==='1'){
+        $saved=$_SESSION['transaction_form_restore']??null;
+        if(is_array($saved) && (int)($saved['company_id']??0)===$cid && ($saved['type']??'')==='purchase' && is_array($saved['payload']??null)){
+            $formRestore=$saved['payload'];
+        }
+        unset($_SESSION['transaction_form_restore']);
+    }
+    $restorePartyId=(int)($formRestore['party_id']??($editTx['party_id']??0));
+    $restorePartyName=(string)($editTx['party_name']??'');
+    $restorePartyPhone=(string)($editTx['party_phone']??'');
+    if($restorePartyId>0 && !$editTx){
+        try{$rps=$pdo->prepare('SELECT name,phone FROM parties WHERE id=? AND company_id=? AND deleted_at IS NULL LIMIT 1');$rps->execute([$restorePartyId,$cid]);$rpr=$rps->fetch();if($rpr){$restorePartyName=(string)$rpr['name'];$restorePartyPhone=(string)($rpr['phone']??'');}}catch(Throwable $e){}
+    }
     $pageHeading=$editTx?($isSale?'Edit Sale Invoice':'Edit Purchase Bill'):($isSale?'Sale':'Purchase');
     $pageSub=$editTx?('Edit '.($isSale?'Sales Invoice':'Purchase Bill').' '.$editTx['document_no']):($isSale?'Create Sales Invoice':'Create Purchase Bill');
     $rows=$editLines ?: [null];
+    if($formRestore){
+        $restoreItems=(array)($formRestore['item_id']??[]);
+        $restoreQtys=(array)($formRestore['qty']??[]);
+        $restorePrices=(array)($formRestore['price']??[]);
+        $restoreDiscounts=(array)($formRestore['discount']??[]);
+        $restoreDescriptions=(array)($formRestore['item_description']??[]);
+        $restoreWarranties=(array)($formRestore['item_warranty']??[]);
+        $restoreSerials=(array)($formRestore['serial_numbers']??[]);
+        $restoreRowKeys=(array)($formRestore['bundle_row_key']??[]);
+        $restoreParentKeys=(array)($formRestore['bundle_parent_key']??[]);
+        $restoreChildFlags=(array)($formRestore['bundle_child']??[]);
+        $restoreCount=max(count($restoreItems),count($restoreQtys),count($restorePrices),1);
+        $rows=[];
+        for($ri=0;$ri<$restoreCount;$ri++){
+            $rows[]=[
+                'id'=>0,
+                'item_id'=>(int)($restoreItems[$ri]??0),
+                'qty'=>(float)($restoreQtys[$ri]??1),
+                'unit_price'=>(float)($restorePrices[$ri]??0),
+                'discount'=>(float)($restoreDiscounts[$ri]??0),
+                'item_description'=>(string)($restoreDescriptions[$ri]??''),
+                'item_warranty'=>(string)($restoreWarranties[$ri]??''),
+                'serial_numbers'=>preg_split('/\r?\n/',(string)($restoreSerials[$ri]??''))?:[],
+                'bundle_row_key'=>(string)($restoreRowKeys[$ri]??('restore-row-'.$ri.'-'.bin2hex(random_bytes(3)))),
+                'bundle_parent_key'=>(string)($restoreParentKeys[$ri]??''),
+                'bundle_child'=>(int)($restoreChildFlags[$ri]??0)
+            ];
+        }
+    }
     $bundleMapTxn=bundle_map_for_company($pdo,$cid);
     $payRows=$editPayments ?: [null];
+    if($formRestore){
+        $payRows=[];
+        $restoreMethods=(array)($formRestore['pay_method']??[]);
+        $restoreAmounts=(array)($formRestore['pay_amount']??[]);
+        $restoreRefs=(array)($formRestore['pay_ref']??[]);
+        $restoreChequeDates=(array)($formRestore['pay_cheque_date']??[]);
+        $n=max(count($restoreMethods),count($restoreAmounts),count($restoreRefs),1);
+        for($pi=0;$pi<$n;$pi++)$payRows[]=['method'=>(string)($restoreMethods[$pi]??'cash'),'amount'=>(float)($restoreAmounts[$pi]??0),'reference_no'=>(string)($restoreRefs[$pi]??''),'cheque_date'=>(string)($restoreChequeDates[$pi]??''),'account_name'=>''];
+    }
 ?>
 <script>
 document.body.dataset.txntype=<?=json_encode($type)?>;
@@ -51,29 +103,29 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
 <div class="panel">
   <div class="entry-top <?= $isSale?'sale-entry-top':'purchase-entry-top' ?>">
     <div>
-      <?php party_search_field($isSale?'Customer':'Supplier',$isSale?'customer':'supplier',(int)($editTx['party_id']??0),$editTx['party_name']??'',(($editTx['party_phone']??'')),$isSale?false:true); ?>
+      <?php party_search_field($isSale?'Customer':'Supplier',$isSale?'customer':'supplier',$restorePartyId,$restorePartyName,$restorePartyPhone,$isSale?false:true); ?>
       <div class="subtle" style="margin-top:6px;display:flex;gap:8px;align-items:center"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('<?=$isSale?'customer':'supplier'?>')">+ Add Party</button><?= $isSale?' <span>(Customer optional for Cash Sale)</span>':'' ?></div>
     </div>
     <div class="entry-right <?= $isSale?'sale-invoice-meta':'' ?>">
-      <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Number</label><input name="document_no" value="<?=e($editTx['document_no']??'')?>" placeholder="Auto: <?=$prefix?>01"></div>
-      <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Date*</label><?php $editDateTime=(!empty($editTx['txn_date']))?date('Y-m-d\TH:i',strtotime((string)$editTx['txn_date'])):date('Y-m-d\TH:i'); ?><input type="<?= $isSale?'datetime-local':'date' ?>" name="txn_date" value="<?=e($isSale?$editDateTime:($editTx['txn_date']??date('Y-m-d')))?>" required></div>
+      <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Number</label><input name="document_no" value="<?=e((string)($formRestore['document_no']??($editTx['document_no']??'')))?>" placeholder="Auto: <?=$prefix?>01"></div>
+      <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Date*</label><?php $editDateTime=(!empty($editTx['txn_date']))?date('Y-m-d\TH:i',strtotime((string)$editTx['txn_date'])):date('Y-m-d\TH:i'); ?><input type="<?= $isSale?'datetime-local':'date' ?>" name="txn_date" value="<?=e((string)($formRestore['txn_date']??($isSale?$editDateTime:($editTx['txn_date']??date('Y-m-d')))))?>" required></div>
       <?php if(!$isSale): ?><div class="subtle sale-purchase-note" style="margin-top:8px">BDT · Negative stock allowed</div><?php endif; ?>
     </div>
   </div>
   <div class="entry-table">
     <table><thead><tr><th class="txn-head-index">#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th><th class="txn-head-actions">ACTIONS</th></tr></thead>
     <tbody id="entryRows">
-<?php foreach($rows as $ri=>$r): $rid=(int)($r['item_id']??0); $rv=(float)($r['qty']??1); $rp=(float)($r['unit_price']??0); $rd=(float)($r['discount']??0); $meta=$rid&&isset($itemMetaById[$rid])?$itemMetaById[$rid]:[]; $bundleChildId=(int)($r['bundle_parent_transaction_item_id']??0); $bundleRowKey=$r?'tx-ti-'.(int)$r['id']:'new-row-'.bin2hex(random_bytes(4)); $bundleParentKey=$bundleChildId>0?'tx-ti-'.$bundleChildId:''; $isBundleChild=$bundleChildId>0; $lineDesc=trim((string)($r['item_description']??'')); if($lineDesc==='')$lineDesc=trim((string)($r['item_master_description']??($meta['description']??''))); $lineWarranty=trim((string)($r['item_warranty']??'')); if($lineWarranty==='')$lineWarranty=trim((string)($r['item_master_warranty']??($meta['warranty']??''))); ?>
-      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>"><td class="txn-row-index-cell"><span class="txn-drag-handle" aria-hidden="true">⠿</span><span class="txn-row-number"><?=($ri+1)?></span></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??[]))?></textarea></div></div></td><td><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= in_array($type,['sale','delivery_challan'],true) ? '0.01' : '1' ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><td class="amount"><?=money(max(0,$rv*$rp-$rd))?></td><td class="txn-row-actions-cell"><button type="button" class="txn-action-btn txn-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn" onclick="removeRow(this)" aria-label="Delete item" title="Delete item">🗑</button></td></tr>
+<?php foreach($rows as $ri=>$r): $rid=(int)($r['item_id']??0); $rv=(float)($r['qty']??1); $rp=(float)($r['unit_price']??0); $rd=(float)($r['discount']??0); $meta=$rid&&isset($itemMetaById[$rid])?$itemMetaById[$rid]:[]; $bundleChildId=(int)($r['bundle_parent_transaction_item_id']??0); $bundleRowKey=isset($r['bundle_row_key'])?(string)$r['bundle_row_key']:($r?'tx-ti-'.(int)$r['id']:'new-row-'.bin2hex(random_bytes(4))); $bundleParentKey=isset($r['bundle_parent_key'])?(string)$r['bundle_parent_key']:($bundleChildId>0?'tx-ti-'.$bundleChildId:''); $isBundleChild=isset($r['bundle_child'])?(int)$r['bundle_child']===1:$bundleChildId>0; $lineDesc=trim((string)($r['item_description']??'')); if($lineDesc==='')$lineDesc=trim((string)($r['item_master_description']??($meta['description']??''))); $lineWarranty=trim((string)($r['item_warranty']??'')); if($lineWarranty==='')$lineWarranty=trim((string)($r['item_master_warranty']??($meta['warranty']??''))); ?>
+      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>"><td class="txn-row-index-cell"><span class="txn-drag-handle" aria-hidden="true">⠿</span><span class="txn-row-number"><?=($ri+1)?></span></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??($r['serial_numbers']??[])))?></textarea></div></div></td><td><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= in_array($type,['sale','delivery_challan'],true) ? '0.01' : '1' ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><td class="amount"><?=money(max(0,$rv*$rp-$rd))?></td><td class="txn-row-actions-cell"><button type="button" class="txn-action-btn txn-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn" onclick="removeRow(this)" aria-label="Delete item" title="Delete item">🗑</button></td></tr>
 <?php endforeach; ?>
     </tbody></table>
   </div>
   <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addRow('<?=$type?>')">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#entryRows','<?=$type?>')">+ Add Product</button></div><span><b>Items Total</b <strong id="subTotal"><?=money((float)($editTx['subtotal']??0))?></strong></span></div>
   <?php if($isSale): ?>
   <div class="sale-adjustments">
-    <div class="form-group"><label>Tax / VAT <span class="subtle">(optional)</span></label><input id="tax" type="number" step="0.01" min="0" name="tax" value="<?=e((string)($editTx['tax']??0))?>"></div>
-    <div class="form-group"><label>Direct Expense</label><input id="directExpense" type="number" step="0.01" min="0" name="direct_expense" value="<?=e((string)($editTx['direct_expense']??0))?>"></div>
-    <div class="form-group"><label>Invoice Discount</label><input id="invoiceDiscount" type="number" step="0.01" min="0" name="invoice_discount" value="<?=e((string)($editTx['invoice_discount']??0))?>"></div>
+    <div class="form-group"><label>Tax / VAT <span class="subtle">(optional)</span></label><input id="tax" type="number" step="0.01" min="0" name="tax" value="<?=e((string)($formRestore['tax']??($editTx['tax']??0)))?>"></div>
+    <div class="form-group"><label>Direct Expense</label><input id="directExpense" type="number" step="0.01" min="0" name="direct_expense" value="<?=e((string)($formRestore['direct_expense']??($editTx['direct_expense']??0)))?>"></div>
+    <div class="form-group"><label>Invoice Discount</label><input id="invoiceDiscount" type="number" step="0.01" min="0" name="invoice_discount" value="<?=e((string)($formRestore['invoice_discount']??($editTx['invoice_discount']??0)))?>"></div>
   </div>
   <?php else: ?>
   <div class="grid3">
@@ -83,8 +135,8 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
   </div>
   <?php endif; ?>
   <div class="grid2" style="margin-top:12px">
-    <div class="form-group"><label>Description / Note</label><textarea name="notes" rows="3" placeholder="Add description"><?=e($editTx['notes']??'')?></textarea></div>
-    <div class="payment-box"><div class="panel-head payment-panel-head"><div class="payment-title-wrap"><h2>Payment</h2><?php if($isSale): ?><label class="received-toggle"><input type="checkbox" id="receivedToggle" name="received" value="1" <?=($editTx && (float)$editTx['due']<=0.009 && (float)$editTx['total']>0)?'checked':''?>> <span>Received</span></label><?php endif; ?></div><span class="subtle">Multiple methods allowed</span></div>
+    <div class="form-group"><label>Description / Note</label><textarea name="notes" rows="3" placeholder="Add description"><?=e((string)($formRestore['notes']??($editTx['notes']??'')))?></textarea></div>
+    <div class="payment-box"><div class="panel-head payment-panel-head"><div class="payment-title-wrap"><h2>Payment</h2><?php if($isSale): ?><label class="received-toggle"><input type="checkbox" id="receivedToggle" name="received" value="1" <?=((!empty($formRestore['received'])) || ($editTx && (float)$editTx['due']<=0.009 && (float)$editTx['total']>0))?'checked':''?>> <span>Received</span></label><?php endif; ?></div><span class="subtle">Multiple methods allowed</span></div>
       <div id="paymentRows">
 <?php foreach($payRows as $pi=>$pr): $pm=(string)($pr['method']??'cash'); $pa=(float)($pr['amount']??0); ?>
         <div class="payment-line" data-payment-row><select name="pay_method[]" onchange="togglePaymentFields(this)"><?=payment_select_options($bankRows,$pm,(string)($pr['account_name']??''))?></select><input type="date" name="pay_cheque_date[]" class="pay-cheque-date" style="display:none" value="<?=e($pr['cheque_date']??'')?>"><input type="number" min="0" step="0.01" name="pay_amount[]" value="<?=e((string)$pa)?>" placeholder="Amount"><input name="pay_ref[]" value="<?=e($pr['reference_no']??'')?>" placeholder="Reference / Cheque No."><button type="button" class="payment-remove" onclick="removePayment(this)" aria-label="Remove payment">×</button></div>
@@ -572,7 +624,11 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     check_csrf(); $type=$_POST['txn_type']??''; $txId=(int)($_POST['transaction_id']??0);
     if(!in_array($type,['sale','purchase'],true)){http_response_code(422);exit('Unsupported transaction type.');}
     $cid=(int)$u['company_id']; $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
-    if($type==='purchase' && $party<=0){flash('error','Supplier is required.');redirect('purchase-new');}
+    if($type==='purchase' && $party<=0){
+        $_SESSION['transaction_form_restore']=['company_id'=>$cid,'type'=>'purchase','payload'=>$_POST];
+        flash('error','Supplier is required. Your entered items and amounts have been restored below; select a Supplier and save again.');
+        redirect('purchase-new?restore=1');
+    }
     $txnDate=transaction_datetime($_POST['txn_date']??null);
     $dueDate=$type==='sale'?null:(($_POST['due_date']??'')?:null);
     $partyParam=$party>0?$party:null;
