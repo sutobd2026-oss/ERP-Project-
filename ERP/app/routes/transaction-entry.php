@@ -528,6 +528,19 @@ document.addEventListener('change',function(e){
 });
 
 function validateTransactionForm(){
+  // Validate the required supplier before any empty item rows are cleaned up.
+  // If the supplier is missing, keep the purchase form untouched so products,
+  // quantities, prices and notes are not lost on a redirect.
+  const txnType=document.querySelector('#txnForm input[name="txn_type"]')?.value||'';
+  if(txnType==='purchase'){
+    const supplierId=document.querySelector('.party-live-search[data-party-role="supplier"] .party-search-id');
+    const supplierInput=document.querySelector('.party-live-search[data-party-role="supplier"] .party-search-input');
+    if(!supplierId || !supplierId.value){
+      alert('Please select a Supplier before saving. Your entered items have been kept.');
+      supplierInput?.focus();
+      return false;
+    }
+  }
   const rows=[...document.querySelectorAll('#entryRows .sale-row')];
   let validCount=0;
   for(const row of rows){
