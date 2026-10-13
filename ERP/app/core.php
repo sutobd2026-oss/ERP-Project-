@@ -416,6 +416,7 @@ function page_start(string $title): void {
       'parties'=>['label'=>'Party','route'=>'parties'],
       'items'=>['label'=>'Item','route'=>'items'],
       'purchase'=>['label'=>'Purchase','route'=>'purchase'],
+      'purchase-new'=>['label'=>'New Purchase','route'=>'purchase'],
       'payment-out'=>['label'=>'Payment Out','route'=>'payment-out'],
       'purchase-order'=>['label'=>'Purchase Order','route'=>'purchase-order'],
       'product-requests'=>['label'=>'Product Request','route'=>'product-requests'],
