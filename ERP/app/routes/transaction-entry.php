@@ -579,6 +579,23 @@ document.addEventListener('change',function(e){
   },0);
 });
 
+// v232: capture submit before the inline handler so a missing supplier never
+// posts the form or clears the products currently entered by the user.
+document.addEventListener('submit',function(ev){
+  const form=ev.target;
+  if(!form || form.id!=='txnForm')return;
+  const txnType=form.querySelector('input[name="txn_type"]')?.value||'';
+  if(txnType!=='purchase')return;
+  const supplierId=form.querySelector('.party-live-search[data-party-role="supplier"] .party-search-id');
+  if(!supplierId || !String(supplierId.value||'').trim()){
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    const supplierInput=form.querySelector('.party-live-search[data-party-role="supplier"] .party-search-input');
+    alert('Please select a Supplier before saving. Your products and amounts are still here.');
+    supplierInput?.focus();
+  }
+},true);
+
 function validateTransactionForm(){
   // Validate the required supplier before any empty item rows are cleaned up.
   // If the supplier is missing, keep the purchase form untouched so products,
