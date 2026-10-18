@@ -1085,6 +1085,34 @@ function document_module(string $type,string $title,string $prefix,string $party
             foreach($itemIds as $i=>$iid){$iid=(int)$iid;$q=(float)($qtys[$i]??0);$price=(float)($prices[$i]??0);$disc=max(0,(float)($discs[$i]??0));if($iid<=0||$q<=0)continue;$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');$gross=$q*$price;if($disc>$gross)$disc=$gross;$rows[]=[$iid,$q,$price,$disc,$it];$subtotal+=$gross;$itemDisc+=$disc;}
             if(!$rows) throw new RuntimeException('Add at least one item.');
             $invDisc=max(0,(float)($_POST['invoice_discount']??0));$tax=max(0,(float)($_POST['tax']??0));$direct=max(0,(float)($_POST['direct_expense']??0));$after=max(0,$subtotal-$itemDisc);if($invDisc>$after)$invDisc=$after;$total=round(max(0,$after-$invDisc+$tax+$direct),2);
+            $purchaseOrderPayments=[];$purchaseOrderPaid=0.0;
+            if($type==='purchase_order'){
+                $methods=(array)($_POST['pay_method']??[]);$amounts=(array)($_POST['pay_amount']??[]);$accounts=(array)($_POST['pay_account']??[]);$refs=(array)($_POST['pay_ref']??[]);$chequeDates=(array)($_POST['pay_cheque_date']??[]);
+                foreach($methods as $pi=>$rawMethod){
+                    $amount=round(max(0,(float)($amounts[$pi]??0)),2);if($amount<=0)continue;
+                    [$method,$account]=normalize_payment_method($pdo,$cid,(string)$rawMethod,trim((string)($accounts[$pi]??'')));
+                    $reference=trim((string)($refs[$pi]??''));$chequeDate=trim((string)($chequeDates[$pi]??''));
+                    if($method==='cheque'&&$reference==='')throw new RuntimeException('Cheque number is required for Purchase Order advance payment.');
+                    $purchaseOrderPayments[]=[$method,$account,$reference?:null,$chequeDate?:null,$amount];
+                    $purchaseOrderPaid+=$amount;
+                }
+                $purchaseOrderPaid=round($purchaseOrderPaid,2);
+                if($purchaseOrderPaid>$total+0.01)throw new RuntimeException('Advance payment cannot be greater than Purchase Order total.');
+            }
+            $paidToSave=$type==='purchase_order'?$purchaseOrderPaid:0.0;
+            $dueToSave=round(max(0,$total-$paidToSave),2);
+            $storePurchaseOrderPayments=function(int $paymentTransactionId,string $paymentDoc,string $paymentDate) use($type,$purchaseOrderPayments,$pdo,$cid): void {
+                if($type!=='purchase_order'||!$purchaseOrderPayments)return;
+                $pl=$pdo->prepare('INSERT INTO payment_lines(transaction_id,method,account_name,reference_no,cheque_date,amount,status) VALUES(?,?,?,?,?,?,?)');
+                $ledger=[];
+                foreach($purchaseOrderPayments as [$method,$account,$reference,$chequeDate,$amount]){
+                    $pl->execute([$paymentTransactionId,$method,$account?:null,$reference,$chequeDate,$amount,'completed']);
+                    $ledger[]=['1250','Supplier Advances',$amount,0,$paymentDoc];
+                    [$payCode,$payName]=payment_account_code($method,$account);
+                    $ledger[]=[$payCode,$payName,0,$amount,$paymentDoc];
+                }
+                post_ledger($pdo,$cid,$paymentTransactionId,$paymentDate,$ledger);
+            };
             $documentId=(int)($_POST['transaction_id']??0);
             $pdo->beginTransaction();
             if($documentId>0){
@@ -1094,16 +1122,22 @@ function document_module(string $type,string $title,string $prefix,string $party
                 if((string)$existing['status']==='converted') throw new RuntimeException('Converted '.$title.' cannot be edited.');
                 $doc=trim((string)($_POST['document_no']??''));
                 if($doc==='')$doc=(string)$existing['document_no'];
-                $pdo->prepare('UPDATE transactions SET party_id=?,document_no=?,txn_date=?,due_date=?,subtotal=?,item_discount=?,invoice_discount=?,tax=?,direct_expense=?,total=?,due=?,notes=? WHERE id=? AND company_id=?')->execute([$party,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$total,$notes,$documentId,$cid]);
+                $pdo->prepare('UPDATE transactions SET party_id=?,document_no=?,txn_date=?,due_date=?,subtotal=?,item_discount=?,invoice_discount=?,tax=?,direct_expense=?,total=?,paid=?,due=?,status=?,notes=? WHERE id=? AND company_id=?')->execute([$party,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,'open',$notes,$documentId,$cid]);
                 $pdo->prepare('DELETE FROM transaction_items WHERE transaction_id=?')->execute([$documentId]);
+                if($type==='purchase_order'){
+                    $pdo->prepare('DELETE FROM payment_lines WHERE transaction_id=?')->execute([$documentId]);
+                    $pdo->prepare('DELETE FROM ledger_entries WHERE transaction_id=? AND company_id=?')->execute([$documentId,$cid]);
+                }
                 $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it])$ins->execute([$documentId,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
-                audit('edit','transaction',$documentId,['type'=>$type,'document'=>$doc,'total'=>$total]);$pdo->commit();flash('success',$title.' '.$doc.' updated successfully.');redirect($listRoute!==''?$listRoute:$type);
+                $storePurchaseOrderPayments($documentId,$doc,$txnDate);
+                audit('edit','transaction',$documentId,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' updated successfully.');redirect($listRoute!==''?$listRoute:$type);
             }
             $doc=trim($_POST['document_no']??'');if($doc==='')$doc=next_document_in_transaction($pdo,$cid,$type,$prefix);
-            $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,0,$total,$u['currency_code'],'open',$notes,$u['id']]);
+            $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$u['currency_code'],'open',$notes,$u['id']]);
             $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it])$ins->execute([$tid,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
+            $storePurchaseOrderPayments($tid,$doc,$txnDate);
             if($type==='delivery_challan'){ /* challan does not change accounting/stock until converted to sale */ }
-            audit('create','transaction',$tid,['type'=>$type,'document'=>$doc,'total'=>$total]);$pdo->commit();flash('success',$title.' '.$doc.' saved successfully.');redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));
+            audit('create','transaction',$tid,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' saved successfully.');redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));
         }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));}
         }
     }
