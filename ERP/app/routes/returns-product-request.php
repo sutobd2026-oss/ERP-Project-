@@ -1194,9 +1194,11 @@ function document_module(string $type,string $title,string $prefix,string $party
             $st=$pdo->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.id=? AND t.company_id=? AND t.txn_type=? AND t.deleted_at IS NULL');$st->execute([$sourceId,$cid,$sourceType]);$source=$st->fetch();if(!$source)throw new RuntimeException('Source document not found.');
             $its=$pdo->prepare('SELECT ti.* FROM transaction_items ti WHERE ti.transaction_id=?');$its->execute([$sourceId]);$sourceItems=$its->fetchAll();if(!$sourceItems)throw new RuntimeException('Source document has no items.');
             $targetType=$target;$targetPrefix=match($targetType){'sale_order'=>'SO-','delivery_challan'=>'DC-','sale'=>'SI-','purchase'=>'PB-',default=>'DOC-'};$targetDoc=next_document_in_transaction($pdo,$cid,$targetType,$targetPrefix);
+            $targetPaid=0.0;$targetDue=(float)$source['total'];
+            if($sourceType==='purchase_order'&&$targetType==='purchase'){$targetPaid=round(max(0,min((float)$source['paid'],(float)$source['total'])),2);$targetDue=round(max(0,(float)$source['total']-$targetPaid),2);}
             $pdo->beginTransaction();
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-              ->execute([$cid,$source['party_id'],$targetType,$targetDoc,transaction_datetime(null),$source['due_date'],$source['subtotal'],$source['item_discount'],$source['invoice_discount'],$source['tax'],$source['direct_expense'],$source['total'],0,$source['total'],$u['currency_code'],in_array($targetType,['sale','purchase'],true)?'final':'open','Converted from '.$source['document_no'],$u['id']]);
+              ->execute([$cid,$source['party_id'],$targetType,$targetDoc,transaction_datetime(null),$source['due_date'],$source['subtotal'],$source['item_discount'],$source['invoice_discount'],$source['tax'],$source['direct_expense'],$source['total'],$targetPaid,$targetDue,$u['currency_code'],in_array($targetType,['sale','purchase'],true)?'final':'open','Converted from '.$source['document_no'],$u['id']]);
             $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
             foreach($sourceItems as $r){$ins->execute([$tid,$r['item_id'],$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount']]);}
             if($targetType==='sale'){
@@ -1210,13 +1212,26 @@ function document_module(string $type,string $title,string $prefix,string $party
                 $itq=$pdo->prepare('SELECT item_type FROM items WHERE id=? AND company_id=?');
                 $productCost=0;$serviceCost=0;
                 foreach($sourceItems as $r){$itq->execute([(int)$r['item_id'],$cid]);$it=$itq->fetch();$amt=max(0,(float)$r['amount']);if($it&&$it['item_type']==='product'){$productCost+=$amt;$stock->execute([$cid,(int)$r['item_id'],$tid,date('Y-m-d'),(float)$r['qty'],'purchase',$targetDoc]);}else{$serviceCost+=$amt;}}
+                $poPaymentRows=[];
+                if($sourceType==='purchase_order'){
+                    $ps=$pdo->prepare('SELECT method,account_name,reference_no,cheque_date,amount,status FROM payment_lines WHERE transaction_id=? ORDER BY id');$ps->execute([$sourceId]);$poPaymentRows=$ps->fetchAll();
+                    if($poPaymentRows){
+                        $pl=$pdo->prepare('INSERT INTO payment_lines(transaction_id,method,account_name,reference_no,cheque_date,amount,status) VALUES(?,?,?,?,?,?,?)');
+                        foreach($poPaymentRows as $p)$pl->execute([$tid,$p['method'],$p['account_name'],$p['reference_no'],$p['cheque_date'],$p['amount'],$p['status']]);
+                    }
+                    // Move the advance-payment accounting from the order to the
+                    // Purchase Bill so a later edit never double-counts cash/bank.
+                    $pdo->prepare('DELETE FROM payment_lines WHERE transaction_id=?')->execute([$sourceId]);
+                    $pdo->prepare('DELETE FROM ledger_entries WHERE company_id=? AND transaction_id=?')->execute([$cid,$sourceId]);
+                }
                 $lines=[];
                 if($productCost>0)$lines[]=['1300','Inventory',$productCost,0,$targetDoc];
                 if($serviceCost>0)$lines[]=['5200','Purchase / Service Cost',$serviceCost,0,$targetDoc];
                 if((float)$source['direct_expense']>0)$lines[]=['1300','Inventory',(float)$source['direct_expense'],0,$targetDoc];
                 if((float)$source['tax']>0)$lines[]=['1400','Input VAT / Tax',(float)$source['tax'],0,$targetDoc];
                 if((float)$source['invoice_discount']>0)$lines[]=['4300','Purchase Discount',0,(float)$source['invoice_discount'],$targetDoc];
-                $lines[]=['2100','Accounts Payable',0,(float)$source['total'],$targetDoc];
+                foreach($poPaymentRows as $p){[$payCode,$payName]=payment_account_code((string)$p['method'],(string)($p['account_name']??''));$lines[]=[$payCode,$payName,0,(float)$p['amount'],$targetDoc];}
+                $lines[]=['2100','Accounts Payable',0,$targetDue,$targetDoc];
                 $debit=0;$credit=0;foreach($lines as $l){$debit+=round((float)$l[2],2);$credit+=round((float)$l[3],2);}if(abs(round($debit-$credit,2))>0.01)throw new RuntimeException('Converted purchase accounting entry is not balanced.');post_ledger($pdo,$cid,$tid,date('Y-m-d'),$lines);
             }
             $pdo->prepare('INSERT INTO transaction_links(company_id,from_transaction_id,to_transaction_id,relation_type,quantity) VALUES(?,?,?,?,NULL)')->execute([$cid,$sourceId,$tid,$relation]);
