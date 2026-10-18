@@ -1243,6 +1243,11 @@ function document_module(string $type,string $title,string $prefix,string $party
     page_start($title);
     $partySt=$pdo->prepare('SELECT p.id,p.name,p.phone FROM parties p WHERE p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role=? ) ORDER BY p.name');$partySt->execute([$cid,$partyLabel==='Customer'?'customer':'supplier']);$parties=$partySt->fetchAll();
     $items=get_items($cid);
+    $bankRows=[];
+    $poPaymentRows=[['method'=>'cash','account_name'=>'','reference_no'=>'','cheque_date'=>'','amount'=>0]];
+    if($type==='purchase_order'){
+        $bankSt=$pdo->prepare('SELECT id,name,bank_name,account_number FROM bank_accounts WHERE company_id=? AND active=1 ORDER BY name');$bankSt->execute([$cid]);$bankRows=$bankSt->fetchAll();
+    }
     $editDocument=false; $editTx=null; $editLines=[];
     if(isset($_GET['edit'])){
         $editId=(int)$_GET['edit'];
@@ -1251,6 +1256,10 @@ function document_module(string $type,string $title,string $prefix,string $party
         if(!$editTx){flash('error',$title.' not found.');redirect($listRoute!==''?$listRoute:$type);}
         if((string)$editTx['status']==='converted'){flash('error','Converted '.$title.' cannot be edited.');redirect(($listRoute!==''?$listRoute:$type).'?view='.$editId);}
         $eli=$pdo->prepare('SELECT ti.*,i.name item_name,u.symbol unit_symbol FROM transaction_items ti JOIN items i ON i.id=ti.item_id LEFT JOIN units u ON u.id=i.unit_id WHERE ti.transaction_id=? ORDER BY ti.id');$eli->execute([$editId]);$editLines=$eli->fetchAll();
+        if($type==='purchase_order'){
+            $poPaySt=$pdo->prepare('SELECT method,account_name,reference_no,cheque_date,amount FROM payment_lines WHERE transaction_id=? ORDER BY id');$poPaySt->execute([$editId]);$savedPoPayments=$poPaySt->fetchAll(PDO::FETCH_ASSOC);
+            if($savedPoPayments)$poPaymentRows=$savedPoPayments;
+        }
         $editDocument=true;
     }
     if(isset($_GET['view'])){
