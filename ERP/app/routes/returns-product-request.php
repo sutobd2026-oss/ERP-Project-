@@ -1097,10 +1097,11 @@ function document_module(string $type,string $title,string $prefix,string $party
                     $purchaseOrderPaid+=$amount;
                 }
                 $purchaseOrderPaid=round($purchaseOrderPaid,2);
-                if($purchaseOrderPaid>$total+0.01)throw new RuntimeException('Advance payment cannot be greater than Purchase Order total.');
+                if($purchaseOrderPaid>$total+0.001)throw new RuntimeException('Advance payment cannot be greater than Purchase Order total.');
             }
             $paidToSave=$type==='purchase_order'?$purchaseOrderPaid:0.0;
             $dueToSave=round(max(0,$total-$paidToSave),2);
+            $documentStatus=($type==='purchase_order'&&$dueToSave<=0.01)?'paid':'open';
             $storePurchaseOrderPayments=function(int $paymentTransactionId,string $paymentDoc,string $paymentDate) use($type,$purchaseOrderPayments,$pdo,$cid): void {
                 if($type!=='purchase_order'||!$purchaseOrderPayments)return;
                 $pl=$pdo->prepare('INSERT INTO payment_lines(transaction_id,method,account_name,reference_no,cheque_date,amount,status) VALUES(?,?,?,?,?,?,?)');
@@ -1122,7 +1123,7 @@ function document_module(string $type,string $title,string $prefix,string $party
                 if((string)$existing['status']==='converted') throw new RuntimeException('Converted '.$title.' cannot be edited.');
                 $doc=trim((string)($_POST['document_no']??''));
                 if($doc==='')$doc=(string)$existing['document_no'];
-                $pdo->prepare('UPDATE transactions SET party_id=?,document_no=?,txn_date=?,due_date=?,subtotal=?,item_discount=?,invoice_discount=?,tax=?,direct_expense=?,total=?,paid=?,due=?,status=?,notes=? WHERE id=? AND company_id=?')->execute([$party,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,'open',$notes,$documentId,$cid]);
+                $pdo->prepare('UPDATE transactions SET party_id=?,document_no=?,txn_date=?,due_date=?,subtotal=?,item_discount=?,invoice_discount=?,tax=?,direct_expense=?,total=?,paid=?,due=?,status=?,notes=? WHERE id=? AND company_id=?')->execute([$party,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$documentStatus,$notes,$documentId,$cid]);
                 $pdo->prepare('DELETE FROM transaction_items WHERE transaction_id=?')->execute([$documentId]);
                 if($type==='purchase_order'){
                     $pdo->prepare('DELETE FROM payment_lines WHERE transaction_id=?')->execute([$documentId]);
@@ -1133,7 +1134,7 @@ function document_module(string $type,string $title,string $prefix,string $party
                 audit('edit','transaction',$documentId,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' updated successfully.');redirect($listRoute!==''?$listRoute:$type);
             }
             $doc=trim($_POST['document_no']??'');if($doc==='')$doc=next_document_in_transaction($pdo,$cid,$type,$prefix);
-            $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$u['currency_code'],'open',$notes,$u['id']]);
+            $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$u['currency_code'],$documentStatus,$notes,$u['id']]);
             $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it])$ins->execute([$tid,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
             $storePurchaseOrderPayments($tid,$doc,$txnDate);
             if($type==='delivery_challan'){ /* challan does not change accounting/stock until converted to sale */ }
