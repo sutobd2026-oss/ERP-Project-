@@ -23,7 +23,7 @@ $routeFiles = [
     'sale-return'=>'sales-purchase-reports.php', 'purchase-return'=>'sales-purchase-reports.php',
     'delivery-challans'=>'delivery-docs.php', 'delivery-challan-items'=>'delivery-docs.php', 'delivery-challan-new'=>'returns-product-request.php',
     'product-requests'=>'returns-product-request.php', 'product-request-new'=>'returns-product-request.php',
-    'quotations'=>'returns-product-request.php', 'sale-order'=>'returns-product-request.php', 'sale-order-new'=>'returns-product-request.php', 'purchase-order'=>'returns-product-request.php', 'purchase_order'=>'returns-product-request.php',
+    'quotations'=>'returns-product-request.php', 'sale-order'=>'returns-product-request.php', 'sale-order-new'=>'returns-product-request.php', 'purchase-order'=>'returns-product-request.php', 'purchase_order'=>'returns-product-request.php', 'purchase-order-new'=>'returns-product-request.php',
     'expense-new'=>'expense.php', 'expense'=>'expense.php',
     'cash'=>'cash.php',
     'cheques'=>'banking.php', 'loans'=>'banking.php', 'bank-accounts'=>'banking.php',
