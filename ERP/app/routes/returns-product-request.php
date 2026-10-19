@@ -1301,7 +1301,7 @@ function document_module(string $type,string $title,string $prefix,string $party
         <h2>TRANSACTIONS</h2>
         <div style="display:flex;align-items:center;gap:8px">
           <form method="get" class="<?= $type==='purchase_order'?'po-list-search-form':'' ?>" style="display:flex;gap:8px">
-            <input class="input <?= $type==='purchase_order'?'po-list-search':'' ?>" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone">
+            <input class="input <?= $type==='purchase_order'?'po-list-search':'' ?>" name="q" value="<?=e($q)?>" style="<?= $type==='purchase_order'?'':'max-width:280px' ?>" placeholder="Search by document, party, phone">
             <button class="btn" type="submit">Search</button>
           </form>
           <a class="btn primary <?= $type==='purchase_order'?'po-add-btn':'' ?>" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add <?=e($type==='quotation'?'Estimate / Quotation':($type==='purchase_order'?'Purchase Order':($type==='sale_order'?'Sale Order':$title)))?></a>
