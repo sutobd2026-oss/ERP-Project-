@@ -421,6 +421,7 @@ function page_start(string $title): void {
       'purchase-new'=>['label'=>'New Purchase','route'=>'purchase'],
       'payment-out'=>['label'=>'Payment Out','route'=>'payment-out'],
       'purchase-order'=>['label'=>'Purchase Order','route'=>'purchase-order'],
+      'purchase-order-new'=>['label'=>'Purchase Order','route'=>'purchase-order'],
       'product-requests'=>['label'=>'Product Request','route'=>'product-requests'],
       'sale-return'=>['label'=>'Sale Return','route'=>'sale-return'],
       'sale-order'=>['label'=>'Sale Order','route'=>'sale-order'],
