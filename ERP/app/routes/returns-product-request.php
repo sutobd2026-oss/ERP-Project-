@@ -1277,15 +1277,34 @@ function document_module(string $type,string $title,string $prefix,string $party
     $sql.=' ORDER BY t.txn_date DESC,t.id DESC';
     $st=$pdo->prepare($sql);$st->execute($params);$rows=$st->fetchAll();
     if($listOnly): ?>
-    <div class="panel">
+    <?php if($type==='purchase_order'): ?>
+    <style>
+      .purchase-order-list-panel{padding:18px 22px}
+      .purchase-order-list-panel>.panel-head{gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+      .purchase-order-list-panel>.panel-head>div{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:1 1 auto;min-width:0}
+      .purchase-order-list-panel .po-list-search-form{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 300px}
+      .purchase-order-list-panel .po-list-search{flex:1 1 300px;width:auto;max-width:340px;min-width:180px;height:40px;box-sizing:border-box}
+      .purchase-order-list-panel .po-list-search-form .btn{height:40px;white-space:nowrap}
+      .purchase-order-list-panel .po-add-btn{height:40px;white-space:nowrap}
+      .purchase-order-list-panel table{min-width:1080px}
+      .purchase-order-list-panel td.po-list-action-cell{min-width:520px;padding-right:14px}
+      .purchase-order-list-panel .po-action-layout{display:flex;align-items:center;gap:8px;width:100%;min-width:500px}
+      .purchase-order-list-panel .po-action-layout>.btn{white-space:nowrap}
+      .purchase-order-list-panel .po-action-layout>.dots{margin-left:auto;flex:0 0 32px;width:32px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;color:#334155}
+      .purchase-order-list-panel .po-action-layout>.dots:hover{background:#f1f5f9}
+      .purchase-order-list-panel .po-action-layout>.row-menu{right:0;top:calc(100% + 4px)}
+      @media(max-width:900px){.purchase-order-list-panel>.panel-head>div{justify-content:flex-start;flex-wrap:wrap}.purchase-order-list-panel .po-list-search-form{flex:1 1 100%}.purchase-order-list-panel .po-list-search{width:100%;max-width:none;min-width:0}.purchase-order-list-panel td.po-list-action-cell{min-width:500px}}
+    </style>
+    <?php endif; ?>
+    <div class="panel <?= $type==='purchase_order'?'purchase-order-list-panel':'' ?>">
       <div class="panel-head">
         <h2>TRANSACTIONS</h2>
         <div style="display:flex;align-items:center;gap:8px">
-          <form method="get" style="display:flex;gap:8px">
-            <input class="input" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone">
+          <form method="get" class="<?= $type==='purchase_order'?'po-list-search-form':'' ?>" style="display:flex;gap:8px">
+            <input class="input <?= $type==='purchase_order'?'po-list-search':'' ?>" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone">
             <button class="btn" type="submit">Search</button>
           </form>
-          <a class="btn primary" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add <?=e($type==='quotation'?'Estimate / Quotation':($type==='purchase_order'?'Purchase Order':($type==='sale_order'?'Sale Order':$title)))?></a>
+          <a class="btn primary <?= $type==='purchase_order'?'po-add-btn':'' ?>" href="<?=e(url($listRoute!==''?$listRoute.'-new':'sale-order-new'))?>">⊕ Add <?=e($type==='quotation'?'Estimate / Quotation':($type==='purchase_order'?'Purchase Order':($type==='sale_order'?'Sale Order':$title)))?></a>
         </div>
       </div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>DOCUMENT NO.</th><th><?=e(strtoupper($partyLabel))?></th><th>TOTAL</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
@@ -1296,33 +1315,67 @@ function document_module(string $type,string $title,string $prefix,string $party
           <td><?=e($r['party_name']??'')?></td>
           <td><?=money((float)$r['total'])?></td>
           <td><span class="status <?=in_array($r['status'],['converted','paid'],true)?'paid':'open'?>"><?=e(ucfirst($r['status']))?></span></td>
-          <td class="action">
-            <a class="btn" href="<?=e(url($listRoute==='sale-order'?'sale-order-new?edit='.(int)$r['id']:(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id'])))?>"><?= $listRoute==='sale-order' ? 'View/Edit' : 'View' ?></a>
-            <?php if($r['status']!=='converted'):?>
-              <a class="btn primary small-btn" href="<?=e(url(($listRoute!==''?$listRoute:$type).'?convert='.(int)$r['id']))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='sale_order'?'CONVERT TO SALE':($type==='quotation'?'CONVERT TO SALE ORDER':'CONVERT TO PURCHASE BILL'))?></a>
-            <?php endif;?>
-            <div class="row-menu-wrap" style="position:relative;display:inline-block">
-              <button type="button" class="dots" aria-label="Actions">⋮</button>
-              <div class="row-menu">
-                <form method="post" onsubmit="return confirm('Delete this Sale Order? It will move to Recycle Bin.')">
-                  <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
-                  <input type="hidden" name="action" value="delete_document">
-                  <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
-                  <button type="submit">Delete</button>
-                </form>
-                <form method="post">
-                  <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
-                  <input type="hidden" name="action" value="duplicate_document">
-                  <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
-                  <button type="submit">Duplicate</button>
-                </form>
-                <a href="<?=e(url('sale-order?view='.(int)$r['id']))?>">Preview</a>
-                <a href="<?=e(url('sale-order?view='.(int)$r['id'].'&print=1'))?>">Print</a>
-                <?php if($r['status']!=='converted'):?>
-                  <a href="<?=e(url('sale-order?convert_dc='.(int)$r['id']))?>" onclick="return confirm('Convert this Sale Order to a Delivery Challan?')">Convert to Delivery Challan</a>
-                <?php endif;?>
+          <td class="action <?= $type==='purchase_order'?'po-list-action-cell':'' ?>">
+            <?php if($type==='purchase_order'): ?>
+              <div class="po-action-layout">
+                <a class="btn" href="<?=e(url('purchase-order?view='.(int)$r['id']))?>">View</a>
+                <?php if($r['status']!=='converted'): ?>
+                  <a class="btn" href="<?=e(url('purchase-order-new?edit='.(int)$r['id']))?>">Edit</a>
+                  <a class="btn primary small-btn" href="<?=e(url('purchase-order?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Purchase Order to a Purchase Bill?')">CONVERT TO PURCHASE BILL</a>
+                <?php endif; ?>
+                <button type="button" class="dots" aria-label="Actions">⋮</button>
+                <div class="row-menu">
+                  <a href="<?=e(url('purchase-order?view='.(int)$r['id']))?>">View</a>
+                  <?php if($r['status']!=='converted'): ?>
+                    <a href="<?=e(url('purchase-order-new?edit='.(int)$r['id']))?>">Edit</a>
+                    <a href="<?=e(url('purchase-order-new?edit='.(int)$r['id'].'#poAdvancePayment'))?>">Record Payment</a>
+                    <a href="<?=e(url('purchase-order?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Purchase Order to a Purchase Bill?')">Convert to Purchase Bill</a>
+                  <?php endif; ?>
+                  <form method="post" onsubmit="return confirm('Delete this Purchase Order? It will move to Recycle Bin.')">
+                    <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                    <input type="hidden" name="action" value="delete_document">
+                    <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                    <button type="submit">Delete</button>
+                  </form>
+                  <form method="post">
+                    <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                    <input type="hidden" name="action" value="duplicate_document">
+                    <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                    <button type="submit">Duplicate</button>
+                  </form>
+                  <a href="<?=e(url('purchase-order?view='.(int)$r['id'].'&print=1'))?>">Open PDF</a>
+                  <a href="<?=e(url('purchase-order?view='.(int)$r['id']))?>">Preview</a>
+                  <a href="<?=e(url('purchase-order?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+                </div>
               </div>
-            </div>
+            <?php else: ?>
+              <a class="btn" href="<?=e(url($listRoute==='sale-order'?'sale-order-new?edit='.(int)$r['id']:(($listRoute!==''?$listRoute:$type).'?view='.(int)$r['id'])))?>"><?= $listRoute==='sale-order' ? 'View/Edit' : 'View' ?></a>
+              <?php if($r['status']!=='converted'):?>
+                <a class="btn primary small-btn" href="<?=e(url(($listRoute!==''?$listRoute:$type).'?convert='.(int)$r['id']))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='sale_order'?'CONVERT TO SALE':($type==='quotation'?'CONVERT TO SALE ORDER':'CONVERT TO PURCHASE BILL'))?></a>
+              <?php endif;?>
+              <div class="row-menu-wrap" style="position:relative;display:inline-block">
+                <button type="button" class="dots" aria-label="Actions">⋮</button>
+                <div class="row-menu">
+                  <form method="post" onsubmit="return confirm('Delete this Sale Order? It will move to Recycle Bin.')">
+                    <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                    <input type="hidden" name="action" value="delete_document">
+                    <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                    <button type="submit">Delete</button>
+                  </form>
+                  <form method="post">
+                    <input type="hidden" name="_csrf" value="<?=csrf_token()?>">
+                    <input type="hidden" name="action" value="duplicate_document">
+                    <input type="hidden" name="transaction_id" value="<?=$r['id']?>">
+                    <button type="submit">Duplicate</button>
+                  </form>
+                  <a href="<?=e(url('sale-order?view='.(int)$r['id']))?>">Preview</a>
+                  <a href="<?=e(url('sale-order?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+                  <?php if($r['status']!=='converted'):?>
+                    <a href="<?=e(url('sale-order?convert_dc='.(int)$r['id']))?>" onclick="return confirm('Convert this Sale Order to a Delivery Challan?')">Convert to Delivery Challan</a>
+                  <?php endif;?>
+                </div>
+              </div>
+            <?php endif; ?>
           </td>
         </tr>
       <?php endforeach;?>
