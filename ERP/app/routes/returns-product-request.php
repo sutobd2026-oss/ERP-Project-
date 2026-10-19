@@ -1328,9 +1328,8 @@ function document_module(string $type,string $title,string $prefix,string $party
           <td class="action <?= $type==='purchase_order'?'po-list-action-cell':'' ?>">
             <?php if($type==='purchase_order'): ?>
               <div class="po-action-layout">
-                <a class="btn" href="<?=e(url('purchase-order?view='.(int)$r['id']))?>">View</a>
+                <a class="btn" href="<?=e(url('purchase-order-new?edit='.(int)$r['id']))?>">View/Edit</a>
                 <?php if($r['status']!=='converted'): ?>
-                  <a class="btn" href="<?=e(url('purchase-order-new?edit='.(int)$r['id']))?>">Edit</a>
                   <a class="btn primary small-btn" href="<?=e(url('purchase-order?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Purchase Order to a Purchase Bill?')">CONVERT TO PURCHASE BILL</a>
                 <?php endif; ?>
                 <button type="button" class="dots" aria-label="Actions">⋮</button>
