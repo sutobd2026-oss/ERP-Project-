@@ -1286,14 +1286,24 @@ function document_module(string $type,string $title,string $prefix,string $party
       .purchase-order-list-panel .po-list-search{flex:1 1 300px;width:auto;max-width:340px;min-width:180px;height:40px;box-sizing:border-box}
       .purchase-order-list-panel .po-list-search-form .btn{height:40px;white-space:nowrap}
       .purchase-order-list-panel .po-add-btn{height:40px;white-space:nowrap}
-      .purchase-order-list-panel table{min-width:1080px}
-      .purchase-order-list-panel td.po-list-action-cell{min-width:520px;padding-right:14px}
-      .purchase-order-list-panel .po-action-layout{display:flex;align-items:center;gap:8px;width:100%;min-width:500px}
-      .purchase-order-list-panel .po-action-layout>.btn{white-space:nowrap}
-      .purchase-order-list-panel .po-action-layout>.dots{margin-left:auto;flex:0 0 32px;width:32px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;color:#334155}
+      .purchase-order-list-panel .table-wrap{width:100%;overflow-x:hidden}
+      .purchase-order-list-panel table{width:100%;min-width:0;max-width:100%;table-layout:fixed}
+      .purchase-order-list-panel th:nth-child(1),.purchase-order-list-panel td:nth-child(1){width:12%}
+      .purchase-order-list-panel th:nth-child(2),.purchase-order-list-panel td:nth-child(2){width:15%}
+      .purchase-order-list-panel th:nth-child(3),.purchase-order-list-panel td:nth-child(3){width:15%}
+      .purchase-order-list-panel th:nth-child(4),.purchase-order-list-panel td:nth-child(4){width:10%}
+      .purchase-order-list-panel th:nth-child(5),.purchase-order-list-panel td:nth-child(5){width:10%}
+      .purchase-order-list-panel th:nth-child(6),.purchase-order-list-panel td:nth-child(6){width:38%}
+      .purchase-order-list-panel td:not(.po-list-action-cell){overflow:hidden;text-overflow:ellipsis}
+      .purchase-order-list-panel td.po-list-action-cell{min-width:0;padding-right:8px}
+      .purchase-order-list-panel .po-action-layout{position:relative;display:flex;align-items:center;gap:6px;width:100%;min-width:0}
+      .purchase-order-list-panel .po-action-layout>.btn{white-space:nowrap;flex:0 0 auto}
+      .purchase-order-list-panel .po-action-layout>.btn.primary.small-btn{padding:7px 9px;font-size:11px}
+      .purchase-order-list-panel .po-action-layout>.dots{margin-left:auto;flex:0 0 28px;width:28px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;color:#334155}
       .purchase-order-list-panel .po-action-layout>.dots:hover{background:#f1f5f9}
       .purchase-order-list-panel .po-action-layout>.row-menu{right:0;top:calc(100% + 4px)}
-      @media(max-width:900px){.purchase-order-list-panel>.panel-head>div{justify-content:flex-start;flex-wrap:wrap}.purchase-order-list-panel .po-list-search-form{flex:1 1 100%}.purchase-order-list-panel .po-list-search{width:100%;max-width:none;min-width:0}.purchase-order-list-panel td.po-list-action-cell{min-width:500px}}
+      @media(max-width:1100px){.purchase-order-list-panel .table-wrap{overflow-x:auto}.purchase-order-list-panel table{min-width:1080px}.purchase-order-list-panel td.po-list-action-cell{min-width:520px}.purchase-order-list-panel .po-action-layout{min-width:500px}}
+      @media(max-width:900px){.purchase-order-list-panel>.panel-head>div{justify-content:flex-start;flex-wrap:wrap}.purchase-order-list-panel .po-list-search-form{flex:1 1 100%}.purchase-order-list-panel .po-list-search{width:100%;max-width:none;min-width:0}}
     </style>
     <?php endif; ?>
     <div class="panel <?= $type==='purchase_order'?'purchase-order-list-panel':'' ?>">
