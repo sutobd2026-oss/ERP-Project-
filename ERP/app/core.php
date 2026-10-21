@@ -427,6 +427,7 @@ function page_start(string $title): void {
       'sale-order'=>['label'=>'Sale Order','route'=>'sale-order'],
       'sale-order-new'=>['label'=>'New Sale Order','route'=>'sale-order'],
       'quotations'=>['label'=>'Estimate / Quotations','route'=>'quotations'],
+      'quotations-new'=>['label'=>'New Estimate / Quotations','route'=>'quotations'],
       'payment-in'=>['label'=>'Payment In','route'=>'payment-in'],
       'expense'=>['label'=>'Expense','route'=>'expense'],
       'bank-accounts'=>['label'=>'Bank Accounts','route'=>'bank-accounts'],
