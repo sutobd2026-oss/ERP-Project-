@@ -47,6 +47,44 @@ function delivery_challans_list(): void {
     global $u;
     $cid=(int)$u['company_id']; $pdo=db();
 
+    // Cancel a Delivery Challan without deleting its history.
+    if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['action']??'')==='cancel_document'){
+        check_csrf();
+        $docId=(int)($_POST['transaction_id']??0);
+        try{
+            if($docId<=0) throw new RuntimeException('Invalid Delivery Challan.');
+            $pdo->beginTransaction();
+            $st=$pdo->prepare('SELECT t.*,(SELECT tl.to_transaction_id FROM transaction_links tl WHERE tl.company_id=t.company_id AND tl.from_transaction_id=t.id AND tl.relation_type="challan_to_sale" LIMIT 1) sale_id FROM transactions t WHERE t.id=? AND t.company_id=? AND t.txn_type="delivery_challan" AND t.deleted_at IS NULL LIMIT 1 FOR UPDATE');
+            $st->execute([$docId,$cid]);
+            $doc=$st->fetch();
+            if(!$doc) throw new RuntimeException('Delivery Challan not found.');
+            if(!empty($doc['sale_id']) || strtolower((string)($doc['status']??''))==='converted'){
+                throw new RuntimeException('Converted Delivery Challan cannot be cancelled.');
+            }
+            if(strtolower((string)($doc['status']??''))==='cancelled'){
+                throw new RuntimeException('This Delivery Challan is already cancelled.');
+            }
+            $upd=$pdo->prepare('UPDATE transactions SET status="cancelled" WHERE id=? AND company_id=? AND txn_type="delivery_challan" AND deleted_at IS NULL');
+            $upd->execute([$docId,$cid]);
+            if($upd->rowCount()!==1) throw new RuntimeException('Delivery Challan could not be cancelled.');
+            audit('cancel','transaction',$docId,[
+                'type'=>'delivery_challan',
+                'document_no'=>$doc['document_no']??null,
+                'reason'=>'Delivery Challan cancelled because customer will not receive it'
+            ]);
+            $pdo->commit();
+            if((float)($doc['paid']??0)>0.01){
+                flash('success','Delivery Challan '.$doc['document_no'].' cancelled. Any advance already received remains recorded; process a refund separately if required.');
+            }else{
+                flash('success','Delivery Challan '.$doc['document_no'].' cancelled successfully.');
+            }
+        }catch(Throwable $e){
+            if($pdo->inTransaction())$pdo->rollBack();
+            flash('error',$e->getMessage());
+        }
+        redirect('delivery-challans');
+    }
+
     // Delete a Delivery Challan: move it to Recycle Bin.
     // Converted challans are protected because they are linked to a Sale.
     if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['action']??'')==='delete_document'){
@@ -87,6 +125,7 @@ function delivery_challans_list(): void {
             $st=$pdo->prepare('SELECT t.*,p.name party_name FROM transactions t LEFT JOIN parties p ON p.id=t.party_id WHERE t.id=? AND t.company_id=? AND t.txn_type="delivery_challan" AND t.deleted_at IS NULL');
             $st->execute([$sourceId,$cid]); $source=$st->fetch();
             if(!$source) throw new RuntimeException('Delivery Challan not found.');
+            if(strtolower((string)($source['status']??''))==='cancelled') throw new RuntimeException('Cancelled Delivery Challan cannot be converted to Sale.');
             $lk=$pdo->prepare('SELECT to_transaction_id FROM transaction_links WHERE company_id=? AND from_transaction_id=? AND relation_type="challan_to_sale" LIMIT 1');
             $lk->execute([$cid,$sourceId]);
             if($lk->fetchColumn()) throw new RuntimeException('This Delivery Challan has already been converted to Sale.');
@@ -153,19 +192,27 @@ function delivery_challans_list(): void {
     <div class="panel">
       <div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" class="delivery-list-search"><input class="input" name="q" value="<?=e($q)?>" placeholder="⌕ Search by challan, party, phone"><button class="btn" type="submit">Search</button><a class="btn primary delivery-add-challan-btn" href="<?=e(url('delivery-challan-new'))?>">⊕ Add Challan</a></form></div>
       <div class="table-wrap"><table><thead><tr><th>DATE</th><th>PARTY</th><th>CHALLAN NO.</th><th>DUE DATE</th><th>TOTAL AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody>
-      <?php foreach($rows as $r): $converted=!empty($r['sale_id']); ?>
+      <?php foreach($rows as $r): $converted=!empty($r['sale_id']) || strtolower((string)($r['status']??''))==='converted'; $cancelled=strtolower((string)($r['status']??''))==='cancelled'; ?>
       <tr>
         <td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td>
         <td><?=e($r['party_name']??'')?></td>
         <td><?=e($r['document_no'])?></td>
         <td><?=e($r['due_date']?date('d/m/Y',strtotime($r['due_date'])):'—')?></td>
         <td><?=money((float)$r['total'])?></td>
-        <td><span class="status <?=$converted?'paid':'open'?>"><?=e($converted?'Converted':ucfirst($r['status']))?></span></td>
+        <td><span class="status <?=$converted?'paid':($cancelled?'delivery-challan-status-cancelled':'open')?>"><?=e($converted?'Converted':($cancelled?'Cancelled':ucfirst((string)$r['status'])))?></span></td>
         <td class="action"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-          <?php if(!$converted):?><a class="btn small-btn" href="<?=e(url('delivery-challans?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Delivery Challan to Sale?')">CONVERT TO SALE</a><?php elseif($r['sale_id']):?><a class="btn small-btn" href="<?=e(url('sales?view='.(int)$r['sale_id']))?>">VIEW SALE</a><?php endif; ?>
-          <a class="btn small-btn" href="<?=e(url('delivery-challan-new?edit='.(int)$r['id']))?>">View/Edit</a>
+          <?php if(!$converted && !$cancelled):?><a class="btn small-btn" href="<?=e(url('delivery-challans?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Delivery Challan to Sale?')">CONVERT TO SALE</a><?php elseif(!empty($r['sale_id'])):?><a class="btn small-btn" href="<?=e(url('sales?view='.(int)$r['sale_id']))?>">VIEW SALE</a><?php endif; ?>
+          <a class="btn small-btn" href="<?=e(url($cancelled?'delivery-challan-new?dc_print_view='.(int)$r['id']:'delivery-challan-new?edit='.(int)$r['id']))?>"><?=$cancelled?'View':'View/Edit'?></a>
           <button type="button" class="dots" aria-label="Actions">⋮</button>
-          <div class="row-menu"><a href="<?=e(url('delivery-challan-new?edit='.(int)$r['id']))?>">View/Edit</a><?php if(!$converted):?><a href="<?=e(url('delivery-challan-new?duplicate='.(int)$r['id']))?>">Duplicate</a><form method="post" onsubmit="return confirm('Delete this Delivery Challan? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form><?php else:?><span style="display:block;padding:9px 12px;color:#9ca3af">Delete unavailable</span><?php endif;?><a href="<?=e(url('delivery-challan-new?view='.(int)$r['id'].'&print=1'))?>">Open PDF</a><a href="<?=e(url('delivery-challan-new?dc_print_view='.(int)$r['id']))?>">Preview</a><a href="<?=e(url('delivery-challan-new?view='.(int)$r['id'].'&print=1'))?>">Print</a></div>
+          <div class="row-menu">
+            <a href="<?=e(url($cancelled?'delivery-challan-new?dc_print_view='.(int)$r['id']:'delivery-challan-new?edit='.(int)$r['id']))?>"><?=$cancelled?'View':'View/Edit'?></a>
+            <?php if(!$converted && !$cancelled):?><a href="<?=e(url('delivery-challan-new?duplicate='.(int)$r['id']))?>">Duplicate</a><?php endif;?>
+            <?php if(!$converted):?>
+              <form method="post" onsubmit="return confirm('Delete this Delivery Challan? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form>
+              <?php if(!$cancelled):?><form method="post" onsubmit="return confirm('Cancel this Delivery Challan? It will remain in history. Any advance payment already received will not be refunded automatically.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="cancel_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Cancel Challan</button></form><?php endif;?>
+            <?php else:?><span style="display:block;padding:9px 12px;color:#9ca3af">Delete unavailable</span><?php endif;?>
+            <a href="<?=e(url('delivery-challan-new?view='.(int)$r['id'].'&print=1'))?>">Open PDF</a><a href="<?=e(url('delivery-challan-new?dc_print_view='.(int)$r['id']))?>">Preview</a><a href="<?=e(url('delivery-challan-new?view='.(int)$r['id'].'&print=1'))?>">Print</a>
+          </div>
         </div></td>
       </tr>
       <?php endforeach; if(!$rows):?><tr><td colspan="7" class="subtle">No Delivery Challans found.</td></tr><?php endif; ?></tbody></table></div>
@@ -175,7 +222,7 @@ function delivery_challans_list(): void {
 .delivery-list-search .input{min-width:0}
 .delivery-add-challan-btn{white-space:nowrap}
 @media(max-width:700px){.delivery-list-search{flex-wrap:wrap}.delivery-list-search .input{flex:1 1 100%}}
-.action{position:relative}.row-menu{position:absolute;right:0;top:38px;display:none;background:#fff;border:1px solid #d8dee8;box-shadow:0 8px 20px rgba(0,0,0,.12);z-index:20;min-width:150px}.row-menu.show{display:block}.row-menu a{display:block;padding:9px 12px;white-space:nowrap}.row-menu a:hover{background:#f3f6fa}.row-menu form{margin:0}.row-menu form button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:9px 12px;font:inherit;color:#dc2626;cursor:pointer}.row-menu form button:hover{background:#fef2f2}</style>
+.action{position:relative}.delivery-challan-status-cancelled{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}.row-menu{position:absolute;right:0;top:38px;display:none;background:#fff;border:1px solid #d8dee8;box-shadow:0 8px 20px rgba(0,0,0,.12);z-index:20;min-width:150px}.row-menu.show{display:block}.row-menu a{display:block;padding:9px 12px;white-space:nowrap}.row-menu a:hover{background:#f3f6fa}.row-menu form{margin:0}.row-menu form button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:9px 12px;font:inherit;color:#dc2626;cursor:pointer}.row-menu form button:hover{background:#fef2f2}</style>
     <?php page_end();exit;
 }
 
