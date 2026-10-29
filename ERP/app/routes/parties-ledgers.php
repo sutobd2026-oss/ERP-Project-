@@ -460,7 +460,7 @@ if($route==='parties'){
               <div>
                 <div class="party-heading-v204">
                   <h2>@ <?=e($selected['name'])?></h2>
-                  <?php $partyPhoneRaw=(string)($selected['phone']??''); $partyWaPhone=preg_replace('/\D+/','',$partyPhoneRaw); ?>
+                  <?php $partyPhoneRaw=(string)($selected['phone']??''); $partyWaPhone=preg_replace('/\D+/','',$partyPhoneRaw); if($partyWaPhone!=='' && strpos($partyWaPhone,'88')!==0)$partyWaPhone='88'.$partyWaPhone; ?>
                   <div class="party-contact-actions-v204">
                     <?php if($partyPhoneRaw!==''): ?><a class="call" href="tel:<?=e($partyPhoneRaw)?>" title="Call">☎ Call</a><?php endif; ?>
                     <?php if($partyWaPhone!==''): ?><a class="whatsapp" href="https://wa.me/<?=e($partyWaPhone)?>" target="_blank" rel="noopener" title="WhatsApp">◔ WhatsApp</a><?php endif; ?>
@@ -580,7 +580,7 @@ if($route==='parties'){
       }
       function render(d){
         const p=d.party||{}, roles=Array.isArray(p.roles)?p.roles:[], roleText=roles.map(x=>roleNames[x]||x).join(' · ');
-        const phone=String(p.phone||''), wa=phone.replace(/\D+/g,'');
+        const phone=String(p.phone||''), waRaw=phone.replace(/\D+/g,''), wa=waRaw && !waRaw.startsWith('88') ? '88'+waRaw : waRaw;
         const balance=Number(d.balance||0);
         const hasNote=Array.isArray(d.notes)&&d.notes.length>0;
         let html='<div class="party-detail-card-v110 party-detail-card-v202"><div class="party-detail-top-v110 party-detail-top-v202"><div><div class="party-heading-v204"><h2>@ '+esc(p.name||'')+'</h2><div class="party-contact-actions-v204">'+(phone?'<a class="call" href="tel:'+esc(phone)+'" title="Call">☎ Call</a>':'')+(wa?'<a class="whatsapp" href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener" title="WhatsApp">◔ WhatsApp</a>':'')+(String(p.email||'').trim()?'<a class="email" href="mailto:'+esc(p.email||'')+'" title="Email">✉ Email</a>':'')+'</div></div><div class="party-role-line-v110">'+esc(roleText)+'</div></div><div class="party-address-v110">Address: '+esc(p.address||'')+'</div></div><div class="party-action-row-v202"><button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyNoteModal\')">'+(hasNote?'Edit Note':'+ Add Note')+'</button>'+(roles.includes('customer')?'<button type="button" class="btn small-btn party-compact-btn-v202" onclick="openModal(\'partyReviewModal\')">★ Add Review</button>':'')+'</div>';
