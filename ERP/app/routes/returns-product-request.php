@@ -1119,9 +1119,9 @@ function document_module(string $type,string $title,string $prefix,string $party
             $party=(int)($_POST['party_id']??0); if($isPartyRequired && $party<=0) throw new RuntimeException($partyLabel.' is required.');
             if($isPartyRequired){$neededRole=$partyLabel==='Customer'?'customer':'supplier';$st=$pdo->prepare('SELECT p.id FROM parties p WHERE p.id=? AND p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role=?)');$st->execute([$party,$cid,$neededRole]);$pr=$st->fetch();if(!$pr)throw new RuntimeException('Invalid '.$partyLabel.'.');}
             $txnDate=transaction_datetime($_POST['txn_date']??null);$dueDate=$_POST['due_date']?:null;$notes=trim($_POST['notes']??'');
-            $itemIds=$_POST['item_id']??[];$qtys=$_POST['qty']??[];$prices=$_POST['price']??[];$discs=$_POST['discount']??[];$amounts=$_POST['amount']??[];
+            $itemIds=$_POST['item_id']??[];$qtys=$_POST['qty']??[];$prices=$_POST['price']??[];$discs=$_POST['discount']??[];$amounts=$_POST['amount']??[];$descriptions=$_POST['description']??[];$warranties=$_POST['warranty']??[];
             $rows=[];$subtotal=0;$itemDisc=0;
-            foreach($itemIds as $i=>$iid){$iid=(int)$iid;$q=(float)($qtys[$i]??0);$price=(float)($prices[$i]??0);$disc=max(0,(float)($discs[$i]??0));if($iid<=0||$q<=0)continue;$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');$requestedAmount=(array_key_exists($i,$amounts)&&trim((string)$amounts[$i])!=='')?max(0,(float)$amounts[$i]):null;if($requestedAmount!==null)$price=$q>0?($requestedAmount+$disc)/$q:0;$gross=$q*$price;if($disc>$gross)$disc=$gross;$rows[]=[$iid,$q,$price,$disc,$it,$requestedAmount];$subtotal+=$gross;$itemDisc+=$disc;}
+            foreach($itemIds as $i=>$iid){$iid=(int)$iid;$q=(float)($qtys[$i]??0);$price=(float)($prices[$i]??0);$disc=max(0,(float)($discs[$i]??0));if($iid<=0||$q<=0)continue;$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');$requestedAmount=(array_key_exists($i,$amounts)&&trim((string)$amounts[$i])!=='')?max(0,(float)$amounts[$i]):null;if($requestedAmount!==null)$price=$q>0?($requestedAmount+$disc)/$q:0;$gross=$q*$price;if($disc>$gross)$disc=$gross;$lineDescription=trim((string)($descriptions[$i]??''));$lineWarranty=trim((string)($warranties[$i]??''));$rows[]=[$iid,$q,$price,$disc,$it,$requestedAmount,$lineDescription,$lineWarranty];$subtotal+=$gross;$itemDisc+=$disc;}
             if(!$rows) throw new RuntimeException('Add at least one item.');
             $invDisc=max(0,(float)($_POST['invoice_discount']??0));$tax=max(0,(float)($_POST['tax']??0));$direct=max(0,(float)($_POST['direct_expense']??0));$after=max(0,$subtotal-$itemDisc);if($invDisc>$after)$invDisc=$after;$total=round(max(0,$after-$invDisc+$tax+$direct),2);
             $purchaseOrderPayments=[];$purchaseOrderPaid=0.0;
@@ -1168,13 +1168,13 @@ function document_module(string $type,string $title,string $prefix,string $party
                     $pdo->prepare('DELETE FROM payment_lines WHERE transaction_id=?')->execute([$documentId]);
                     $pdo->prepare('DELETE FROM ledger_entries WHERE transaction_id=? AND company_id=?')->execute([$documentId,$cid]);
                 }
-                $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride])$ins->execute([$documentId,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc)]);
+                $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty) VALUES(?,?,?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride,$lineDescription,$lineWarranty])$ins->execute([$documentId,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc),$lineDescription,$lineWarranty]);
                 $storePurchaseOrderPayments($documentId,$doc,$txnDate);
                 audit('edit','transaction',$documentId,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' updated successfully.');redirect($listRoute!==''?$listRoute:$type);
             }
             $doc=trim($_POST['document_no']??'');if($doc==='')$doc=next_document_in_transaction($pdo,$cid,$type,$prefix);
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$u['currency_code'],$documentStatus,$notes,$u['id']]);
-            $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride])$ins->execute([$tid,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc)]);
+            $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty) VALUES(?,?,?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride,$lineDescription,$lineWarranty])$ins->execute([$tid,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc),$lineDescription,$lineWarranty]);
             $storePurchaseOrderPayments($tid,$doc,$txnDate);
             if($type==='delivery_challan'){ /* challan does not change accounting/stock until converted to sale */ }
             audit('create','transaction',$tid,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' saved successfully.');redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));
@@ -1448,9 +1448,8 @@ function document_module(string $type,string $title,string $prefix,string $party
       <div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Number</label><input name="document_no" value="<?=e($editDocument?(string)$editTx['document_no']:'')?>" placeholder="Auto: <?=e($prefix)?>01"></div>
       <div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Date*</label><input type="date" name="txn_date" value="<?=e($editDocument?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div>
     </div>
-    <div class="entry-table"><table class="doc-entry-table"><colgroup><col style="width:7%"><col style="width:36%"><col style="width:8%"><col style="width:7%"><col style="width:14%"><col style="width:12%"><col style="width:16%"></colgroup><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="docRows"><?php $renderDocLines=$editDocument&&$editLines?$editLines:[null]; foreach($renderDocLines as $di=>$dl): $diId=(int)($dl['item_id']??0); $diName=(string)($dl['item_name']??''); $diQty=(float)($dl['qty']??1); $diPrice=(float)($dl['unit_price']??0); $diDisc=(float)($dl['discount']??0); $diUnit=(string)($dl['unit_symbol']??''); ?><tr><td class="doc-row-index-cell"><span class="doc-row-number"><?=($di+1)?></span><?php if($type!=='purchase_order'):?><button type="button" class="doc-row-copy" onclick="duplicateDocRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><?php endif;?><button type="button" class="doc-row-remove" onclick="removeDocRow(this)" aria-label="Remove item" title="Remove item">×</button></td><td><div class="item-picker-cell"><?php item_search_field($diId,$diName,'',($type==='purchase_order'?'purchase':'sale')); ?><select name="item_id[]" class="item-select item-source-select" onchange="docPrice(this)" required><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-price="<?=$it[$type==='purchase_order'?'purchase_price':'sale_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" <?=($diId===(int)$it['id']?'selected':'')?>><?=e($it['name'])?></option><?php endforeach;?></select></div></td><td><input type="number" name="qty[]" class="doc-qty" step="<?= $type==='sale_order' ? '1' : '0.01' ?>" min="<?= $type==='sale_order' ? '1' : '0.01' ?>" value="<?=e((string)$diQty)?>" required></td><td class="doc-unit"><?=e($diUnit!==''?$diUnit:'—')?></td><td><input type="number" name="price[]" class="doc-price" step="0.0001" min="0" value="<?=e((string)$diPrice)?>" required></td><td><input type="number" name="discount[]" class="doc-disc" step="0.01" min="0" value="<?=e((string)$diDisc)?>"></td><td><input type="number" name="amount[]" class="doc-amt doc-amt-input" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($dl['amount']??($diQty*$diPrice-$diDisc))),2,'.',''))?>" aria-label="Amount"></td></tr><?php endforeach; ?></tbody></table></div>
-    <div class="entry-actions doc-entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addDocRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#docRows','doc')">+ Add Product</button></div><div class="doc-entry-totals"><?php if($type==='purchase_order'):?><span>Items Total <strong id="docSubTotal">৳0.00</strong></span><?php endif;?><span><b>Total</b> <strong id="docTotal">৳0.00</strong></span></div></div>
-    <?php if($type==='purchase_order'):?><div class="form-group doc-note-field"><label>Description / Note</label><textarea name="notes" rows="3"><?=e((string)($editDocument?($editTx['notes']??''):''))?></textarea></div><?php endif;?>
+    <div class="entry-table"><table class="doc-entry-table"><colgroup><col style="width:7%"><col style="width:36%"><col style="width:8%"><col style="width:7%"><col style="width:14%"><col style="width:12%"><col style="width:16%"></colgroup><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="docRows"><?php $renderDocLines=$editDocument&&$editLines?$editLines:[null]; foreach($renderDocLines as $di=>$dl): $diId=(int)($dl['item_id']??0); $diName=(string)($dl['item_name']??''); $diQty=(float)($dl['qty']??1); $diPrice=(float)($dl['unit_price']??0); $diDisc=(float)($dl['discount']??0); $diUnit=(string)($dl['unit_symbol']??''); $diDescription=(string)($dl['item_description']??''); $diWarranty=(string)($dl['item_warranty']??''); ?><tr><td class="doc-row-index-cell"><span class="doc-row-number"><?=($di+1)?></span><?php if($type!=='purchase_order'):?><button type="button" class="doc-row-copy" onclick="duplicateDocRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><?php endif;?><button type="button" class="doc-row-remove" onclick="removeDocRow(this)" aria-label="Remove item" title="Remove item">×</button></td><td><div class="item-picker-cell"><?php item_search_field($diId,$diName,'',($type==='purchase_order'?'purchase':'sale')); ?><select name="item_id[]" class="item-select item-source-select" onchange="docPrice(this)" required><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-price="<?=$it[$type==='purchase_order'?'purchase_price':'sale_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" <?=($diId===(int)$it['id']?'selected':'')?>><?=e($it['name'])?></option><?php endforeach;?></select><div class="doc-item-meta"><input type="text" name="description[]" class="doc-description" value="<?=e($diDescription)?>" placeholder="Optional description" aria-label="Item description"><input type="text" name="warranty[]" class="doc-warranty" value="<?=e($diWarranty)?>" placeholder="Warranty" aria-label="Item warranty"></div></div></td><td><input type="number" name="qty[]" class="doc-qty" step="<?= $type==='sale_order' ? '1' : '0.01' ?>" min="<?= $type==='sale_order' ? '1' : '0.01' ?>" value="<?=e((string)$diQty)?>" required></td><td class="doc-unit"><?=e($diUnit!==''?$diUnit:'—')?></td><td><input type="number" name="price[]" class="doc-price" step="0.0001" min="0" value="<?=e((string)$diPrice)?>" required></td><td><input type="number" name="discount[]" class="doc-disc" step="0.01" min="0" value="<?=e((string)$diDisc)?>"></td><td><input type="number" name="amount[]" class="doc-amt doc-amt-input" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($dl['amount']??($diQty*$diPrice-$diDisc))),2,'.',''))?>" aria-label="Amount"></td></tr><?php endforeach; ?></tbody></table></div>
+    <div class="entry-actions doc-entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addDocRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#docRows','doc')">+ Add Product</button></div><div class="doc-entry-totals"><?php if($type==='purchase_order'):?><span>Total QTY <strong id="docQtyTotal">0</strong></span><?php endif;?><span><b>Total</b> <strong id="docTotal">৳0.00</strong></span></div></div>
     <div class="grid3"><div class="form-group"><label>Invoice Discount</label><input id="docInvDisc" type="number" name="invoice_discount" min="0" step="0.01" value="0"></div><div class="form-group"><label>Tax / VAT</label><input id="docTax" type="number" name="tax" min="0" step="0.01" value="0"></div><div class="form-group"><label>Direct Expense</label><input id="docDirect" type="number" name="direct_expense" min="0" step="0.01" value="0"></div></div>
     <?php if($type==='purchase_order'): ?>
     <style>
@@ -1458,7 +1457,9 @@ function document_module(string $type,string $title,string $prefix,string $party
       .po-payment-line select,.po-payment-line input{width:100%;min-width:0;box-sizing:border-box;height:36px}.po-payment-line .po-payment-remove{height:36px;padding:0 10px}
       @media(max-width:900px){.po-payment-line{grid-template-columns:repeat(2,minmax(0,1fr))}.po-payment-line .po-payment-remove{justify-self:start}.po-payment-line .po-cheque-date[style*="display: none"]{display:none!important}}
     </style>
-    <div class="payment-box" id="poAdvancePayment" style="margin:14px 0">
+    <div class="po-note-payment-layout">
+      <div class="form-group doc-note-field po-description-note"><label>Description / Note</label><textarea name="notes" rows="3"><?=e((string)($editDocument?($editTx['notes']??''):''))?></textarea></div>
+      <div class="payment-box" id="poAdvancePayment" style="margin:0">
       <div class="panel-head"><h2>Advance Payment</h2><span class="subtle">Optional · Cash, cheque, or bank account</span></div>
       <div id="poPaymentRows" class="po-payment-lines">
         <?php foreach($poPaymentRows as $ppi=>$pp): $ppMethod=(string)($pp['method']??'cash'); $ppAccount=(string)($pp['account_name']??''); ?>
@@ -1472,7 +1473,7 @@ function document_module(string $type,string $title,string $prefix,string $party
         <?php endforeach; ?>
       </div>
       <button type="button" class="btn" style="margin-top:10px" onclick="addPurchaseOrderPayment()">+ Add Payment</button>
-
+      </div>
     </div>
     <?php endif; ?>
     <?php if($type!=='purchase_order'):?><div class="form-group doc-note-field"><label>Description / Note</label><textarea name="notes" rows="3"><?=e((string)($editDocument?($editTx['notes']??''):''))?></textarea></div><?php endif;?><div class="form-footer document-form-footer" style="margin:0 -16px -16px"><div class="document-footer-summary"><span>Total <strong id="docFooterTotal">৳0.00</strong></span><?php if($type==='purchase_order'):?><span>Paid <strong id="docFooterPaid">৳0.00</strong></span><span>Due <strong id="docFooterDue">৳0.00</strong></span><?php endif;?></div><div class="document-footer-actions"><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Cancel</a><button class="btn primary">Save</button></div></div></form></div>
@@ -1564,6 +1565,57 @@ function document_module(string $type,string $title,string $prefix,string $party
       .purchase-order-document-design .doc-entry-top{grid-template-columns:minmax(0,1fr) 112px!important}
       .purchase-order-document-design .doc-entry-top .form-group{grid-column:1/-1!important}
     }
+
+    /* Purchase Order refinements: keep the complete document header on one desktop row, and show notes next to payment. */
+    @media(min-width:851px){
+      #newDoc.purchase-order-document-design .doc-entry-top{
+        display:grid!important;
+        grid-template-columns:minmax(0,1.8fr) minmax(125px,.65fr) minmax(175px,1fr) minmax(175px,1fr)!important;
+        gap:10px!important;align-items:start!important;
+      }
+      #newDoc.purchase-order-document-design .doc-entry-top>.doc-party-column{grid-column:1!important;grid-row:1!important}
+      #newDoc.purchase-order-document-design .doc-entry-top>.doc-add-party-slot{grid-column:2!important;grid-row:1!important}
+      #newDoc.purchase-order-document-design .doc-entry-top>.form-group{grid-column:auto!important;grid-row:1!important;min-width:0!important}
+    }
+    #newDoc.purchase-order-document-design .doc-item-meta{
+      display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,.52fr)!important;gap:5px!important;
+      width:100%!important;min-width:0!important;margin-top:5px!important;
+    }
+    #newDoc.purchase-order-document-design .doc-item-meta input{
+      height:29px!important;min-width:0!important;width:100%!important;box-sizing:border-box!important;
+      padding:4px 7px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;
+      font-size:12px!important;color:#536278!important;
+    }
+    #newDoc.purchase-order-document-design .doc-item-meta input:focus{border-color:#7db7ea!important;outline:none!important}
+    #newDoc.purchase-order-document-design .po-note-payment-layout{
+      display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;
+      align-items:stretch!important;margin-top:10px!important;
+    }
+    #newDoc.purchase-order-document-design .po-description-note{margin:0!important;min-width:0!important}
+    #newDoc.purchase-order-document-design .po-description-note textarea{
+      width:100%!important;min-height:132px!important;height:calc(100% - 22px)!important;box-sizing:border-box!important;
+      border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;padding:8px 10px!important;
+    }
+    #newDoc.purchase-order-document-design #poAdvancePayment{height:100%!important;min-width:0!important;box-sizing:border-box!important;padding:10px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important}
+    #newDoc.purchase-order-document-design #poAdvancePayment>.panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;margin-bottom:8px!important}
+    #newDoc.purchase-order-document-design #poAdvancePayment>.panel-head h2{font-size:14px!important}
+    #newDoc.purchase-order-document-design .po-payment-lines{min-width:0!important}
+    #newDoc.purchase-order-document-design .po-payment-line{grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(90px,.8fr) auto!important;gap:6px!important}
+    #newDoc.purchase-order-document-design .po-payment-line select,
+    #newDoc.purchase-order-document-design .po-payment-line input{height:34px!important;min-width:0!important;width:100%!important;box-sizing:border-box!important;padding:0 7px!important;font-size:12px!important;border:1px solid #cfd9e5!important;border-radius:6px!important}
+    #newDoc.purchase-order-document-design .po-payment-line .po-payment-remove{height:30px!important;padding:0 8px!important;font-size:11px!important}
+    #newDoc.purchase-order-document-design #poAdvancePayment>.btn{height:30px!important;padding:0 10px!important;font-size:12px!important}
+    #newDoc.purchase-order-document-design .doc-entry-totals{gap:18px!important}
+    #newDoc.purchase-order-document-design .doc-entry-totals>span:first-child{color:#66768c!important}
+    @media(max-width:850px){
+      #newDoc.purchase-order-document-design .po-note-payment-layout{grid-template-columns:minmax(0,1fr)!important}
+      #newDoc.purchase-order-document-design .po-description-note textarea{height:90px!important;min-height:90px!important}
+      #newDoc.purchase-order-document-design .po-payment-line{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      #newDoc.purchase-order-document-design .doc-entry-top{grid-template-columns:minmax(0,1fr) 112px!important}
+      #newDoc.purchase-order-document-design .doc-entry-top>.doc-party-column{grid-column:1!important;grid-row:1!important}
+      #newDoc.purchase-order-document-design .doc-entry-top>.doc-add-party-slot{grid-column:2!important;grid-row:1!important}
+      #newDoc.purchase-order-document-design .doc-entry-top>.form-group{grid-column:1/-1!important;grid-row:auto!important}
+    }
     </style>
     <script>
     function docPrice(el){
@@ -1577,9 +1629,10 @@ function document_module(string $type,string $title,string $prefix,string $party
     }
     function docMoney(v){return '৳'+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
     function docRecalc(){
-      let subtotal=0;
+      let subtotal=0,qtyTotal=0;
       document.querySelectorAll('#docRows tr').forEach(r=>{
         const q=Math.max(0,parseFloat(r.querySelector('.doc-qty')?.value||0)||0);
+        if(r.querySelector('select[name="item_id[]"]')?.value)qtyTotal+=q;
         const p=Math.max(0,parseFloat(r.querySelector('.doc-price')?.value||0)||0);
         const d=Math.max(0,parseFloat(r.querySelector('.doc-disc')?.value||0)||0);
         let amount=Math.max(0,q*p-Math.min(d,q*p));
@@ -1599,6 +1652,7 @@ function document_module(string $type,string $title,string $prefix,string $party
       const tax=Math.max(0,parseFloat(document.getElementById('docTax')?.value||0)||0);
       const direct=Math.max(0,parseFloat(document.getElementById('docDirect')?.value||0)||0);
       const total=Math.max(0,subtotal-inv+tax+direct);
+      const qtyEl=document.getElementById('docQtyTotal');if(qtyEl)qtyEl.textContent=qtyTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:3});
       const subEl=document.getElementById('docSubTotal');if(subEl)subEl.textContent=docMoney(subtotal);
       const totalEl=document.getElementById('docTotal');if(totalEl)totalEl.textContent=docMoney(total);
       const footerTotal=document.getElementById('docFooterTotal');if(footerTotal)footerTotal.textContent=docMoney(total);
@@ -1623,6 +1677,7 @@ function document_module(string $type,string $title,string $prefix,string $party
         if(i.classList.contains('doc-qty'))i.value=<?=json_encode($type==='sale_order'?1:1)?>;
         else if(i.classList.contains('doc-price')||i.classList.contains('doc-disc'))i.value='0';
         else if(i.classList.contains('doc-amt-input'))i.value='0.00';
+        else if(i.classList.contains('doc-description')||i.classList.contains('doc-warranty'))i.value='';
         else if(i.classList.contains('item-search-input'))i.value='';
       });
       row.querySelectorAll('select').forEach(sel=>sel.selectedIndex=0);
