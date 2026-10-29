@@ -89,10 +89,15 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
 <div class="panel">
   <div class="entry-top <?= $isSale?'sale-entry-top':'purchase-entry-top' ?>">
-    <div>
+    <div class="<?= $isSale?'sale-customer-column':'' ?>">
       <?php party_search_field($isSale?'Customer':'Supplier',$isSale?'customer':'supplier',$restorePartyId,$restorePartyName,$restorePartyPhone,$isSale?false:true); ?>
-      <div class="subtle" style="margin-top:6px;display:flex;gap:8px;align-items:center"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('<?=$isSale?'customer':'supplier'?>')">+ Add Party</button><?= $isSale?' <span>(Customer optional for Cash Sale)</span>':'' ?></div>
+      <?php if($isSale): ?>
+        <div class="subtle sale-customer-hint">Customer optional for Cash Sale</div>
+      <?php else: ?>
+        <div class="subtle" style="margin-top:6px;display:flex;gap:8px;align-items:center"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('supplier')">+ Add Party</button></div>
+      <?php endif; ?>
     </div>
+    <?php if($isSale): ?><div class="sale-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('customer')">+ Add Party</button></div><?php endif; ?>
     <div class="entry-right <?= $isSale?'sale-invoice-meta':'' ?>">
       <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Number</label><input name="document_no" value="<?=e((string)($formRestore['document_no']??($editTx['document_no']??'')))?>" placeholder="Auto: <?=$prefix?>01"></div>
       <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Date*</label><?php $editDateTime=(!empty($editTx['txn_date']))?date('Y-m-d\TH:i',strtotime((string)$editTx['txn_date'])):date('Y-m-d\TH:i'); ?><input type="<?= $isSale?'datetime-local':'date' ?>" name="txn_date" value="<?=e((string)($formRestore['txn_date']??($isSale?$editDateTime:($editTx['txn_date']??date('Y-m-d')))))?>" required></div>
