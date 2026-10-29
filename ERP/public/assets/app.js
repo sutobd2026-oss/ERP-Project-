@@ -64,7 +64,7 @@ function recalc(){
   if(qs('#subTotal'))qs('#subTotal').textContent=fmt(sub);
   applyReceivedPayment(total);
   let paid=0;
-  qsa('[name=\\"pay_amount[]\\"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
+  qsa('[name="pay_amount[]"]'.forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
   if(qs('#paidPreview'))qs('#paidPreview').textContent=footerFmt(paid);
   if(qs('#duePreview'))qs('#duePreview').textContent=footerFmt(Math.max(0,total-paid));
 }
