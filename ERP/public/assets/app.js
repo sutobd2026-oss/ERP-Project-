@@ -31,14 +31,16 @@ function applyReceivedPayment(total){
 }
 function recalc(){
   let sub=0,qtyTotal=0;
-  const isSale=(document.body.dataset.txntype||'')==='sale';
+  const txType=document.body.dataset.txntype||'';
+  const isSale=txType==='sale';
+  const isPurchase=txType==='purchase';
   qsa('.sale-row').forEach(r=>{
     const qty=parseFloat(qs('.qty',r)?.value||0)||0;
     const price=parseFloat(qs('.price',r)?.value||0)||0;
     const disc=Math.max(0,parseFloat(qs('.line-disc',r)?.value||0));
     let amt=Math.max(0,qty*price-disc);
     const amountInput=qs('.amount-input',r);
-    if(isSale&&amountInput){
+    if((isSale||isPurchase)&&amountInput){
       if(document.activeElement===amountInput || r.dataset.recalcAmountFromPrice!=='1'){
         const entered=amountInput.value.trim()===''?0:parseFloat(amountInput.value);
         if(Number.isFinite(entered))amt=Math.max(0,entered);
@@ -237,7 +239,7 @@ document.addEventListener('click',e=>{
   qsa('.row-menu').forEach(x=>x.classList.remove('show'));
   qs('#addMore')?.classList.remove('show');
 });
-document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#entryRows .item-source-select'))return;const row=sel.closest('.sale-row');if(!row||row.dataset.bundleChild==='1'||!sel.value)return;if(document.body.dataset.txntype==='sale'&&row.querySelector('.amount-input'))row.dataset.recalcAmountFromPrice='1';ensureNextTxnRow(row,document.body.dataset.txntype||'sale');recalc();});
+document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#entryRows .item-source-select'))return;const row=sel.closest('.sale-row');if(!row||row.dataset.bundleChild==='1'||!sel.value)return;if((document.body.dataset.txntype==='sale'||document.body.dataset.txntype==='purchase')&&row.querySelector('.amount-input'))row.dataset.recalcAmountFromPrice='1';ensureNextTxnRow(row,document.body.dataset.txntype||'sale');recalc();});
 document.addEventListener('DOMContentLoaded',()=>{
   bindDots();
   const txType=document.body.dataset.txntype||'sale';
