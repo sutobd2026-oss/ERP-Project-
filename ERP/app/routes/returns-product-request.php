@@ -162,7 +162,7 @@ function delivery_challan_new(): void {
             $st->execute([$party,$cid]); $pr=$st->fetch();
             if(!$pr) throw new RuntimeException('Customer is required.');
             $txnDate=transaction_datetime($_POST['txn_date']??null); $dueDate=$_POST['due_date']?:null; $notes=trim($_POST['notes']??'');
-            $itemIds=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[];
+            $itemIds=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=(array)($_POST['amount']??[]);
             $rowKeys=(array)($_POST['bundle_row_key']??[]); $parentKeys=(array)($_POST['bundle_parent_key']??[]); $childFlags=(array)($_POST['bundle_child']??[]);
             $rows=[]; $subtotal=0; $itemDisc=0; $seenRowKeys=[]; $parentRowsByKey=[];
             foreach($itemIds as $i=>$iid){
@@ -175,6 +175,7 @@ function delivery_challan_new(): void {
                 $itSt=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1'); $itSt->execute([$iid,$cid]); $it=$itSt->fetch();
                 if(!$it) throw new RuntimeException('Invalid item selected.');
                 $parentItemId=0;
+                $requestedAmount=(array_key_exists($i,$amounts)&&trim((string)$amounts[$i])!=='')?max(0,(float)$amounts[$i]):null;
                 if($isChild){
                     if($parentKey==='' || !isset($parentRowsByKey[$parentKey])) throw new RuntimeException('A bundle child item is missing its parent product.');
                     $parentItemId=(int)$parentRowsByKey[$parentKey]['item_id'];
@@ -183,10 +184,12 @@ function delivery_challan_new(): void {
                     $parentQty=(float)$parentRowsByKey[$parentKey]['qty'];
                     $expectedQty=round($parentQty*(float)$component['quantity'],6);
                     if(abs($q-$expectedQty)>0.000001) throw new RuntimeException('Included free item quantity does not match the bundle quantity.');
-                    $price=0; $disc=0;
+                    $price=0; $disc=0; $requestedAmount=0.0;
+                }elseif($requestedAmount!==null){
+                    $price=$q>0?($requestedAmount+$disc)/$q:0;
                 }
                 $gross=$q*$price; if($disc>$gross)$disc=$gross;
-                $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'it'=>$it,'parentItemId'=>$parentItemId];
+                $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'requestedAmount'=>$requestedAmount,'it'=>$it,'parentItemId'=>$parentItemId];
                 $rows[]=$rowData;
                 if(!$isChild){$parentRowsByKey[$rowKey]=$rowData;$subtotal+=$gross;$itemDisc+=$disc;}
             }
@@ -237,7 +240,7 @@ function delivery_challan_new(): void {
                     $parentTxId=$parentTxItemIds[$rr['parentKey']]??null;
                     if(!$parentTxId) throw new RuntimeException('Bundle parent item could not be linked.');
                 }
-                $insParent->execute([$tid,$rr['item_id'],$parentTxId,$rr['qty'],$rr['price'],$rr['discount'],0,max(0,$rr['qty']*$rr['price']-$rr['discount'])]);
+                $insParent->execute([$tid,$rr['item_id'],$parentTxId,$rr['qty'],$rr['price'],$rr['discount'],0,($rr['requestedAmount']!==null)?max(0,(float)$rr['requestedAmount']):max(0,$rr['qty']*$rr['price']-$rr['discount'])]);
                 $newTi=(int)$pdo->lastInsertId();
                 if(!$rr['isChild']) $parentTxItemIds[$rr['rowKey']]=$newTi;
             }
@@ -422,12 +425,13 @@ function delivery_challan_new(): void {
 .delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label>span:last-child{color:#0b8f55;font-weight:700;font-size:10px}.delivery-entry-form .entry-table input{height:36px}.delivery-entry-form .entry-table .dc-qty{width:78px;min-width:78px;max-width:78px;display:block;box-sizing:border-box}.delivery-entry-form .item-picker-cell{min-width:260px}@media(max-width:900px){.dc-summary-grid{grid-template-columns:1fr}.dc-summary-spacer{display:none}.dc-field{grid-template-columns:1fr 160px}}@media(max-width:600px){.dc-field{grid-template-columns:1fr}.dc-field input{width:100%}.delivery-entry-form .entry-table{overflow:auto}.delivery-entry-form .entry-table table{min-width:850px}}</style>
     <form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form">
       <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_delivery_challan"><?php if($editMode): ?><input type="hidden" name="transaction_id" value="<?=e((string)$editTx['id'])?>"><?php endif; ?>
-      <div class="entry-top standard-entry-top">
-        <div class="standard-party-field"><?php party_search_field('Customer','customer',$editMode?(int)$editTx['party_id']:0,$editMode?(string)($editTx['party_name']??''):'',$editMode?(string)($editTx['party_phone']??''):'',true); ?><div style="margin-top:6px"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('customer')">+ Add Party</button></div></div>
+      <div class="entry-top standard-entry-top dc-entry-top">
+        <div class="dc-customer-column standard-party-field"><?php party_search_field('Customer','customer',$editMode?(int)$editTx['party_id']:0,$editMode?(string)($editTx['party_name']??''):'',$editMode?(string)($editTx['party_phone']??''):'',true); ?></div>
+        <div class="dc-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('customer')">+ Add Party</button></div>
         <div class="form-group"><label>Challan Number</label><input name="document_no" value="<?=e($editMode?(string)$editTx['document_no']:'')?>" placeholder="Auto: DC-01"></div>
         <div class="form-group"><label>Challan Date*</label><input type="date" name="txn_date" value="<?=e($editMode?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div>
       </div>
-      <div class="entry-table"><table><thead><tr><th></th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
+      <div class="entry-table"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
         <?php $renderLines=$editMode&&$editLines?$editLines:[null]; foreach($renderLines as $idx=>$ln):
           $liId=(int)($ln['item_id']??0);
           $liName=(string)($ln['item_name']??'');
@@ -466,7 +470,7 @@ function delivery_challan_new(): void {
           <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
           <td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
           <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
-          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>">৳<?=number_format(max(0,$liQty*$liPrice-$liDisc),2,'.',',')?></td>
+          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span><?php else:?><input type="number" class="dc-amt-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?></td>
         </tr>
         <?php endforeach; ?>
       </tbody></table></div>
