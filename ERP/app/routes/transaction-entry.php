@@ -463,6 +463,62 @@ function duplicateTxnRow(btn){
  .sale-invoice-ui .sale-entry-totals{gap:12px!important;font-size:12px!important}
  .sale-invoice-ui .txn-footer-summary,.sale-invoice-ui .txn-footer-summary>span,.sale-invoice-ui .txn-footer-summary b{font-size:16px!important}
 }
+/* Match the reference Sale form proportions and status styling. */
+@media(min-width:851px){
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-entry-top{
+    grid-template-columns:minmax(190px,2fr) minmax(96px,.55fr) minmax(160px,1.3fr) minmax(160px,1fr)!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-entry-top>.sale-customer-column{min-width:0!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-entry-top>.entry-right.sale-invoice-meta{display:contents!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-add-party-slot{
+    display:flex!important;align-items:flex-start!important;min-width:0!important;padding-top:22px!important;
+  }
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-add-party-slot .btn{
+    width:100%!important;height:34px!important;min-height:34px!important;padding:0 8px!important;white-space:nowrap!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important;
+  }
+}
+.sale-invoice-ui .sale-customer-hint{margin-top:3px!important;font-size:10px!important;line-height:1.2!important;color:#8491a2!important}
+.sale-invoice-ui .sale-customer-column,.sale-invoice-ui .sale-customer-column .party-live-search{min-width:0!important;width:100%!important}
+.sale-invoice-ui .sale-customer-column .party-search-input{width:100%!important;min-width:0!important}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table table td{
+  vertical-align:top!important;
+  padding-top:7px!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table table td:nth-child(7) .amount-input{
+  display:block!important;position:static!important;top:auto!important;transform:none!important;margin:0!important;
+  width:100%!important;height:34px!important;vertical-align:top!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table table td.txn-row-index-cell{
+  display:flex!important;align-items:flex-start!important;justify-content:center!important;gap:4px!important;padding-top:7px!important;
+}
+.sale-invoice-ui .sale-entry-totals,
+.sale-invoice-ui .sale-entry-totals span,
+.sale-invoice-ui .sale-entry-totals strong{font-size:15px!important}
+.sale-invoice-ui .sale-entry-totals strong{font-weight:700!important}
+.sale-invoice-ui .txn-footer-summary>span:nth-child(2),
+.sale-invoice-ui .txn-footer-summary>span:nth-child(2) b{color:#159447!important}
+.sale-invoice-ui .txn-footer-summary>span:nth-child(3),
+.sale-invoice-ui .txn-footer-summary>span:nth-child(3) b{color:#dc2626!important}
+.sale-invoice-ui .txn-footer-summary>span,
+.sale-invoice-ui .txn-footer-summary>span b{font-size:18px!important}
+.sale-invoice-ui .txn-footer-actions .btn{
+  font-size:18px!important;height:42px!important;min-height:42px!important;padding:0 16px!important;line-height:1.1!important;
+}
+.sale-invoice-ui .txn-form-footer{min-height:68px!important;padding:10px 14px!important}
+@media(max-width:850px){
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-entry-top{grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-customer-column{grid-column:1!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}
+  body:has(.transaction-form.txn-compact) .sale-invoice-ui .sale-entry-top>.entry-right.sale-invoice-meta{
+    display:grid!important;grid-column:1/-1!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;
+  }
+  .sale-invoice-ui .txn-footer-summary>span,.sale-invoice-ui .txn-footer-summary>span b{font-size:15px!important}
+  .sale-invoice-ui .txn-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important}
+}
 </style><script>
 function makeBundleRowKey(){return 'bundle-row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);}
 function getRowBundle(row){
