@@ -423,7 +423,22 @@ function delivery_challan_new(): void {
 .delivery-entry-form .entry-table .txn-row-index-cell{vertical-align:top}
 .delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label>span:last-child{color:#0b8f55;font-weight:700;font-size:10px}.delivery-entry-form .entry-table input{height:36px}.delivery-entry-form .entry-table .dc-qty{width:78px;min-width:78px;max-width:78px;display:block;box-sizing:border-box}.delivery-entry-form .item-picker-cell{min-width:260px}@media(max-width:900px){.dc-summary-grid{grid-template-columns:1fr}.dc-summary-spacer{display:none}.dc-field{grid-template-columns:1fr 160px}}@media(max-width:600px){.dc-field{grid-template-columns:1fr}.dc-field input{width:100%}.delivery-entry-form .entry-table{overflow:auto}.delivery-entry-form .entry-table table{min-width:850px}}</style>
-    <form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form">
+    <style>
+@media(min-width:851px){.delivery-entry-form .dc-entry-top{display:grid!important;grid-template-columns:minmax(190px,2fr) minmax(96px,.55fr) minmax(160px,1.3fr) minmax(160px,1fr)!important;gap:10px!important;align-items:start!important;padding:0 1px 10px!important}.delivery-entry-form .dc-add-party-slot{display:flex!important;align-items:flex-start!important;min-width:0!important;padding-top:22px!important}.delivery-entry-form .dc-add-party-slot .btn{width:100%!important;height:34px!important;min-height:34px!important;padding:0 8px!important;white-space:nowrap!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important}}
+.delivery-entry-form{padding:10px 10px 86px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important;background:#fff!important}
+.delivery-entry-form .dc-customer-column,.delivery-entry-form .dc-customer-column .party-live-search{min-width:0!important;width:100%!important}.delivery-entry-form .dc-customer-column .party-search-input{width:100%!important;min-width:0!important}
+.delivery-entry-form .dc-entry-top .form-group{margin:0!important;min-width:0!important}.delivery-entry-form .dc-entry-top label{font-size:10px!important;font-weight:600!important;color:#627189!important;margin-bottom:4px!important}.delivery-entry-form .dc-entry-top input{height:34px!important;width:100%!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#253347!important;font-size:12px!important;box-shadow:none!important}
+.delivery-entry-form .entry-table{width:100%!important;overflow-x:auto!important;border:1px solid #dfe6ef!important;border-radius:8px!important}.delivery-entry-form .entry-table table{width:100%!important;min-width:900px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+.delivery-entry-form .entry-table th{height:32px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;font-weight:700!important;white-space:nowrap!important;text-align:left!important}.delivery-entry-form .entry-table td{box-sizing:border-box!important;padding:7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important;font-size:14px!important}.delivery-entry-form .entry-table tbody tr:last-child td{border-bottom:0!important}
+.delivery-entry-form .entry-table th:nth-child(1),.delivery-entry-form .entry-table td:nth-child(1){width:6%!important;min-width:58px!important}.delivery-entry-form .entry-table th:nth-child(2),.delivery-entry-form .entry-table td:nth-child(2){width:36%!important;min-width:0!important}.delivery-entry-form .entry-table th:nth-child(3),.delivery-entry-form .entry-table td:nth-child(3){width:8%!important}.delivery-entry-form .entry-table th:nth-child(4),.delivery-entry-form .entry-table td:nth-child(4){width:7%!important}.delivery-entry-form .entry-table th:nth-child(5),.delivery-entry-form .entry-table td:nth-child(5){width:14%!important}.delivery-entry-form .entry-table th:nth-child(6),.delivery-entry-form .entry-table td:nth-child(6){width:12%!important}.delivery-entry-form .entry-table th:nth-child(7),.delivery-entry-form .entry-table td:nth-child(7){width:17%!important}
+.delivery-entry-form .txn-row-index-cell{display:flex!important;align-items:flex-start!important;justify-content:center!important;gap:4px!important;white-space:nowrap!important;padding:7px 2px!important}.delivery-entry-form .txn-row-number{order:0!important;font-size:14px!important;line-height:22px!important;color:#445269!important}.delivery-entry-form .txn-row-remove{order:1!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:20px!important;height:22px!important;min-width:20px!important;margin:0!important;padding:0!important;border:1px solid #efcaca!important;border-radius:5px!important;background:#fff!important;color:#c33!important;font-size:16px!important;line-height:1!important;cursor:pointer!important}
+.delivery-entry-form .item-picker-cell,.delivery-entry-form .item-live-search,.delivery-entry-form .item-search-wrap{width:100%!important;min-width:0!important;max-width:100%!important;padding:0!important;box-sizing:border-box!important}.delivery-entry-form .item-search-input{width:100%!important;min-width:0!important;height:34px!important;box-sizing:border-box!important;padding:0 28px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#263548!important}
+.delivery-entry-form .dc-qty,.delivery-entry-form .dc-price,.delivery-entry-form .dc-line-discount,.delivery-entry-form .dc-amt-input{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:34px!important;box-sizing:border-box!important;padding:0 7px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#253347!important;margin:0!important}.delivery-entry-form .dc-amt-input{text-align:right!important;font-weight:700!important}.delivery-entry-form .dc-amt{padding:7px!important;display:table-cell!important;vertical-align:top!important}
+.delivery-entry-form .dc-summary-grid{gap:12px!important;margin-top:8px!important}.delivery-entry-form .dc-description-box textarea{width:100%!important;min-height:76px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important}.delivery-entry-form .dc-field{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)!important;gap:10px!important;align-items:center!important;margin-bottom:8px!important}.delivery-entry-form .dc-field label{font-size:12px!important;color:#6d7c91!important}.delivery-entry-form .dc-field input{height:34px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important;min-width:0!important;box-sizing:border-box!important}.delivery-entry-form .dc-summary-box{border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important;padding:10px!important}.delivery-entry-form .dc-advance-panel{padding:8px 0!important}.delivery-entry-form .dc-total-row{font-size:14px!important;padding:5px 0!important}.delivery-entry-form .dc-total-row strong{font-size:16px!important}.delivery-entry-form .dc-items-total{font-size:15px!important;display:flex!important;align-items:center!important;gap:5px!important}.delivery-entry-form .dc-items-total strong{font-size:15px!important}
+.delivery-entry-form .dc-form-footer{position:fixed!important;left:235px!important;right:0!important;bottom:0!important;z-index:55!important;margin:0!important;min-height:68px!important;padding:10px 14px!important;background:rgba(255,255,255,.98)!important;border-top:1px solid #dfe5ec!important;box-shadow:0 -3px 14px rgba(15,23,42,.08)!important}.delivery-entry-form .dc-footer-actions .btn{font-size:18px!important;height:42px!important;min-height:42px!important;padding:0 16px!important;line-height:1.1!important}body:has(.delivery-entry-form) .content{padding-bottom:90px!important}body.sidebar-collapsed:has(.delivery-entry-form) .delivery-entry-form .dc-form-footer{left:68px!important}
+@media(max-width:850px){.delivery-entry-form .dc-entry-top{display:grid!important;grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}.delivery-entry-form .dc-customer-column{grid-column:1!important}.delivery-entry-form .dc-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}.delivery-entry-form .dc-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}.delivery-entry-form .dc-entry-top .form-group{grid-column:1/-1!important}.delivery-entry-form .dc-summary-grid{grid-template-columns:1fr!important}.delivery-entry-form .dc-field{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}.delivery-entry-form .dc-form-footer{left:0!important;right:0!important;padding:8px 10px!important}.delivery-entry-form .dc-footer-actions{gap:6px!important;flex-wrap:wrap!important}.delivery-entry-form .dc-footer-cod{font-size:15px!important}.delivery-entry-form .dc-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important;padding:0 10px!important}}
+</style>
+<form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form">
       <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_delivery_challan"><?php if($editMode): ?><input type="hidden" name="transaction_id" value="<?=e((string)$editTx['id'])?>"><?php endif; ?>
       <div class="entry-top standard-entry-top dc-entry-top">
         <div class="dc-customer-column standard-party-field"><?php party_search_field('Customer','customer',$editMode?(int)$editTx['party_id']:0,$editMode?(string)($editTx['party_name']??''):'',$editMode?(string)($editTx['party_phone']??''):'',true); ?></div>
@@ -813,7 +828,7 @@ function delivery_challan_new(): void {
         '<td class="dc-unit">'+unit+'</td>'+
         '<td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
         '<td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="0" readonly></td>'+
-        '<td class="dc-amt" data-discount="0">৳0.00</td>';
+        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span></td>';
       return tr;
     }
     function dcRenderBundleChildren(parentRow,components){
@@ -875,8 +890,9 @@ function delivery_challan_new(): void {
     }
     function dcSetPrice(el){
       const o=el?.selectedOptions?.[0],r=el?.closest('tr'); if(!r)return;
-      r.querySelector('.dc-price').value=o?.dataset.price||0;
+      r.querySelector('.dc-price').value=String(Number(o?.dataset.price||0));
       r.querySelector('.dc-unit').textContent=o?.dataset.unit||'—';
+      r.dataset.dcRecalcFromPrice='1';
       const body=document.getElementById('dcRows');
       const rows=body?.querySelectorAll('tr');
       if(body && rows && rows.length && r===rows[rows.length-1] && el.value){dcAddRow();}
@@ -906,41 +922,49 @@ function delivery_challan_new(): void {
       const sel=row.querySelector('select'); if(sel) sel.selectedIndex=0;
       box.appendChild(row); dcRecalc();
     };
-    // Delivery Challan prices accept decimal values at 0.01 precision.
+    // Allow precision when unit price is derived from edited amount.
     function dcEnsureDecimalPriceInputs(){
       document.querySelectorAll('#dcRows .dc-price').forEach(function(input){
-        input.setAttribute('step','0.01');
-        input.step='0.01';
+        input.setAttribute('step','0.0001');
+        input.step='0.0001';
       });
     }
     function dcRecalc(){
       let subtotal=0;
       document.querySelectorAll('#dcRows tr').forEach(function(r){
-        const q=Math.max(0,parseFloat(r.querySelector('.dc-qty')?.value||0));
-        const p=Math.max(0,parseFloat(r.querySelector('.dc-price')?.value||0));
+        const q=Math.max(0,parseFloat(r.querySelector('.dc-qty')?.value||0)||0);
+        const p=Math.max(0,parseFloat(r.querySelector('.dc-price')?.value||0)||0);
         const gross=q*p;
-        const disc=Math.max(0,parseFloat(r.querySelector('.dc-amt')?.dataset.discount||0));
-        const net=Math.max(0,gross-disc);
+        const discount=Math.max(0,parseFloat(r.querySelector('.dc-amt')?.dataset.discount||0)||0);
+        let net=Math.max(0,gross-discount);
+        const amountInput=r.querySelector('.dc-amt-input');
+        if(amountInput){
+          if(document.activeElement===amountInput || r.dataset.dcRecalcFromPrice!=='1'){
+            const entered=amountInput.value.trim()===''?0:parseFloat(amountInput.value);
+            if(Number.isFinite(entered))net=Math.max(0,entered);
+          }else amountInput.value=net.toFixed(2);
+          delete r.dataset.dcRecalcFromPrice;
+        }else{
+          const output=r.querySelector('.dc-amt-text');if(output)output.textContent=dcFmt(net);
+        }
         subtotal+=net;
-        const out=r.querySelector('.dc-amt'); if(out) out.textContent=dcFmt(net);
       });
       subtotal=Math.round(subtotal*100)/100;
-      const invDisc=Math.min(Math.max(0,parseFloat(document.getElementById('dcInvDisc')?.value||0)),subtotal);
-      const shipping=Math.max(0,parseFloat(document.getElementById('dcShipping')?.value||0));
+      const invDisc=Math.min(Math.max(0,parseFloat(document.getElementById('dcInvDisc')?.value||0)||0),subtotal);
+      const shipping=Math.max(0,parseFloat(document.getElementById('dcShipping')?.value||0)||0);
       const total=Math.max(0,Math.round((subtotal-invDisc+shipping)*100)/100);
       let advance=dcAdvanceTotal();
       if(advance>total){
-        const firstAmt=document.querySelector('#dcAdvanceRows .dc-advance-amt');
-        const excess=advance-total;
-        if(firstAmt){firstAmt.value=Math.max(0,parseFloat(firstAmt.value||0)-excess).toFixed(2);}
+        const firstAmt=document.querySelector('#dcAdvanceRows .dc-advance-amt'),excess=advance-total;
+        if(firstAmt)firstAmt.value=Math.max(0,parseFloat(firstAmt.value||0)-excess).toFixed(2);
         advance=dcAdvanceTotal();
       }
       const cod=Math.max(0,Math.round((total-advance)*100)/100);
-      const s=document.getElementById('dcSubtotal'); if(s)s.textContent=dcFmt(subtotal);
-      const t=document.getElementById('dcTotal'); if(t)t.textContent=dcFmt(total);
-      const a=document.getElementById('dcAdvanceTotal'); if(a)a.textContent=dcFmt(advance);
-      const c=document.getElementById('dcCod'); if(c)c.textContent=dcFmt(cod);
-      const cf=document.getElementById('dcCodFooter'); if(cf)cf.textContent=dcFmt(cod);
+      const sub=document.getElementById('dcSubtotal');if(sub)sub.textContent=dcFmt(subtotal);
+      const totalEl=document.getElementById('dcTotal');if(totalEl)totalEl.textContent=dcFmt(total);
+      const adv=document.getElementById('dcAdvanceTotal');if(adv)adv.textContent=dcFmt(advance);
+      const codEl=document.getElementById('dcCod');if(codEl)codEl.textContent=dcFmt(cod);
+      const footerCod=document.getElementById('dcCodFooter');if(footerCod)footerCod.textContent=dcFmt(cod);
     }
     window.dcRemoveRow=function(btn){
       const row=btn?.closest('#dcRows tr'); const body=document.getElementById('dcRows'); if(!row||!body)return;
@@ -969,7 +993,7 @@ function delivery_challan_new(): void {
       const clear=row.querySelector('.item-search-clear'); if(clear) clear.style.display='none';
       const results=row.querySelector('.item-search-results'); if(results){results.hidden=true;results.innerHTML='';}
       const unit=row.querySelector('.dc-unit'); if(unit) unit.textContent='—';
-      const amt=row.querySelector('.dc-amt'); if(amt){amt.textContent='৳0.00';amt.dataset.discount='0';}
+      const amt=row.querySelector('.dc-amt'); if(amt){amt.dataset.discount='0';const ai=amt.querySelector('.dc-amt-input');if(ai)ai.value='0.00';const tx=amt.querySelector('.dc-amt-text');if(tx)tx.textContent='৳0.00';}delete row.dataset.dcRecalcFromPrice;
       const n=row.querySelector('.txn-row-number'); if(n)n.textContent=String(body.querySelectorAll('tr').length+1);
       body.appendChild(row);
       if(window.SutoInitItemSearch) window.SutoInitItemSearch(row);
@@ -1008,8 +1032,17 @@ function delivery_challan_new(): void {
     });
     document.addEventListener('input',e=>{
       if(e.target.closest('#dcRows')){
-        const row=e.target.closest('#dcRows tr');
-        if(row && e.target.classList.contains('dc-qty') && row.dataset.bundleChild!=='1') dcUpdateBundleQuantities(row);
+        const row=e.target.closest('#dcRows tr');if(!row)return;
+        if(e.target.classList.contains('dc-qty') && row.dataset.bundleChild!=='1')dcUpdateBundleQuantities(row);
+        if(e.target.matches('.dc-qty,.dc-price,.dc-line-discount'))row.dataset.dcRecalcFromPrice='1';
+        if(e.target.matches('.dc-amt-input')){
+          const q=Math.max(0,parseFloat(row.querySelector('.dc-qty')?.value||0)||0);
+          const d=Math.max(0,parseFloat(row.querySelector('.dc-amt')?.dataset.discount||0)||0);
+          const amount=e.target.value.trim()===''?0:parseFloat(e.target.value);
+          const price=row.querySelector('.dc-price');
+          if(price&&q>0&&Number.isFinite(amount))price.value=String(Number(((Math.max(0,amount)+d)/q).toFixed(4)));
+          delete row.dataset.dcRecalcFromPrice;
+        }
         dcRecalc();
       }else if(e.target.closest('#dcAdvanceRows')||['dcInvDisc','dcShipping'].includes(e.target.id))dcRecalc();
     });
@@ -1484,10 +1517,10 @@ function document_module(string $type,string $title,string $prefix,string $party
     .document-entry-design .doc-entry-actions .btn{height:30px!important;padding:0 12px!important;font-size:12px!important;border-radius:7px!important}
     .document-entry-design .doc-entry-totals{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:16px!important;white-space:nowrap!important;color:#738198!important;font-size:15px!important}
     .document-entry-design .doc-entry-totals strong{margin-left:4px!important;color:#29384d!important;font-size:15px!important;font-weight:700!important}
-    .document-entry-design>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:2px!important}
-    .document-entry-design>.grid3 .form-group{width:auto!important;margin:0!important}
-    .document-entry-design>.grid3 .form-group label,.document-entry-design .doc-note-field label{font-size:12px!important;color:#6d7c91!important}
-    .document-entry-design>.grid3 .form-group input,.document-entry-design .doc-note-field textarea{width:100%!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important}
+    .document-entry-design form>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:2px!important}
+    .document-entry-design form>.grid3 .form-group{width:auto!important;margin:0!important}
+    .document-entry-design form>.grid3 .form-group label,.document-entry-design .doc-note-field label{font-size:12px!important;color:#6d7c91!important}
+    .document-entry-design form>.grid3 .form-group input,.document-entry-design .doc-note-field textarea{width:100%!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important}
     .document-entry-design .doc-note-field{margin-top:8px!important}
     .document-entry-design .doc-note-field textarea{min-height:76px!important}
     .document-entry-design #poAdvancePayment{margin:10px 0!important;padding:10px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important}
@@ -1509,14 +1542,14 @@ function document_module(string $type,string $title,string $prefix,string $party
       .document-entry-design .doc-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}
       .document-entry-design .doc-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}
       .document-entry-design .doc-entry-top .form-group{grid-column:1/-1!important}
-      .document-entry-design>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .document-entry-design form>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
       .document-entry-design .document-form-footer{left:0!important;right:0!important;gap:8px!important;padding:8px 10px!important}
       .document-entry-design .document-footer-summary{gap:8px!important;font-size:14px!important}
       .document-entry-design .document-footer-summary>span,.document-entry-design .document-footer-summary strong{font-size:14px!important}
       .document-entry-design .document-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important;padding:0 10px!important}
     }
     @media(max-width:560px){
-      .document-entry-design>.grid3{grid-template-columns:1fr!important}
+      .document-entry-design form>.grid3{grid-template-columns:1fr!important}
       .document-entry-design .document-form-footer{flex-direction:column!important;align-items:stretch!important}
       .document-entry-design .document-footer-actions{width:100%!important}
       .document-entry-design .document-footer-actions .btn{flex:1 1 auto!important}
