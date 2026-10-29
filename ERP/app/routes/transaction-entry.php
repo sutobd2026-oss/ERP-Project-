@@ -519,6 +519,24 @@ body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table table td.t
   .sale-invoice-ui .txn-footer-summary>span,.sale-invoice-ui .txn-footer-summary>span b{font-size:15px!important}
   .sale-invoice-ui .txn-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important}
 }
+
+/* Sale-new typography and item-search spacing updates. */
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table table th{
+  font-size:14px!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table .item-live-search .item-search-input{
+  font-size:14px!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table .item-line-meta input,
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table .item-line-meta textarea{
+  font-size:12px!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .item-search-wrap{
+  padding:0!important;
+}
+body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table .unit-label{
+  font-size:14px!important;
+}
 </style><script>
 function makeBundleRowKey(){return 'bundle-row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);}
 function getRowBundle(row){
