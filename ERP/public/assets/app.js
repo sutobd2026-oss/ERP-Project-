@@ -73,9 +73,10 @@ function forceApplyReceived(){
   const total=currentInvoiceTotal();
   applyReceivedPayment(total);
   let paid=0;
-  qsa('[name=\"pay_amount[]\"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
-  if(qs('#paidPreview'))qs('#paidPreview').textContent=fmt(paid);
-  if(qs('#duePreview'))qs('#duePreview').textContent=fmt(Math.max(0,total-paid));
+  qsa('[name="pay_amount[]"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
+  const footerFmt=(document.body.dataset.txntype||'')==='sale'?fmtCompact:fmt;
+  if(qs('#paidPreview'))qs('#paidPreview').textContent=footerFmt(paid);
+  if(qs('#duePreview'))qs('#duePreview').textContent=footerFmt(Math.max(0,total-paid));
 }
 function renumberRows(){qsa('#entryRows .sale-row').forEach((r,i)=>{const n=qs('.txn-row-number',r);if(n)n.textContent=i+1})}
 function makeTxnRowKey(){return 'row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
@@ -90,6 +91,8 @@ function removeRow(btn){
   if(rows.filter(r=>r.dataset.bundleChild!=='1').length<=1){
     const r=rows.find(x=>x.dataset.bundleChild!=='1');
     if(!r)return;
+    const bundleKey=qs('input[name="bundle_row_key[]"]',r)?.value||r.dataset.bundleRowKey||'';
+    if(bundleKey&&typeof window.removeBundleChildren==='function')window.removeBundleChildren(bundleKey);
     qsa('select',r).forEach(x=>x.selectedIndex=0);
     qsa('input',r).forEach(x=>{
       if(x.classList.contains('qty'))x.value='1';
