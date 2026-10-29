@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded',function(){
 if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     check_csrf(); $type=$_POST['txn_type']??''; $txId=(int)($_POST['transaction_id']??0);
     if(!in_array($type,['sale','purchase'],true)){http_response_code(422);exit('Unsupported transaction type.');}
-    $cid=(int)$u['company_id']; $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
+    $cid=(int)$u['company_id']; $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=$_POST['amount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
     if($type==='purchase' && $party<=0){
         $_SESSION['transaction_form_restore']=['company_id'=>$cid,'type'=>'purchase','payload'=>$_POST];
         flash('error','Supplier is required. Your entered items and amounts have been restored below; select a Supplier and save again.');
@@ -682,26 +682,36 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $parentKey=trim((string)($parentKeys[$i]??'')); $isBundleChild=((int)($childFlags[$i]??0)===1);
             if($isBundleChild && $type!=='sale')throw new RuntimeException('Bundle free items are available only on sales.');
             $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1 LIMIT 1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');
-            $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
+            $requestedAmount=null;
+            if($type==='sale' && array_key_exists($i,$amounts) && trim((string)$amounts[$i])!=='')$requestedAmount=max(0,(float)$amounts[$i]);
+            $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'requestedAmount'=>$requestedAmount,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
         }
         if(!$rawRows)throw new RuntimeException('Add at least one item.');
         $parentByKey=[]; foreach($rawRows as $rr){if(!$rr['isChild'])$parentByKey[$rr['rowKey']]=$rr['iid'];}
         $validItems=[]; $sub=0; $itemDisc=0;
         foreach($rawRows as $rr){
-            $iid=$rr['iid'];$q=$rr['q'];$p=$rr['p'];$d=$rr['d'];$it=$rr['it'];$serials=$rr['serials'];$isBundleChild=$rr['isChild'];$parentItemId=0;
+            $iid=$rr['iid'];$q=$rr['q'];$p=$rr['p'];$d=$rr['d'];$it=$rr['it'];$serials=$rr['serials'];$isBundleChild=$rr['isChild'];$parentItemId=0;$requestedAmount=$rr['requestedAmount']??null;
             if($isBundleChild){
                 $parentKey=$rr['parentKey']; if($parentKey===''||!isset($parentByKey[$parentKey]))throw new RuntimeException('A bundle child item is missing its parent product.');
                 $parentItemId=(int)$parentByKey[$parentKey]; $component=bundle_component_lookup($pdo,$cid,$parentItemId,$iid); if(!$component)throw new RuntimeException('Invalid included free item for the selected bundle product.');
                 $parentQty=0; foreach($rawRows as $pr){if(!$pr['isChild']&&$pr['rowKey']===$parentKey){$parentQty=(float)$pr['q'];break;}}
-                $expectedQty=round($parentQty*(float)$component['quantity'],6); if(abs($q-$expectedQty)>0.000001)throw new RuntimeException('Included free item quantity does not match the bundle quantity.'); $p=0;$d=0;
+                $expectedQty=round($parentQty*(float)$component['quantity'],6); if(abs($q-$expectedQty)>0.000001)throw new RuntimeException('Included free item quantity does not match the bundle quantity.'); $p=0;$d=0;$requestedAmount=0.0;
             }
             if($it['item_type']==='service'&&$q<=0)throw new RuntimeException('Invalid quantity.');
-            $lineGross=$q*$p;if($d>$lineGross)$d=$lineGross;$sub+=$lineGross;$itemDisc+=$d;
+            if($type==='sale' && $requestedAmount!==null && !$isBundleChild){
+                // Sale line Amount is editable; derive Price/Unit from the entered net amount plus line discount.
+                $lineGross=max(0,(float)$requestedAmount)+$d;
+                $p=$q>0?$lineGross/$q:0;
+            }else{
+                $lineGross=$q*$p;
+                if($d>$lineGross)$d=$lineGross;
+            }
+            $sub+=$lineGross;$itemDisc+=$d;
             if((int)($it['serial_tracked']??0)===1&&$type==='purchase'){if(abs($q-round($q))>0.000001)throw new RuntimeException('Serial-tracked purchase quantity must be a whole number.');if(count($serials)!==(int)round($q))throw new RuntimeException('Serial numbers must match the purchase quantity for '.$it['name'].'.');}
             if((int)($it['serial_tracked']??0)===1&&$type==='sale'&&$serials&&count($serials)!==(int)round($q))throw new RuntimeException('Selected serial numbers must match the sale quantity for '.$it['name'].'.');
             $lineDescription=trim((string)($itemDescriptions[$rr['index']]??''));if($lineDescription==='')$lineDescription=trim((string)($it['description']??''));
             $lineWarranty=trim((string)($itemWarranties[$rr['index']]??''));if($lineWarranty==='')$lineWarranty=trim((string)($it['warranty']??''));
-            $validItems[]=[$iid,$q,$p,$d,$it,$serials,$lineDescription,$lineWarranty,$rr['rowKey'],$rr['parentKey'],$isBundleChild,$parentItemId];
+            $validItems[]=[$iid,$q,$p,$d,$it,$serials,$lineDescription,$lineWarranty,$rr['rowKey'],$rr['parentKey'],$isBundleChild,$parentItemId,$requestedAmount];
         }
         if(!$validItems)throw new RuntimeException('Add at least one item.');
         $invDisc=max(0,(float)($_POST['invoice_discount']??0));$tax=max(0,(float)($_POST['tax']??0));$direct=max(0,(float)($_POST['direct_expense']??0));
@@ -740,7 +750,7 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
         }
         $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,bundle_parent_transaction_item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty) VALUES(?,?,?,?,?,?,?,?,?,?)');$stock=$pdo->prepare('INSERT INTO stock_movements(company_id,item_id,transaction_id,movement_date,quantity,movement_type,note) VALUES(?,?,?,?,?,?,?)');$serialLink=$pdo->prepare('INSERT INTO transaction_item_serials(company_id,transaction_id,transaction_item_id,serial_id,movement_type) VALUES(?,?,?,?,?)');
         $cogs=0;
-        $savedParentByRowKey=[]; foreach($validItems as [$iid,$q,$p,$d,$it,$serials,$lineDescription,$lineWarranty,$rowKey,$parentKey,$isBundleChild,$parentItemId]){$lineTax=0;$amount=max(0,$q*$p-$d);$parentTxnItemId=($isBundleChild&&isset($savedParentByRowKey[$parentKey]))?(int)$savedParentByRowKey[$parentKey]:null;if($isBundleChild&&$parentTxnItemId===null)throw new RuntimeException('Bundle parent must appear before its included free item.');$ins->execute([$tid,$iid,$parentTxnItemId,$q,$p,$d,$lineTax,$amount,$lineDescription?:null,$lineWarranty?:null]);$tiId=(int)$pdo->lastInsertId();if(!$isBundleChild)$savedParentByRowKey[$rowKey]=$tiId;if($it['item_type']==='product'){
+        $savedParentByRowKey=[]; foreach($validItems as [$iid,$q,$p,$d,$it,$serials,$lineDescription,$lineWarranty,$rowKey,$parentKey,$isBundleChild,$parentItemId,$requestedAmount]){$lineTax=0;$amount=($type==='sale'&&$requestedAmount!==null)?max(0,(float)$requestedAmount):max(0,$q*$p-$d);$parentTxnItemId=($isBundleChild&&isset($savedParentByRowKey[$parentKey]))?(int)$savedParentByRowKey[$parentKey]:null;if($isBundleChild&&$parentTxnItemId===null)throw new RuntimeException('Bundle parent must appear before its included free item.');$ins->execute([$tid,$iid,$parentTxnItemId,$q,$p,$d,$lineTax,$amount,$lineDescription?:null,$lineWarranty?:null]);$tiId=(int)$pdo->lastInsertId();if(!$isBundleChild)$savedParentByRowKey[$rowKey]=$tiId;if($it['item_type']==='product'){
                 $movementQty = $type==='sale' ? -1*$q : $q;
                 $movementType = $type==='sale' ? 'sale' : 'purchase';
                 $stock->execute([$cid,$iid,$tid,$txnDate,$movementQty,$movementType,$doc]);
