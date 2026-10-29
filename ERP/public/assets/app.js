@@ -5,7 +5,7 @@ function closeModal(id){const el=qs('#'+id);if(el)el.classList.remove('show')}
 function openModal(id){const el=qs('#'+id);if(el)el.classList.add('show')}
 function bindDots(){qsa('.dots').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const m=b.nextElementSibling;qsa('.row-menu').forEach(x=>{if(x!==m)x.classList.remove('show')});m?.classList.toggle('show')}))}
 function fmt(n){return '৳'+Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function fmtCompact(n){return '৳'+Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function fmtCompact(n){const value=Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2});return '৳'+value.replace(/\.00$/,'')}
 function currentInvoiceTotal(){
   const el=qs('#grandTotal');
   const txt=el?.textContent||'';
