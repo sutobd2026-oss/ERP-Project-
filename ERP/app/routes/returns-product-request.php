@@ -1671,7 +1671,6 @@ function product_requests_list(): void {
     </style>
     <div class="panel">
       <div class="panel-head pr-list-head">
-        <h2>PRODUCT REQUESTS</h2>
         <div class="pr-list-tools">
           <form method="get"><input class="input" name="q" value="<?=e($q)?>" placeholder="Search by request, customer, phone"><button class="btn">Search</button></form>
           <a class="btn primary" href="<?=e(url('product-request-new'))?>">⊕ Add Product Request</a>
@@ -1683,12 +1682,12 @@ function product_requests_list(): void {
     </td><td><div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
     <?php if($canEdit):?><a class="btn small-btn" href="<?=e(url('product-request-new?edit='.(int)$r['id']))?>">View / Edit</a><?php else: ?><a class="btn small-btn" href="<?=e(url('product-request-new?view='.(int)$r['id']))?>">View</a><?php endif;?>
     <?php if($status==='available'&&!$r['sale_transaction_id']):?><a class="btn primary small-btn" href="<?=e(url('product-request-new?convert='.(int)$r['id']))?>" onclick="return confirm('Convert this Product Request to Sale?')">CONVERT TO SALE</a><?php elseif($r['sale_transaction_id']):?><a class="btn small-btn" href="<?=e(url('sales?view='.(int)$r['sale_transaction_id']))?>">VIEW SALE</a><?php endif;?>
-    <?php $phone=preg_replace('/\D+/','',(string)($r['party_phone']??'')); $waText=rawurlencode('Product Request '.$r['request_no'].' for '.$r['party_name'].' is '.$label.'.'); ?>
+    <?php $phone=preg_replace('/\D+/','',(string)($r['party_phone']??'')); if($phone!=='' && strpos($phone,'88')!==0)$phone='88'.$phone; $waText=rawurlencode('Product Request '.$r['request_no'].' for '.$r['party_name'].' is '.$label.'.'); ?>
     <div class="pr-menu-wrap"><button type="button" class="dots" onclick="this.nextElementSibling.classList.toggle('open')" aria-label="Actions">⋮</button><div class="pr-menu">
       <?php if($canEdit):?><form method="post" onsubmit="return confirm('Delete this Product Request?')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_product_request"><input type="hidden" name="request_id" value="<?=((int)$r['id'])?>"><button type="submit" class="danger">Delete</button></form><?php else:?><span style="display:block;padding:8px 10px;color:#94a3b8;font-size:12px">Converted request is locked</span><?php endif;?>
       <a href="<?=e(url('product-request-new?view='.(int)$r['id']))?>">Preview</a>
       <a href="<?=e(url('product-request-new?view='.(int)$r['id'].'&print=1'))?>">Print</a>
-      <?php if($phone!==''):?><a href="https://wa.me/<?=e($phone)?>?text=<?=$waText?>" target="_blank" rel="noopener">Notify Customer</a><?php else:?><span style="display:block;padding:8px 10px;color:#94a3b8;font-size:12px">No phone number</span><?php endif;?>
+      <?php if($phone!==''):?><a href="https://wa.me/<?=e($phone)?>?text=<?=$waText?>" target="_blank" rel="noopener">Notify Customer on WhatsApp</a><?php else:?><span style="display:block;padding:8px 10px;color:#94a3b8;font-size:12px">No phone number</span><?php endif;?>
       <form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="duplicate_product_request"><input type="hidden" name="request_id" value="<?=((int)$r['id'])?>"><button type="submit">Duplicate</button></form>
     </div></div>
     </div></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No Product Requests found.</td></tr><?php endif;?></tbody></table></div></div>
