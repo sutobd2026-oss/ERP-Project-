@@ -935,7 +935,7 @@ function delivery_challan_new(): void {
         const q=Math.max(0,parseFloat(r.querySelector('.dc-qty')?.value||0)||0);
         const p=Math.max(0,parseFloat(r.querySelector('.dc-price')?.value||0)||0);
         const gross=q*p;
-        const discount=Math.max(0,parseFloat(r.querySelector('.dc-amt')?.dataset.discount||0)||0);
+        const discount=Math.max(0,parseFloat(r.querySelector('.dc-line-discount')?.value||r.querySelector('.dc-amt')?.dataset.discount||0)||0);
         let net=Math.max(0,gross-discount);
         const amountInput=r.querySelector('.dc-amt-input');
         if(amountInput){
@@ -1037,7 +1037,7 @@ function delivery_challan_new(): void {
         if(e.target.matches('.dc-qty,.dc-price,.dc-line-discount'))row.dataset.dcRecalcFromPrice='1';
         if(e.target.matches('.dc-amt-input')){
           const q=Math.max(0,parseFloat(row.querySelector('.dc-qty')?.value||0)||0);
-          const d=Math.max(0,parseFloat(row.querySelector('.dc-amt')?.dataset.discount||0)||0);
+          const d=Math.max(0,parseFloat(row.querySelector('.dc-line-discount')?.value||row.querySelector('.dc-amt')?.dataset.discount||0)||0);
           const amount=e.target.value.trim()===''?0:parseFloat(e.target.value);
           const price=row.querySelector('.dc-price');
           if(price&&q>0&&Number.isFinite(amount))price.value=String(Number(((Math.max(0,amount)+d)/q).toFixed(4)));
