@@ -210,7 +210,7 @@ function bindEntryRow(row){
     const price=qs('.price',row);
     if(price&&qty>0&&Number.isFinite(amount)){
       price.setAttribute('step','0.0001');price.step='0.0001';price.dataset.amountStepSet='1';
-      price.value=((Math.max(0,amount)+discount)/qty).toFixed(4);
+      price.value=String(Number(((Math.max(0,amount)+discount)/qty).toFixed(4)));
     }
     delete row.dataset.recalcAmountFromPrice;
     recalc();
