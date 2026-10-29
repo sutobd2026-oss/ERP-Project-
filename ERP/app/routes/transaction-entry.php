@@ -435,6 +435,23 @@ function duplicateTxnRow(btn){
 .sale-invoice-ui .txn-footer-summary{gap:14px!important;font-size:18px!important}
 .sale-invoice-ui .txn-footer-summary>span{font-size:18px!important;gap:5px!important}
 .sale-invoice-ui .txn-footer-summary b,.sale-invoice-ui .txn-footer-summary .txn-footer-total b{font-size:18px!important}
+/* Final visual alignment polish: keep all line-entry controls at the top of each row. */
+.sale-invoice-ui .entry-table tbody td{vertical-align:top!important}
+.sale-invoice-ui .entry-table tbody td:nth-child(3),
+.sale-invoice-ui .entry-table tbody td:nth-child(4),
+.sale-invoice-ui .entry-table tbody td:nth-child(5),
+.sale-invoice-ui .entry-table tbody td:nth-child(6),
+.sale-invoice-ui .entry-table tbody td:nth-child(7){padding-top:7px!important}
+.sale-invoice-ui .entry-table .amount-input{margin:0!important;vertical-align:top!important;line-height:normal!important}
+.sale-invoice-ui .entry-table .item-line-meta input,
+.sale-invoice-ui .entry-table .item-line-meta textarea{font-size:14px!important;line-height:1.2!important;height:30px!important;min-height:30px!important;padding:4px 7px!important}
+.sale-invoice-ui .entry-table .item-line-meta-grid{gap:5px!important}
+.sale-invoice-ui .entry-table .qty,
+.sale-invoice-ui .entry-table .price,
+.sale-invoice-ui .entry-table .line-disc,
+.sale-invoice-ui .entry-table .amount-input{margin-top:0!important}
+.sale-invoice-ui .sale-entry-totals{gap:16px!important;padding:3px 1px 2px}
+
 @media(max-width:850px){
  .sale-invoice-ui .entry-table{overflow:auto!important}
  .sale-invoice-ui .entry-table table{min-width:900px!important}
