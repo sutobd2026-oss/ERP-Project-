@@ -89,30 +89,34 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
 <div class="panel">
   <div class="entry-top <?= $isSale?'sale-entry-top':'purchase-entry-top' ?>">
-    <div class="<?= $isSale?'sale-customer-column':'' ?>">
+    <div class="<?= $isSale?'sale-customer-column':'purchase-supplier-column' ?>">
       <?php party_search_field($isSale?'Customer':'Supplier',$isSale?'customer':'supplier',$restorePartyId,$restorePartyName,$restorePartyPhone,$isSale?false:true); ?>
       <?php if($isSale): ?>
         <div class="subtle sale-customer-hint">Customer optional for Cash Sale</div>
       <?php else: ?>
-        <div class="subtle" style="margin-top:6px;display:flex;gap:8px;align-items:center"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('supplier')">+ Add Party</button></div>
+        <div class="subtle purchase-supplier-hint">BDT · Negative stock allowed</div>
       <?php endif; ?>
     </div>
-    <?php if($isSale): ?><div class="sale-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('customer')">+ Add Party</button></div><?php endif; ?>
-    <div class="entry-right <?= $isSale?'sale-invoice-meta':'' ?>">
+    <?php if($isSale): ?>
+      <div class="sale-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('customer')">+ Add Party</button></div>
+    <?php else: ?>
+      <div class="purchase-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('supplier')">+ Add Party</button></div>
+    <?php endif; ?>
+    <div class="entry-right <?= $isSale?'sale-invoice-meta':'purchase-invoice-meta' ?>">
       <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Number</label><input name="document_no" value="<?=e((string)($formRestore['document_no']??($editTx['document_no']??'')))?>" placeholder="Auto: <?=$prefix?>01"></div>
       <div class="form-group"><label><?=$isSale?'Invoice':'Bill'?> Date*</label><?php $editDateTime=(!empty($editTx['txn_date']))?date('Y-m-d\TH:i',strtotime((string)$editTx['txn_date'])):date('Y-m-d\TH:i'); ?><input type="<?= $isSale?'datetime-local':'date' ?>" name="txn_date" value="<?=e((string)($formRestore['txn_date']??($isSale?$editDateTime:($editTx['txn_date']??date('Y-m-d')))))?>" required></div>
-      <?php if(!$isSale): ?><div class="subtle sale-purchase-note" style="margin-top:8px">BDT · Negative stock allowed</div><?php endif; ?>
+
     </div>
   </div>
   <div class="entry-table">
-    <table><thead><tr><th class="txn-head-index">#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th><?php if(!$isSale):?><th class="txn-head-actions">ACTIONS</th><?php endif;?></tr></thead>
+    <table><thead><tr><th class="txn-head-index">#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead>
     <tbody id="entryRows">
 <?php foreach($rows as $ri=>$r): $rid=(int)($r['item_id']??0); $rv=(float)($r['qty']??1); $rp=(float)($r['unit_price']??0); $rd=(float)($r['discount']??0); $meta=$rid&&isset($itemMetaById[$rid])?$itemMetaById[$rid]:[]; $bundleChildId=(int)($r['bundle_parent_transaction_item_id']??0); $bundleRowKey=isset($r['bundle_row_key'])?(string)$r['bundle_row_key']:($r?'tx-ti-'.(int)$r['id']:'new-row-'.bin2hex(random_bytes(4))); $bundleParentKey=isset($r['bundle_parent_key'])?(string)$r['bundle_parent_key']:($bundleChildId>0?'tx-ti-'.$bundleChildId:''); $isBundleChild=isset($r['bundle_child'])?(int)$r['bundle_child']===1:$bundleChildId>0; $lineDesc=trim((string)($r['item_description']??'')); if($lineDesc==='')$lineDesc=trim((string)($r['item_master_description']??($meta['description']??''))); $lineWarranty=trim((string)($r['item_warranty']??'')); if($lineWarranty==='')$lineWarranty=trim((string)($r['item_master_warranty']??($meta['warranty']??''))); ?>
-      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>"><td class="txn-row-index-cell"><?php if($isSale):?><span class="txn-row-number"><?=($ri+1)?></span><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php else:?><span class="txn-drag-handle" aria-hidden="true">⠿</span><span class="txn-row-number"><?=($ri+1)?></span><?php endif;?></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??($r['serial_numbers']??[])))?></textarea></div></div></td><td><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= $isSale ? '0.0001' : (in_array($type,['delivery_challan','purchase'],true) ? '0.01' : '1') ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><?php if($isSale && !$isBundleChild):?><td><input class="amount amount-input" type="number" step="0.01" min="0" name="amount[]" value="<?=e(number_format(max(0,(float)($r['amount']??($rv*$rp-$rd))),2,'.',''))?>" aria-label="Amount"></td><?php elseif($isSale):?><td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span></td><?php else:?><td class="amount"><?=money(max(0,$rv*$rp-$rd))?></td><td class="txn-row-actions-cell"><button type="button" class="txn-action-btn txn-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn" onclick="removeRow(this)" aria-label="Delete item" title="Delete item">🗑</button></td><?php endif;?></tr>
+      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>"><td class="txn-row-index-cell"><span class="txn-row-number"><?=($ri+1)?></span><?php if($isSale):?><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php else:?><button type="button" class="txn-action-btn txn-copy-btn txn-row-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php endif;?></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??($r['serial_numbers']??[])))?></textarea></div></div></td><td><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= $isSale ? '0.0001' : (in_array($type,['delivery_challan','purchase'],true) ? '0.01' : '1') ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><?php if($isSale && !$isBundleChild):?><td><input class="amount amount-input" type="number" step="0.01" min="0" name="amount[]" value="<?=e(number_format(max(0,(float)($r['amount']??($rv*$rp-$rd))),2,'.',''))?>" aria-label="Amount"></td><?php elseif($isSale):?><td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span></td><?php else:?><td class="amount"><?=money(max(0,$rv*$rp-$rd))?></td><?php endif;?></tr>
 <?php endforeach; ?>
     </tbody></table>
   </div>
-  <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addRow('<?=$type?>')">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#entryRows','<?=$type?>')">+ Add Product</button></div><div class="sale-entry-totals"><?php if($isSale):?><span>Total QTY <strong id="qtyTotal">0</strong></span><?php endif;?><span><b>Items Total</b> <strong id="subTotal"><?=money((float)($editTx['subtotal']??0))?></strong></span></div></div>
+  <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addRow('<?=$type?>')">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#entryRows','<?=$type?>')">+ Add Product</button></div><div class="sale-entry-totals"><span>Total QTY <strong id="qtyTotal">0</strong></span><span><b>Items Total</b> <strong id="subTotal"><?=money((float)($editTx['subtotal']??0))?></strong></span></div></div>
   <?php if($isSale): ?>
   <div class="sale-adjustments">
     <div class="form-group"><label>Tax / VAT <span class="subtle">(optional)</span></label><input id="tax" type="number" step="0.01" min="0" name="tax" value="<?=e((string)($formRestore['tax']??($editTx['tax']??0)))?>"></div>
@@ -536,6 +540,111 @@ body:has(.transaction-form.txn-compact) .sale-invoice-ui .item-search-wrap{
 }
 body:has(.transaction-form.txn-compact) .sale-invoice-ui .entry-table .unit-label{
   font-size:14px!important;
+}
+
+/* Purchase New uses the same visual language as Sale New, preserving purchase actions and accounting behavior. */
+@media(min-width:851px){
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-entry-top{
+    grid-template-columns:minmax(190px,2fr) minmax(96px,.55fr) minmax(160px,1.3fr) minmax(160px,1fr)!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-supplier-column{min-width:0!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-entry-top>.entry-right.purchase-invoice-meta{display:contents!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-add-party-slot{
+    display:flex!important;align-items:flex-start!important;min-width:0!important;padding-top:22px!important;
+  }
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-add-party-slot .btn{
+    width:100%!important;height:34px!important;min-height:34px!important;padding:0 8px!important;white-space:nowrap!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important;
+  }
+}
+.purchase-entry-form .purchase-supplier-hint{margin-top:3px!important;font-size:10px!important;line-height:1.2!important;color:#8491a2!important}
+.purchase-entry-form .purchase-supplier-column,
+.purchase-entry-form .purchase-supplier-column .party-live-search{min-width:0!important;width:100%!important}
+.purchase-entry-form .purchase-supplier-column .party-search-input{width:100%!important;min-width:0!important}
+.purchase-entry-form>.panel{border:1px solid #dfe6ef!important;border-radius:12px!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important;background:#fff!important;padding:10px 10px 0!important}
+.purchase-entry-form .purchase-entry-top .form-group{margin:0!important}
+.purchase-entry-form .purchase-entry-top label{font-size:9.5px!important;font-weight:600!important;color:#627189!important;margin-bottom:4px!important}
+.purchase-entry-form .purchase-entry-top input,
+.purchase-entry-form .purchase-entry-top select{height:34px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#253347!important;font-size:12px!important;box-shadow:none!important}
+.purchase-entry-form .entry-table{width:100%!important;overflow-x:auto!important;border:1px solid #dfe6ef!important;border-radius:8px!important}
+.purchase-entry-form .entry-table table{width:100%!important;max-width:100%!important;min-width:900px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+.purchase-entry-form .entry-table table th{height:31px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;letter-spacing:.02em!important;font-weight:700!important;text-transform:uppercase!important;white-space:nowrap!important}
+.purchase-entry-form .entry-table table td{box-sizing:border-box!important;padding:7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important}
+.purchase-entry-form .entry-table tbody tr:last-child td{border-bottom:0!important}
+.purchase-entry-form .entry-table th:nth-child(1),.purchase-entry-form .entry-table td:nth-child(1){width:5%!important;min-width:56px!important}
+.purchase-entry-form .entry-table th:nth-child(2),.purchase-entry-form .entry-table td:nth-child(2){width:39%!important}
+.purchase-entry-form .entry-table th:nth-child(3),.purchase-entry-form .entry-table td:nth-child(3){width:8%!important}
+.purchase-entry-form .entry-table th:nth-child(4),.purchase-entry-form .entry-table td:nth-child(4){width:7%!important}
+.purchase-entry-form .entry-table th:nth-child(5),.purchase-entry-form .entry-table td:nth-child(5){width:14%!important}
+.purchase-entry-form .entry-table th:nth-child(6),.purchase-entry-form .entry-table td:nth-child(6){width:12%!important}
+.purchase-entry-form .entry-table th:nth-child(7),.purchase-entry-form .entry-table td:nth-child(7){width:15%!important}
+.purchase-entry-form .entry-table .txn-row-index-cell{
+  display:flex!important;align-items:flex-start!important;justify-content:center!important;gap:4px!important;white-space:nowrap!important;
+  vertical-align:top!important;text-align:center!important;padding:7px 3px!important;
+}
+.purchase-entry-form .entry-table .txn-row-number{font-size:14px!important;line-height:22px!important;color:#445269!important}
+.purchase-entry-form .entry-table .txn-row-copy-btn,
+.purchase-entry-form .entry-table .txn-row-remove-btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:top!important;
+  width:20px!important;height:22px!important;min-width:20px!important;margin:0!important;padding:0!important;
+  border:1px solid #d7e0ea!important;border-radius:5px!important;background:#fff!important;color:#718096!important;font-size:14px!important;line-height:1!important;cursor:pointer!important;flex:0 0 20px!important;
+}
+.purchase-entry-form .entry-table .txn-row-remove-btn{border-color:#efcaca!important;color:#c33!important}
+.purchase-entry-form .entry-table .txn-row-remove-btn:hover{background:#fff2f2!important;border-color:#e8aaaa!important}
+.purchase-entry-form .entry-table .item-picker-cell{width:100%!important;min-width:0!important;max-width:100%!important}
+.purchase-entry-form .entry-table .item-live-search,
+.purchase-entry-form .entry-table .item-search-wrap{width:100%!important;max-width:100%!important;min-width:0!important;padding:0!important;box-sizing:border-box!important}
+.purchase-entry-form .entry-table .item-search-input{width:100%!important;min-width:0!important;height:34px!important;box-sizing:border-box!important;padding:0 28px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#263548!important}
+.purchase-entry-form .entry-table .item-search-input:focus{border-color:#7db7ea!important;box-shadow:0 0 0 2px rgba(22,134,234,.08)!important;outline:none!important}
+.purchase-entry-form .entry-table .item-line-meta{margin-top:5px!important;padding:0!important;border:0!important;background:transparent!important}
+.purchase-entry-form .entry-table .item-line-meta-grid{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:5px!important;align-items:center!important;width:100%!important;min-width:0!important}
+.purchase-entry-form .entry-table .item-line-meta-grid>div{min-width:0!important}
+.purchase-entry-form .entry-table .item-line-meta-grid>div:first-child{flex:1 1 auto!important;min-width:0!important}
+.purchase-entry-form .entry-table .item-line-meta-grid>div:last-child{flex:0 0 34%!important;width:auto!important}
+.purchase-entry-form .entry-table .item-line-meta input,
+.purchase-entry-form .entry-table .item-line-meta textarea{width:100%!important;box-sizing:border-box!important;height:30px!important;min-height:30px!important;padding:4px 7px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;font-size:12px!important;line-height:1.2!important;color:#536278!important}
+.purchase-entry-form .entry-table .qty,
+.purchase-entry-form .entry-table .price,
+.purchase-entry-form .entry-table .line-disc{width:100%!important;min-width:0!important;max-width:100%!important;height:34px!important;box-sizing:border-box!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#253347!important;box-shadow:none!important}
+.purchase-entry-form .entry-table .unit-label{display:flex!important;align-items:center!important;height:34px!important;color:#64748b!important;font-size:14px!important}
+.purchase-entry-form .entry-table .amount{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;height:34px!important;line-height:34px!important;padding:0 4px!important;margin:0!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;text-align:right!important;font-size:14px!important;font-weight:700!important;color:#26354a!important}
+.purchase-entry-form .entry-actions{padding:6px 0 4px!important;margin:0!important;display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important}
+.purchase-entry-form .entry-actions .btn{height:29px!important;padding:0 12px!important;border-radius:7px!important;font-size:12px!important}
+.purchase-entry-form .sale-entry-totals{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:16px!important;white-space:nowrap!important;color:#738198!important;font-size:15px!important;padding:3px 1px 2px!important}
+.purchase-entry-form .sale-entry-totals strong{margin-left:4px!important;color:#29384d!important;font-size:15px!important;font-weight:700!important}
+.purchase-entry-form>.panel>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:2px!important}
+.purchase-entry-form>.panel>.grid3 .form-group{width:auto!important;margin:0!important}
+.purchase-entry-form>.panel>.grid3 .form-group:nth-child(1){order:3}
+.purchase-entry-form>.panel>.grid3 .form-group:nth-child(2){order:1}
+.purchase-entry-form>.panel>.grid3 .form-group:nth-child(3){order:2}
+.purchase-entry-form>.panel>.grid3 .form-group label{font-size:12px!important;color:#6d7c91!important}
+.purchase-entry-form>.panel>.grid3 .form-group input{height:34px!important;font-size:14px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important}
+.purchase-entry-form>.panel>.grid2{margin-top:6px!important;gap:8px 12px!important}
+.purchase-entry-form .form-group textarea[name="notes"]{font-size:14px!important;min-height:76px!important}
+.purchase-entry-form .payment-box{padding:9px 10px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important}
+.purchase-entry-form .payment-panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:7px!important}
+.purchase-entry-form .payment-panel-head h2{font-size:14px!important;color:#2a394d!important}
+.purchase-entry-form .payment-panel-head>.subtle{font-size:10px!important}
+.purchase-entry-form .payment-line{grid-template-columns:1.05fr .9fr 1.1fr 32px!important;gap:6px!important;margin-bottom:6px!important}
+.purchase-entry-form .payment-line select,.purchase-entry-form .payment-line input{height:34px!important;border:1px solid #d4deea!important;border-radius:6px!important;font-size:14px!important;padding:0 8px!important}
+.purchase-entry-form .payment-box>.btn{height:30px!important;padding:0 10px!important;font-size:12px!important;border-radius:7px!important}
+.purchase-entry-form .txn-form-footer{min-height:68px!important;padding:10px 14px!important}
+.purchase-entry-form .txn-footer-summary{gap:14px!important;font-size:18px!important}
+.purchase-entry-form .txn-footer-summary>span,.purchase-entry-form .txn-footer-summary>span b{font-size:18px!important;gap:5px!important}
+.purchase-entry-form .txn-footer-summary>span:nth-child(2),.purchase-entry-form .txn-footer-summary>span:nth-child(2) b{color:#159447!important}
+.purchase-entry-form .txn-footer-summary>span:nth-child(3),.purchase-entry-form .txn-footer-summary>span:nth-child(3) b{color:#dc2626!important}
+.purchase-entry-form .txn-footer-actions .btn{font-size:18px!important;height:42px!important;min-height:42px!important;padding:0 16px!important;line-height:1.1!important}
+@media(max-width:850px){
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-entry-top{grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-supplier-column{grid-column:1!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}
+  body:has(.transaction-form.txn-compact) .purchase-entry-form .purchase-entry-top>.entry-right.purchase-invoice-meta{display:grid!important;grid-column:1/-1!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important}
+  .purchase-entry-form .sale-entry-totals{gap:12px!important;font-size:12px!important}
+  .purchase-entry-form .txn-footer-summary>span,.purchase-entry-form .txn-footer-summary>span b{font-size:15px!important}
+  .purchase-entry-form .txn-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important}
 }
 </style><script>
 function makeBundleRowKey(){return 'bundle-row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);}
