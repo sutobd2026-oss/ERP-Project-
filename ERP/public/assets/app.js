@@ -5,6 +5,7 @@ function closeModal(id){const el=qs('#'+id);if(el)el.classList.remove('show')}
 function openModal(id){const el=qs('#'+id);if(el)el.classList.add('show')}
 function bindDots(){qsa('.dots').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const m=b.nextElementSibling;qsa('.row-menu').forEach(x=>{if(x!==m)x.classList.remove('show')});m?.classList.toggle('show')}))}
 function fmt(n){return '৳'+Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtCompact(n){return '৳'+Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function currentInvoiceTotal(){
   const el=qs('#grandTotal');
   const txt=el?.textContent||'';
@@ -29,24 +30,43 @@ function applyReceivedPayment(total){
   inputs.slice(1).forEach(i=>{i.value='0';});
 }
 function recalc(){
-  let sub=0;
+  let sub=0,qtyTotal=0;
+  const isSale=(document.body.dataset.txntype||'')==='sale';
   qsa('.sale-row').forEach(r=>{
-    const qty=parseFloat(qs('.qty',r)?.value||0),price=parseFloat(qs('.price',r)?.value||0),disc=Math.max(0,parseFloat(qs('.line-disc',r)?.value||0));
-    const amt=Math.max(0,qty*price-disc);
-    if(qs('.amount',r))qs('.amount',r).textContent=fmt(amt);
+    const qty=parseFloat(qs('.qty',r)?.value||0)||0;
+    const price=parseFloat(qs('.price',r)?.value||0)||0;
+    const disc=Math.max(0,parseFloat(qs('.line-disc',r)?.value||0));
+    let amt=Math.max(0,qty*price-disc);
+    const amountInput=qs('.amount-input',r);
+    if(isSale&&amountInput){
+      if(document.activeElement===amountInput || r.dataset.recalcAmountFromPrice!=='1'){
+        const entered=amountInput.value.trim()===''?0:parseFloat(amountInput.value);
+        if(Number.isFinite(entered))amt=Math.max(0,entered);
+      }else{
+        amountInput.value=amt.toFixed(2);
+      }
+      delete r.dataset.recalcAmountFromPrice;
+    }else{
+      const amountDisplay=qs('.amount',r);
+      if(amountDisplay)amountDisplay.textContent=fmt(amt);
+    }
     sub+=amt;
+    const itemId=qs('.item-select',r)?.value||qs('input[type="hidden"][name="item_id[]"]',r)?.value||'';
+    if(itemId)qtyTotal+=Math.max(0,qty);
   });
+  if(qs('#qtyTotal'))qs('#qtyTotal').textContent=qtyTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:3});
   const inv=Math.max(0,parseFloat(qs('#invoiceDiscount')?.value||0));
   const tax=Math.max(0,parseFloat(qs('#tax')?.value||0));
   const direct=Math.max(0,parseFloat(qs('#directExpense')?.value||0));
   const total=Math.max(0,sub-inv+tax+direct);
-  if(qs('#grandTotal'))qs('#grandTotal').textContent=fmt(total);
+  const footerFmt=isSale?fmtCompact:fmt;
+  if(qs('#grandTotal'))qs('#grandTotal').textContent=footerFmt(total);
   if(qs('#subTotal'))qs('#subTotal').textContent=fmt(sub);
   applyReceivedPayment(total);
   let paid=0;
-  qsa('[name=\"pay_amount[]\"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
-  if(qs('#paidPreview'))qs('#paidPreview').textContent=fmt(paid);
-  if(qs('#duePreview'))qs('#duePreview').textContent=fmt(Math.max(0,total-paid));
+  qsa('[name=\\"pay_amount[]\\"]').forEach(x=>paid+=Math.max(0,parseFloat(x.value||0)));
+  if(qs('#paidPreview'))qs('#paidPreview').textContent=footerFmt(paid);
+  if(qs('#duePreview'))qs('#duePreview').textContent=footerFmt(Math.max(0,total-paid));
 }
 function forceApplyReceived(){
   if(!qs('#receivedToggle')?.checked) return;
@@ -59,8 +79,41 @@ function forceApplyReceived(){
 }
 function renumberRows(){qsa('#entryRows .sale-row').forEach((r,i)=>{const n=qs('.txn-row-number',r);if(n)n.textContent=i+1})}
 function makeTxnRowKey(){return 'row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
-function addRow(type){const rows=qs('#entryRows');if(!rows)return;const first=qs('.sale-row',rows);if(!first)return;const clone=first.cloneNode(true);delete clone.dataset.autoNextRowCreated;qsa('.item-live-search',clone).forEach(b=>{delete b.dataset.itemSearchBound;});qsa('input',clone).forEach(i=>{if(i.classList.contains('qty'))i.value='1';else if(i.classList.contains('price')||i.classList.contains('line-disc'))i.value='0';else if(i.classList.contains('item-search-input'))i.value='';});qsa('select',clone).forEach(s=>s.selectedIndex=0);const key=qs('input[name="bundle_row_key[]"]',clone);if(key){key.value=makeTxnRowKey();clone.dataset.bundleRowKey=key.value;}const parent=qs('input[name="bundle_parent_key[]"]',clone);if(parent){parent.value='';clone.dataset.bundleParentKey='';}const child=qs('input[name="bundle_child[]"]',clone);if(child){child.value='0';clone.dataset.bundleChild='0';}const clear=qs('.item-search-clear',clone);if(clear)clear.style.display='none';qs('.item-selected-summary',clone)?.remove();const unit=qs('.unit-label',clone);if(unit)unit.textContent='—';const st=qs('.serial-number-input',clone);if(st)st.value='';qs('.item-picker-cell',clone)?.classList.remove('serial-ready');const sb=qs('.serial-trigger-btn',clone);if(sb){sb.hidden=true;sb.textContent='Serial';}qs('.amount',clone).textContent=fmt(0);rows.appendChild(clone);bindEntryRow(clone);renumberRows();if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(clone);}
-function removeRow(btn){const rows=qsa('#entryRows .sale-row');if(rows.length<=1){const r=rows[0];qsa('select',r).forEach(x=>x.selectedIndex=0);qsa('input',r).forEach(x=>{if(x.classList.contains('qty'))x.value='1';else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';else if(x.classList.contains('item-search-input'))x.value=''});qs('.item-search-clear',r)&&(qs('.item-search-clear',r).style.display='none');qs('.item-selected-summary',r)?.remove();const st=qs('.serial-number-input',r);if(st)st.value='';qs('.item-picker-cell',r)?.classList.remove('serial-ready');const sb=qs('.serial-trigger-btn',r);if(sb){sb.hidden=true;sb.textContent='Serial';}const u=qs('.unit-label',r);if(u)u.textContent='—';qs('.amount',r).textContent=fmt(0)}else{btn.closest('.sale-row')?.remove();renumberRows();}recalc()}
+function addRow(type){const rows=qs('#entryRows');if(!rows)return;const first=qs('.sale-row',rows);if(!first)return;const clone=first.cloneNode(true);delete clone.dataset.autoNextRowCreated;qsa('.item-live-search',clone).forEach(b=>{delete b.dataset.itemSearchBound;});qsa('input',clone).forEach(i=>{if(i.classList.contains('qty'))i.value='1';else if(i.classList.contains('price')||i.classList.contains('line-disc'))i.value='0';else if(i.classList.contains('item-search-input'))i.value='';});qsa('select',clone).forEach(s=>s.selectedIndex=0);const key=qs('input[name="bundle_row_key[]"]',clone);if(key){key.value=makeTxnRowKey();clone.dataset.bundleRowKey=key.value;}const parent=qs('input[name="bundle_parent_key[]"]',clone);if(parent){parent.value='';clone.dataset.bundleParentKey='';}const child=qs('input[name="bundle_child[]"]',clone);if(child){child.value='0';clone.dataset.bundleChild='0';}const clear=qs('.item-search-clear',clone);if(clear)clear.style.display='none';qs('.item-selected-summary',clone)?.remove();const unit=qs('.unit-label',clone);if(unit)unit.textContent='—';const st=qs('.serial-number-input',clone);if(st)st.value='';qs('.item-picker-cell',clone)?.classList.remove('serial-ready');const sb=qs('.serial-trigger-btn',clone);if(sb){sb.hidden=true;sb.textContent='Serial';}const amountDisplay=qs('.amount',clone);if(amountDisplay){if(amountDisplay.matches('input'))amountDisplay.value='0.00';else amountDisplay.textContent=fmt(0);}delete clone.dataset.recalcAmountFromPrice;rows.appendChild(clone);bindEntryRow(clone);renumberRows();if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(clone);}
+function removeRow(btn){
+  const rows=qsa('#entryRows .sale-row');
+  const target=btn?.closest('.sale-row');
+  if(!target)return;
+  if(target.dataset.bundleChild==='1'){
+    target.remove();renumberRows();recalc();return;
+  }
+  if(rows.filter(r=>r.dataset.bundleChild!=='1').length<=1){
+    const r=rows.find(x=>x.dataset.bundleChild!=='1');
+    if(!r)return;
+    qsa('select',r).forEach(x=>x.selectedIndex=0);
+    qsa('input',r).forEach(x=>{
+      if(x.classList.contains('qty'))x.value='1';
+      else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';
+      else if(x.classList.contains('item-search-input'))x.value='';
+      else if(x.classList.contains('amount-input'))x.value='0.00';
+      else if(x.name==='amount[]')x.value='0';
+    });
+    qs('.item-search-clear',r)&&(qs('.item-search-clear',r).style.display='none');
+    qs('.item-selected-summary',r)?.remove();
+    const st=qs('.serial-number-input',r);if(st)st.value='';
+    qs('.item-picker-cell',r)?.classList.remove('serial-ready');
+    const sb=qs('.serial-trigger-btn',r);if(sb){sb.hidden=true;sb.textContent='Serial';}
+    const u=qs('.unit-label',r);if(u)u.textContent='—';
+    const amountDisplay=qs('.amount',r);
+    if(amountDisplay){if(amountDisplay.matches('input'))amountDisplay.value='0.00';else amountDisplay.textContent=fmt(0);}
+    delete r.dataset.recalcAmountFromPrice;
+  }else{
+    const key=qs('input[name="bundle_row_key[]"]',target)?.value||target.dataset.bundleRowKey||'';
+    if(key&&typeof window.removeBundleChildren==='function')window.removeBundleChildren(key);
+    target.remove();
+  }
+  renumberRows();recalc();
+}
 function removePayment(btn){const wrap=qs('#paymentRows');if(!wrap)return;const rows=qsa('.payment-line',wrap);if(rows.length<=1){const r=rows[0];if(r){qsa('input',r).forEach(i=>{if(i.name==='pay_amount[]')i.value='0';else if(i.name==='pay_cheque_date[]'||i.name==='pay_ref[]'||i.name==='pay_account[]')i.value='';});const m=qs('select[name=\"pay_method[]\"]',r);if(m){m.selectedIndex=0;togglePaymentFields(m);}}}else{const row=btn?.closest('.payment-line');if(row)row.remove();}recalc()}
 function addPayment(){const wrap=qs('#paymentRows');if(!wrap)return;const first=qs('.payment-line',wrap);const clone=first.cloneNode(true);qsa('input',clone).forEach(i=>i.value='');qsa('select',clone).forEach(s=>s.selectedIndex=0);const acct=qs('.pay-account',clone);if(acct){acct.style.display='none';acct.name='pay_account[]'}const cd=qs('.pay-cheque-date',clone);if(cd){cd.style.display='none';cd.value=''}wrap.appendChild(clone);bindPaymentLine(clone);if(qs('#receivedToggle'))qs('#receivedToggle').checked=false;recalc()}
 function togglePaymentFields(sel){const row=sel&&sel.closest('.payment-line,.std-payment-row,.std-pay-grid');if(!row)return;const method=sel.value||'';const cd=qs('.pay-cheque-date',row);const ref=qs('.pay-ref',row)||qs('[name="pay_reference[]"]',row)||qs('[name="pay_ref[]"]',row)||qs('.std-cheque-ref',row);const isCheque=method==='cheque';if(cd)cd.style.display=isCheque?'block':'none';if(ref)ref.style.display=isCheque?'block':'none';if(!isCheque&&ref&&ref.querySelector('input'))ref.querySelector('input').value='';}
@@ -131,12 +184,32 @@ function ensureNextTxnRow(row,txType){
 function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){
   const txType=document.body.dataset.txntype||'sale';
-  // Sale and Delivery Challan unit prices support 2-decimal values.
-  // Spinner increment remains 1 while decimal input stays valid.
-  if(txType==='sale'||txType==='delivery_challan'){
+  if(txType==='sale'){
+    qsa('.price',row).forEach(function(input){input.setAttribute('step','0.0001');input.step='0.0001';input.dataset.amountStepSet='1';});
+  }else if(txType==='delivery_challan'){
     qsa('.price',row).forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
   }
-  qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{if(x.classList.contains('qty')){renderSerialMeta(row);if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);}recalc()}));
+  qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{
+    if(x.classList.contains('qty')){
+      renderSerialMeta(row);
+      if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);
+    }
+    if(qs('.amount-input',row))row.dataset.recalcAmountFromPrice='1';
+    recalc();
+  }));
+  const amountInput=qs('.amount-input',row);
+  if(amountInput)amountInput.addEventListener('input',()=>{
+    const qty=parseFloat(qs('.qty',row)?.value||0)||0;
+    const discount=Math.max(0,parseFloat(qs('.line-disc',row)?.value||0));
+    const amount=amountInput.value.trim()===''?0:parseFloat(amountInput.value);
+    const price=qs('.price',row);
+    if(price&&qty>0&&Number.isFinite(amount)){
+      price.setAttribute('step','0.0001');price.step='0.0001';price.dataset.amountStepSet='1';
+      price.value=((Math.max(0,amount)+discount)/qty).toFixed(4);
+    }
+    delete row.dataset.recalcAmountFromPrice;
+    recalc();
+  });
   qs('.item-select',row)?.addEventListener('change',e=>updatePrice(e.target));
   qs('.serial-number-input',row)?.addEventListener('input',()=>renderSerialMeta(row));
   qs('.serial-trigger-btn',row)?.addEventListener('click',()=>openSerialModal(row));
@@ -161,7 +234,7 @@ document.addEventListener('click',e=>{
   qsa('.row-menu').forEach(x=>x.classList.remove('show'));
   qs('#addMore')?.classList.remove('show');
 });
-document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#entryRows .item-source-select'))return;const row=sel.closest('.sale-row');if(!row||row.dataset.bundleChild==='1'||!sel.value)return;ensureNextTxnRow(row,document.body.dataset.txntype||'sale');});
+document.addEventListener('change',e=>{const sel=e.target;if(!sel?.matches?.('#entryRows .item-source-select'))return;const row=sel.closest('.sale-row');if(!row||row.dataset.bundleChild==='1'||!sel.value)return;if(document.body.dataset.txntype==='sale'&&row.querySelector('.amount-input'))row.dataset.recalcAmountFromPrice='1';ensureNextTxnRow(row,document.body.dataset.txntype||'sale');recalc();});
 document.addEventListener('DOMContentLoaded',()=>{
   bindDots();
   const txType=document.body.dataset.txntype||'sale';
