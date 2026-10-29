@@ -1082,9 +1082,9 @@ function document_module(string $type,string $title,string $prefix,string $party
             $party=(int)($_POST['party_id']??0); if($isPartyRequired && $party<=0) throw new RuntimeException($partyLabel.' is required.');
             if($isPartyRequired){$neededRole=$partyLabel==='Customer'?'customer':'supplier';$st=$pdo->prepare('SELECT p.id FROM parties p WHERE p.id=? AND p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role=?)');$st->execute([$party,$cid,$neededRole]);$pr=$st->fetch();if(!$pr)throw new RuntimeException('Invalid '.$partyLabel.'.');}
             $txnDate=transaction_datetime($_POST['txn_date']??null);$dueDate=$_POST['due_date']?:null;$notes=trim($_POST['notes']??'');
-            $itemIds=$_POST['item_id']??[];$qtys=$_POST['qty']??[];$prices=$_POST['price']??[];$discs=$_POST['discount']??[];
+            $itemIds=$_POST['item_id']??[];$qtys=$_POST['qty']??[];$prices=$_POST['price']??[];$discs=$_POST['discount']??[];$amounts=$_POST['amount']??[];
             $rows=[];$subtotal=0;$itemDisc=0;
-            foreach($itemIds as $i=>$iid){$iid=(int)$iid;$q=(float)($qtys[$i]??0);$price=(float)($prices[$i]??0);$disc=max(0,(float)($discs[$i]??0));if($iid<=0||$q<=0)continue;$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');$gross=$q*$price;if($disc>$gross)$disc=$gross;$rows[]=[$iid,$q,$price,$disc,$it];$subtotal+=$gross;$itemDisc+=$disc;}
+            foreach($itemIds as $i=>$iid){$iid=(int)$iid;$q=(float)($qtys[$i]??0);$price=(float)($prices[$i]??0);$disc=max(0,(float)($discs[$i]??0));if($iid<=0||$q<=0)continue;$st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');$requestedAmount=(array_key_exists($i,$amounts)&&trim((string)$amounts[$i])!=='')?max(0,(float)$amounts[$i]):null;if($requestedAmount!==null)$price=$q>0?($requestedAmount+$disc)/$q:0;$gross=$q*$price;if($disc>$gross)$disc=$gross;$rows[]=[$iid,$q,$price,$disc,$it,$requestedAmount];$subtotal+=$gross;$itemDisc+=$disc;}
             if(!$rows) throw new RuntimeException('Add at least one item.');
             $invDisc=max(0,(float)($_POST['invoice_discount']??0));$tax=max(0,(float)($_POST['tax']??0));$direct=max(0,(float)($_POST['direct_expense']??0));$after=max(0,$subtotal-$itemDisc);if($invDisc>$after)$invDisc=$after;$total=round(max(0,$after-$invDisc+$tax+$direct),2);
             $purchaseOrderPayments=[];$purchaseOrderPaid=0.0;
@@ -1131,13 +1131,13 @@ function document_module(string $type,string $title,string $prefix,string $party
                     $pdo->prepare('DELETE FROM payment_lines WHERE transaction_id=?')->execute([$documentId]);
                     $pdo->prepare('DELETE FROM ledger_entries WHERE transaction_id=? AND company_id=?')->execute([$documentId,$cid]);
                 }
-                $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it])$ins->execute([$documentId,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
+                $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride])$ins->execute([$documentId,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc)]);
                 $storePurchaseOrderPayments($documentId,$doc,$txnDate);
                 audit('edit','transaction',$documentId,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' updated successfully.');redirect($listRoute!==''?$listRoute:$type);
             }
             $doc=trim($_POST['document_no']??'');if($doc==='')$doc=next_document_in_transaction($pdo,$cid,$type,$prefix);
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$cid,$party,$type,$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,$tax,$direct,$total,$paidToSave,$dueToSave,$u['currency_code'],$documentStatus,$notes,$u['id']]);
-            $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it])$ins->execute([$tid,$iid,$q,$price,$disc,0,max(0,$q*$price-$disc)]);
+            $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');foreach($rows as [$iid,$q,$price,$disc,$it,$amountOverride])$ins->execute([$tid,$iid,$q,$price,$disc,0,$amountOverride!==null?max(0,(float)$amountOverride):max(0,$q*$price-$disc)]);
             $storePurchaseOrderPayments($tid,$doc,$txnDate);
             if($type==='delivery_challan'){ /* challan does not change accounting/stock until converted to sale */ }
             audit('create','transaction',$tid,['type'=>$type,'document'=>$doc,'total'=>$total,'paid'=>$paidToSave,'due'=>$dueToSave]);$pdo->commit();flash('success',$title.' '.$doc.' saved successfully.');redirect($type==='quotation'?'quotations':($type==='sale_order'?'sale-order':($type==='purchase_order'?'purchase-order':'delivery-challans')));
@@ -1405,9 +1405,14 @@ function document_module(string $type,string $title,string $prefix,string $party
     </script>
     <?php page_end(); exit; endif; ?>
     <?php if(!in_array($type,['purchase_order','quotation'],true)): ?><div class="page-title"><div><h1><?=e($editDocument?'Edit '.$title:$title)?></h1><p><?=e($editDocument?'Update the existing '.strtolower($title):'Manage '.strtolower($title))?></p></div><?php if(!$listOnly): ?><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Back</a><?php endif; ?></div><?php endif; ?>
-    <div class="panel standard-entry-form" id="newDoc"><?php if(!in_array($type,['purchase_order','quotation'],true)): ?><div class="panel-head"><h2><?=e($editDocument?'Edit '.$title:'New '.$title)?></h2><span class="subtle">No accounting/stock posting until conversion to the next document.</span></div><?php endif; ?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_document"><?php if($editDocument): ?><input type="hidden" name="transaction_id" value="<?=((int)$editTx['id'])?>"><?php endif; ?><div class="entry-top standard-entry-top"><div class="standard-party-field"><?php party_search_field($partyLabel,$partyLabel==='Customer'?'customer':'supplier',$editDocument?(int)$editTx['party_id']:0,$editDocument?(string)($editTx['party_name']??''):'',$editDocument?(string)($editTx['party_phone']??''):''); ?><div style="margin-top:6px"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('<?=$neededRole?>')">+ Add Party</button></div></div><div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Number</label><input name="document_no" value="<?=e($editDocument?(string)$editTx['document_no']:'')?>" placeholder="Auto: <?=e($prefix)?>01"></div><div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Date*</label><input type="date" name="txn_date" value="<?=e($editDocument?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div></div>
-    <div class="entry-table"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="docRows"><?php $renderDocLines=$editDocument&&$editLines?$editLines:[null]; foreach($renderDocLines as $di=>$dl): $diId=(int)($dl['item_id']??0); $diName=(string)($dl['item_name']??''); $diQty=(float)($dl['qty']??1); $diPrice=(float)($dl['unit_price']??0); $diDisc=(float)($dl['discount']??0); ?><tr><td><?=($di+1)?></td><td><div class="item-picker-cell"><?php item_search_field($diId,$diName,'',($type==='purchase_order'?'purchase':'sale')); ?><select name="item_id[]" class="item-select item-source-select" onchange="docPrice(this)" required><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-price="<?=$it[$type==='purchase_order'?'purchase_price':'sale_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" <?=($diId===(int)$it['id']?'selected':'')?>><?=e($it['name'])?></option><?php endforeach;?></select></div></td><td><input type="number" name="qty[]" class="doc-qty" step="<?= $type==='sale_order' ? '1' : '0.01' ?>" min="<?= $type==='sale_order' ? '1' : '0.01' ?>" value="<?=e((string)$diQty)?>" required></td><td><input type="number" name="price[]" class="doc-price" step="0.01" min="0" value="<?=e((string)$diPrice)?>" required></td><td><input type="number" name="discount[]" class="doc-disc" step="0.01" min="0" value="<?=e((string)$diDisc)?>" ></td><td class="doc-amt"><?=money(max(0,$diQty*$diPrice-$diDisc))?></td></tr><?php endforeach; ?></tbody></table></div>
-    <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addDocRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#docRows','doc')">+ Add Product</button></div><span><b>Total</b> <strong id="docTotal">৳0.00</strong></span></div>
+    <div class="panel standard-entry-form document-entry-design" id="newDoc"><?php if(!in_array($type,['purchase_order','quotation'],true)): ?><div class="panel-head"><h2><?=e($editDocument?'Edit '.$title:'New '.$title)?></h2><span class="subtle">No accounting/stock posting until conversion to the next document.</span></div><?php endif; ?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_document"><?php if($editDocument): ?><input type="hidden" name="transaction_id" value="<?=((int)$editTx['id'])?>"><?php endif; ?><div class="entry-top standard-entry-top doc-entry-top">
+      <div class="doc-party-column standard-party-field"><?php party_search_field($partyLabel,$partyLabel==='Customer'?'customer':'supplier',$editDocument?(int)$editTx['party_id']:0,$editDocument?(string)($editTx['party_name']??''):'',$editDocument?(string)($editTx['party_phone']??''):''); ?></div>
+      <div class="doc-add-party-slot"><button type="button" class="btn small-btn" onclick="senseOpenInlinePartyModal('<?=$neededRole?>')">+ Add Party</button></div>
+      <div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Number</label><input name="document_no" value="<?=e($editDocument?(string)$editTx['document_no']:'')?>" placeholder="Auto: <?=e($prefix)?>01"></div>
+      <div class="form-group"><label><?=e($title==='Estimate / Quotation'?'Quotation':$title)?> Date*</label><input type="date" name="txn_date" value="<?=e($editDocument?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div>
+    </div>
+    <div class="entry-table"><table class="doc-entry-table"><colgroup><col style="width:7%"><col style="width:36%"><col style="width:8%"><col style="width:7%"><col style="width:14%"><col style="width:12%"><col style="width:16%"></colgroup><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="docRows"><?php $renderDocLines=$editDocument&&$editLines?$editLines:[null]; foreach($renderDocLines as $di=>$dl): $diId=(int)($dl['item_id']??0); $diName=(string)($dl['item_name']??''); $diQty=(float)($dl['qty']??1); $diPrice=(float)($dl['unit_price']??0); $diDisc=(float)($dl['discount']??0); $diUnit=(string)($dl['unit_symbol']??''); ?><tr><td class="doc-row-index-cell"><span class="doc-row-number"><?=($di+1)?></span><button type="button" class="doc-row-copy" onclick="duplicateDocRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="doc-row-remove" onclick="removeDocRow(this)" aria-label="Remove item" title="Remove item">×</button></td><td><div class="item-picker-cell"><?php item_search_field($diId,$diName,'',($type==='purchase_order'?'purchase':'sale')); ?><select name="item_id[]" class="item-select item-source-select" onchange="docPrice(this)" required><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-price="<?=$it[$type==='purchase_order'?'purchase_price':'sale_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" <?=($diId===(int)$it['id']?'selected':'')?>><?=e($it['name'])?></option><?php endforeach;?></select></div></td><td><input type="number" name="qty[]" class="doc-qty" step="<?= $type==='sale_order' ? '1' : '0.01' ?>" min="<?= $type==='sale_order' ? '1' : '0.01' ?>" value="<?=e((string)$diQty)?>" required></td><td class="doc-unit"><?=e($diUnit!==''?$diUnit:'—')?></td><td><input type="number" name="price[]" class="doc-price" step="0.0001" min="0" value="<?=e((string)$diPrice)?>" required></td><td><input type="number" name="discount[]" class="doc-disc" step="0.01" min="0" value="<?=e((string)$diDisc)?>"></td><td><input type="number" name="amount[]" class="doc-amt doc-amt-input" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($dl['amount']??($diQty*$diPrice-$diDisc))),2,'.',''))?>" aria-label="Amount"></td></tr><?php endforeach; ?></tbody></table></div>
+    <div class="entry-actions doc-entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addDocRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#docRows','doc')">+ Add Product</button></div><div class="doc-entry-totals"><?php if($type==='purchase_order'):?><span>Items Total <strong id="docSubTotal">৳0.00</strong></span><?php endif;?><span><b>Total</b> <strong id="docTotal">৳0.00</strong></span></div></div>
     <div class="grid3"><div class="form-group"><label>Invoice Discount</label><input id="docInvDisc" type="number" name="invoice_discount" min="0" step="0.01" value="0"></div><div class="form-group"><label>Tax / VAT</label><input id="docTax" type="number" name="tax" min="0" step="0.01" value="0"></div><div class="form-group"><label>Direct Expense</label><input id="docDirect" type="number" name="direct_expense" min="0" step="0.01" value="0"></div></div>
     <?php if($type==='purchase_order'): ?>
     <style>
@@ -1436,21 +1441,197 @@ function document_module(string $type,string $title,string $prefix,string $party
       </div>
     </div>
     <?php endif; ?>
-    <div class="form-group"><label>Description / Note</label><textarea name="notes" rows="3"><?=e((string)($editDocument?($editTx['notes']??''):''))?></textarea></div><div class="form-footer" style="margin:0 -16px -16px"><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Cancel</a><button class="btn primary">Save</button></div></form></div>
+    <div class="form-group doc-note-field"><label>Description / Note</label><textarea name="notes" rows="3"><?=e((string)($editDocument?($editTx['notes']??''):''))?></textarea></div><div class="form-footer document-form-footer" style="margin:0 -16px -16px"><div class="document-footer-summary"><span>Total <strong id="docFooterTotal">৳0.00</strong></span><?php if($type==='purchase_order'):?><span>Paid <strong id="docFooterPaid">৳0.00</strong></span><span>Due <strong id="docFooterDue">৳0.00</strong></span><?php endif;?></div><div class="document-footer-actions"><a class="btn" href="<?=e(url($listRoute!==''?$listRoute:$type))?>">Cancel</a><button class="btn primary">Save</button></div></div></form></div>
     <?php $standaloneNew = (in_array($listRoute,['sale-order','quotations','purchase-order'],true) && !$listOnly); ?>
     <?php if(!$standaloneNew): ?>
     <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>TRANSACTIONS</h2><form method="get" style="display:flex;gap:8px"><input class="input" name="q" value="<?=e($q)?>" style="max-width:280px" placeholder="Search by document, party, phone"><button class="btn">Search</button></form></div><div class="table-wrap"><table><thead><tr><th>DATE</th><th>DOCUMENT NO.</th><th><?=e(strtoupper($partyLabel))?></th><th>TOTAL</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody><?php foreach($rows as $r):?><tr><td><?=e(!empty($r['txn_date'])?date('d/m/Y',strtotime($r['txn_date'])):'—')?></td><td><?=e($r['document_no'])?></td><td><?=e($r['party_name']??'')?></td><td><?=money((float)$r['total'])?></td><td><span class="status <?=($r['status']==='converted'?'paid':'open')?>"><?=e(ucfirst($r['status']))?></span></td><td class="action"><a class="btn" href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">View</a><?php if($type==='purchase_order'&&$r['status']!=='converted'): ?><a class="btn small-btn" href="<?=e(url('purchase-order-new?edit='.(int)$r['id'].'#poAdvancePayment'))?>">Payment</a><?php endif; ?><?php if($r['status']!=='converted'):?><a class="btn primary small-btn" href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?convert='.(int)$r['id'])))?>" onclick="return confirm('<?=e($title)?> will be converted. Continue?')"><?=e($type==='quotation'?'CONVERT TO SALE ORDER':($type==='sale_order'?'CONVERT TO DELIVERY CHALLAN':($type==='purchase_order'?'CONVERT TO PURCHASE BILL':'CONVERT TO SALE')))?></a><?php endif;?><button type="button" class="dots" aria-label="Actions">⋮</button><div class="row-menu"><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">View</a><?php if($r['status']!=='converted'):?><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?convert='.(int)$r['id'])))?>" onclick="return confirm('Convert this document?')"><?=e($type==='quotation'?'Convert to Sale Order':($type==='sale_order'?'Convert to Delivery Challan':($type==='purchase_order'?'Convert to Purchase Bill':'Convert to Sale')))?></a><form method="post" onsubmit="return confirm('Delete this document? It will move to Recycle Bin.')"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="delete_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Delete</button></form><?php endif;?><form method="post"><input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="duplicate_document"><input type="hidden" name="transaction_id" value="<?=$r['id']?>"><button type="submit">Duplicate</button></form><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'].'&print=1')))?>">Open PDF</a><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'])))?>">Preview</a><a href="<?=e(url((($type==='purchase_order'?'purchase-order':$type).'?view='.(int)$r['id'].'&print=1')))?>">Print</a></div></td></tr><?php endforeach;if(!$rows):?><tr><td colspan="6" class="subtle">No documents yet.</td></tr><?php endif;?></tbody></table></div></div>
     <?php endif; ?>
+
+    <style>
+    /* Shared Quotation / Sale Order / Purchase Order form design aligned with Sale New. */
+    .document-entry-design{padding:10px 10px 86px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important;background:#fff!important}
+    .document-entry-design>.panel-head{display:none!important}
+    .document-entry-design .doc-entry-top{display:grid!important;grid-template-columns:minmax(190px,2fr) minmax(96px,.55fr) minmax(160px,1.3fr) minmax(160px,1fr)!important;gap:10px!important;align-items:start!important;padding:0 1px 10px!important}
+    .document-entry-design .doc-party-column,.document-entry-design .doc-party-column .party-live-search{min-width:0!important;width:100%!important}
+    .document-entry-design .doc-party-column .party-search-input{width:100%!important;min-width:0!important}
+    .document-entry-design .doc-add-party-slot{display:flex!important;align-items:flex-start!important;min-width:0!important;padding-top:22px!important}
+    .document-entry-design .doc-add-party-slot .btn{width:100%!important;height:34px!important;min-height:34px!important;padding:0 8px!important;white-space:nowrap!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important}
+    .document-entry-design .doc-entry-top .form-group{margin:0!important;min-width:0!important}
+    .document-entry-design .doc-entry-top label{font-size:10px!important;font-weight:600!important;color:#627189!important;margin-bottom:4px!important}
+    .document-entry-design .doc-entry-top input{height:34px!important;width:100%!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#253347!important;font-size:12px!important;box-shadow:none!important}
+    .document-entry-design .entry-table{width:100%!important;overflow-x:auto!important;border:1px solid #dfe6ef!important;border-radius:8px!important;margin-top:2px!important}
+    .document-entry-design .doc-entry-table{width:100%!important;min-width:900px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+    .document-entry-design .doc-entry-table th{height:32px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;letter-spacing:.02em!important;font-weight:700!important;text-transform:uppercase!important;white-space:nowrap!important;text-align:left!important}
+    .document-entry-design .doc-entry-table td{box-sizing:border-box!important;padding:7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important;font-size:14px!important}
+    .document-entry-design .doc-entry-table tbody tr:last-child td{border-bottom:0!important}
+    .document-entry-design .doc-row-index-cell{display:flex!important;align-items:flex-start!important;justify-content:center!important;gap:3px!important;white-space:nowrap!important;padding:7px 2px!important}
+    .document-entry-design .doc-row-number{font-size:14px!important;line-height:24px!important;color:#445269!important;min-width:12px!important;text-align:center!important}
+    .document-entry-design .doc-row-copy,.document-entry-design .doc-row-remove{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:20px!important;height:22px!important;min-width:20px!important;margin:0!important;padding:0!important;border:1px solid #d7e0ea!important;border-radius:5px!important;background:#fff!important;color:#718096!important;font-size:14px!important;line-height:1!important;cursor:pointer!important;flex:0 0 20px!important}
+    .document-entry-design .doc-row-remove{border-color:#efcaca!important;color:#c33!important}
+    .document-entry-design .doc-row-copy:hover{background:#f5f9ff!important;color:#2d6fa8!important}
+    .document-entry-design .doc-row-remove:hover{background:#fff2f2!important;border-color:#e8aaaa!important}
+    .document-entry-design .item-picker-cell,.document-entry-design .item-live-search,.document-entry-design .item-search-wrap{width:100%!important;min-width:0!important;max-width:100%!important;padding:0!important;box-sizing:border-box!important}
+    .document-entry-design .item-search-input{width:100%!important;min-width:0!important;height:34px!important;box-sizing:border-box!important;padding:0 28px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#263548!important}
+    .document-entry-design .item-select{display:none!important}
+    .document-entry-design .doc-qty,.document-entry-design .doc-price,.document-entry-design .doc-disc,.document-entry-design .doc-amt-input{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:34px!important;box-sizing:border-box!important;padding:0 7px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important;color:#253347!important}
+    .document-entry-design .doc-amt-input{font-weight:700!important;text-align:right!important}
+    .document-entry-design .doc-unit{font-size:14px!important;color:#64748b!important;padding-top:13px!important;white-space:nowrap!important}
+    .document-entry-design .doc-entry-actions{padding:6px 0 8px!important;display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important}
+    .document-entry-design .doc-entry-actions .btn{height:30px!important;padding:0 12px!important;font-size:12px!important;border-radius:7px!important}
+    .document-entry-design .doc-entry-totals{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:16px!important;white-space:nowrap!important;color:#738198!important;font-size:15px!important}
+    .document-entry-design .doc-entry-totals strong{margin-left:4px!important;color:#29384d!important;font-size:15px!important;font-weight:700!important}
+    .document-entry-design>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-top:2px!important}
+    .document-entry-design>.grid3 .form-group{width:auto!important;margin:0!important}
+    .document-entry-design>.grid3 .form-group label,.document-entry-design .doc-note-field label{font-size:12px!important;color:#6d7c91!important}
+    .document-entry-design>.grid3 .form-group input,.document-entry-design .doc-note-field textarea{width:100%!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:14px!important}
+    .document-entry-design .doc-note-field{margin-top:8px!important}
+    .document-entry-design .doc-note-field textarea{min-height:76px!important}
+    .document-entry-design #poAdvancePayment{margin:10px 0!important;padding:10px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important}
+    .document-entry-design #poAdvancePayment>.panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:8px!important}
+    .document-entry-design #poAdvancePayment>.panel-head h2{font-size:14px!important;color:#2a394d!important}
+    .document-entry-design .document-form-footer{position:fixed!important;left:235px!important;right:0!important;bottom:0!important;z-index:55!important;margin:0!important;padding:10px 14px!important;background:rgba(255,255,255,.98)!important;border-top:1px solid #dfe5ec!important;box-shadow:0 -3px 14px rgba(15,23,42,.08)!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}
+    .document-entry-design .document-footer-summary{display:flex!important;align-items:center!important;gap:18px!important;color:#667385!important;font-size:18px!important;white-space:nowrap!important}
+    .document-entry-design .document-footer-summary>span{display:inline-flex!important;align-items:center!important;gap:5px!important;font-size:18px!important}
+    .document-entry-design .document-footer-summary strong{color:#27313f!important;font-size:18px!important;font-weight:700!important}
+    .document-entry-design .document-footer-summary>span:nth-child(2) strong{color:#159447!important}
+    .document-entry-design .document-footer-summary>span:nth-child(3) strong{color:#dc2626!important}
+    .document-entry-design .document-footer-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important}
+    .document-entry-design .document-footer-actions .btn{font-size:18px!important;height:42px!important;min-height:42px!important;padding:0 16px!important;line-height:1.1!important}
+    body:has(.document-entry-design) .content{padding-bottom:90px!important}
+    body.sidebar-collapsed:has(.document-entry-design) .document-entry-design .document-form-footer{left:68px!important}
+    @media(max-width:850px){
+      .document-entry-design .doc-entry-top{grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}
+      .document-entry-design .doc-party-column{grid-column:1!important}
+      .document-entry-design .doc-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}
+      .document-entry-design .doc-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}
+      .document-entry-design .doc-entry-top .form-group{grid-column:1/-1!important}
+      .document-entry-design>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .document-entry-design .document-form-footer{left:0!important;right:0!important;gap:8px!important;padding:8px 10px!important}
+      .document-entry-design .document-footer-summary{gap:8px!important;font-size:14px!important}
+      .document-entry-design .document-footer-summary>span,.document-entry-design .document-footer-summary strong{font-size:14px!important}
+      .document-entry-design .document-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important;padding:0 10px!important}
+    }
+    @media(max-width:560px){
+      .document-entry-design>.grid3{grid-template-columns:1fr!important}
+      .document-entry-design .document-form-footer{flex-direction:column!important;align-items:stretch!important}
+      .document-entry-design .document-footer-actions{width:100%!important}
+      .document-entry-design .document-footer-actions .btn{flex:1 1 auto!important}
+    }
+    </style>
     <script>
-    function docPrice(el){const o=el.selectedOptions[0];const row=el.closest('tr');if(row)row.querySelector('.doc-price').value=o?.dataset.price||0;docRecalc();}
+    function docPrice(el){
+      const opt=el?.selectedOptions?.[0],row=el?.closest('tr');
+      if(!row)return;
+      const price=row.querySelector('.doc-price'),unit=row.querySelector('.doc-unit');
+      if(price)price.value=String(Number(opt?.dataset.price||0));
+      if(unit)unit.textContent=opt?.dataset.unit||'—';
+      row.dataset.docRecalcFromPrice='1';
+      docRecalc();
+    }
     function docMoney(v){return '৳'+Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-    function docRecalc(){let t=0;document.querySelectorAll('#docRows tr').forEach(r=>{const q=parseFloat(r.querySelector('.doc-qty')?.value||0),p=parseFloat(r.querySelector('.doc-price')?.value||0),d=parseFloat(r.querySelector('.doc-disc')?.value||0);const a=Math.max(0,q*p-Math.min(d,q*p));t+=a;r.querySelector('.doc-amt').textContent=docMoney(a);});const inv=parseFloat(document.getElementById('docInvDisc')?.value||0),tax=parseFloat(document.getElementById('docTax')?.value||0),direct=parseFloat(document.getElementById('docDirect')?.value||0);t=Math.max(0,t-Math.min(inv,t)+tax+direct);document.getElementById('docTotal').textContent=docMoney(t);const totalEl=document.getElementById('poOrderTotal'),paidEl=document.getElementById('poPaidTotal'),dueEl=document.getElementById('poDueTotal');if(totalEl&&paidEl&&dueEl){let paid=0;document.querySelectorAll('#poPaymentRows input[name="pay_amount[]"]').forEach(i=>paid+=Math.max(0,parseFloat(i.value||0)));totalEl.textContent=docMoney(t);paidEl.textContent=docMoney(paid);dueEl.textContent=docMoney(Math.max(0,t-paid));}}
+    function docRecalc(){
+      let subtotal=0;
+      document.querySelectorAll('#docRows tr').forEach(r=>{
+        const q=Math.max(0,parseFloat(r.querySelector('.doc-qty')?.value||0)||0);
+        const p=Math.max(0,parseFloat(r.querySelector('.doc-price')?.value||0)||0);
+        const d=Math.max(0,parseFloat(r.querySelector('.doc-disc')?.value||0)||0);
+        let amount=Math.max(0,q*p-Math.min(d,q*p));
+        const input=r.querySelector('.doc-amt-input');
+        if(input){
+          if(document.activeElement===input || r.dataset.docRecalcFromPrice!=='1'){
+            const entered=input.value.trim()===''?0:parseFloat(input.value);
+            if(Number.isFinite(entered))amount=Math.max(0,entered);
+          }else input.value=amount.toFixed(2);
+          delete r.dataset.docRecalcFromPrice;
+        }
+        subtotal+=amount;
+        const display=r.querySelector('.doc-amt');
+        if(display && !display.matches('input'))display.textContent=docMoney(amount);
+      });
+      const inv=Math.max(0,parseFloat(document.getElementById('docInvDisc')?.value||0)||0);
+      const tax=Math.max(0,parseFloat(document.getElementById('docTax')?.value||0)||0);
+      const direct=Math.max(0,parseFloat(document.getElementById('docDirect')?.value||0)||0);
+      const total=Math.max(0,subtotal-inv+tax+direct);
+      const subEl=document.getElementById('docSubTotal');if(subEl)subEl.textContent=docMoney(subtotal);
+      const totalEl=document.getElementById('docTotal');if(totalEl)totalEl.textContent=docMoney(total);
+      const footerTotal=document.getElementById('docFooterTotal');if(footerTotal)footerTotal.textContent=docMoney(total);
+      const poTotal=document.getElementById('poOrderTotal'),paidEl=document.getElementById('poPaidTotal'),dueEl=document.getElementById('poDueTotal');
+      const footerPaid=document.getElementById('docFooterPaid'),footerDue=document.getElementById('docFooterDue');
+      if(poTotal&&paidEl&&dueEl){
+        let paid=0;
+        document.querySelectorAll('#poPaymentRows input[name="pay_amount[]"]').forEach(i=>paid+=Math.max(0,parseFloat(i.value||0)||0));
+        poTotal.textContent=docMoney(total);paidEl.textContent=docMoney(paid);dueEl.textContent=docMoney(Math.max(0,total-paid));
+        if(footerPaid)footerPaid.textContent=docMoney(paid);
+        if(footerDue)footerDue.textContent=docMoney(Math.max(0,total-paid));
+      }
+    }
+    function docRenumberRows(){
+      document.querySelectorAll('#docRows tr').forEach((row,i)=>{const n=row.querySelector('.doc-row-number');if(n)n.textContent=String(i+1);});
+    }
+    function docResetRow(row){
+      if(!row)return;
+      row.querySelectorAll('input').forEach(i=>{
+        if(i.classList.contains('doc-qty'))i.value=<?=json_encode($type==='sale_order'?1:1)?>;
+        else if(i.classList.contains('doc-price')||i.classList.contains('doc-disc'))i.value='0';
+        else if(i.classList.contains('doc-amt-input'))i.value='0.00';
+        else if(i.classList.contains('item-search-input'))i.value='';
+      });
+      row.querySelectorAll('select').forEach(sel=>sel.selectedIndex=0);
+      const clear=row.querySelector('.item-search-clear');if(clear)clear.style.display='none';
+      const unit=row.querySelector('.doc-unit');if(unit)unit.textContent='—';
+      row.querySelectorAll('.item-live-search').forEach(box=>{box.dataset.itemSearchBound='';box.removeAttribute('data-item-search-bound');const results=box.querySelector('.item-search-results');if(results){results.hidden=true;results.innerHTML='';}});
+      delete row.dataset.docRecalcFromPrice;
+      const price=row.querySelector('.doc-price');if(price)price.value='0';
+    }
+    function removeDocRow(btn){
+      const body=document.getElementById('docRows'),row=btn?.closest('tr');if(!body||!row)return;
+      if(body.querySelectorAll('tr').length<=1)docResetRow(row);else row.remove();
+      docRenumberRows();docRecalc();
+    }
+    function duplicateDocRow(btn){
+      const body=document.getElementById('docRows'),row=btn?.closest('tr');if(!body||!row)return;
+      const clone=row.cloneNode(true);
+      clone.querySelectorAll('.item-live-search').forEach(box=>{box.dataset.itemSearchBound='';box.removeAttribute('data-item-search-bound');const results=box.querySelector('.item-search-results');if(results){results.hidden=true;results.innerHTML='';}});
+      body.insertBefore(clone,row.nextSibling);
+      docRenumberRows();
+      if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(clone);
+      docRecalc();
+    }
     function togglePoPaymentFields(el){const row=el?.closest('.po-payment-line');if(!row)return;const date=row.querySelector('.po-cheque-date');const cheque=el.value==='cheque';if(date){date.style.display=cheque?'':'none';date.required=cheque;}const ref=row.querySelector('input[name="pay_ref[]"]');if(ref)ref.placeholder=cheque?'Cheque number *':'Reference (optional)';}
     function addPurchaseOrderPayment(){const wrap=document.getElementById('poPaymentRows'),first=wrap?.querySelector('.po-payment-line');if(!wrap||!first)return;const row=first.cloneNode(true);const method=row.querySelector('select[name="pay_method[]"]');if(method)method.value='cash';const date=row.querySelector('.po-cheque-date');if(date){date.value='';date.style.display='none';date.required=false;}const ref=row.querySelector('input[name="pay_ref[]"]');if(ref){ref.value='';ref.placeholder='Reference (optional)';}const amount=row.querySelector('input[name="pay_amount[]"]');if(amount)amount.value='0';wrap.appendChild(row);docRecalc();}
     function removePurchaseOrderPayment(btn){const wrap=document.getElementById('poPaymentRows'),row=btn?.closest('.po-payment-line');if(!wrap||!row)return;if(wrap.querySelectorAll('.po-payment-line').length<=1){const method=row.querySelector('select[name="pay_method[]"]');if(method)method.value='cash';const date=row.querySelector('.po-cheque-date');if(date){date.value='';date.style.display='none';date.required=false;}const ref=row.querySelector('input[name="pay_ref[]"]');if(ref){ref.value='';ref.placeholder='Reference (optional)';}const amount=row.querySelector('input[name="pay_amount[]"]');if(amount)amount.value='0';}else row.remove();docRecalc();}
     function docEnsureQtyStep(){if(<?=json_encode($type==='sale_order')?>){document.querySelectorAll('#docRows .doc-qty').forEach(function(i){i.setAttribute('step','1');i.setAttribute('min','1');i.step='1';i.min='1';});}}
-    function addDocRow(){const body=document.getElementById('docRows');if(!body)return;const n=body.querySelectorAll('tr').length+1;const first=body.querySelector('tr');if(!first)return;const tpl=first.cloneNode(true);tpl.querySelectorAll('input').forEach(i=>{if(i.classList.contains('doc-qty'))i.value='1';else if(i.classList.contains('doc-price')||i.classList.contains('doc-disc'))i.value='0';else if(i.classList.contains('item-search-input'))i.value='';});tpl.querySelectorAll('select').forEach(s=>s.selectedIndex=0);tpl.querySelectorAll('.item-live-search').forEach(box=>{box.dataset.itemSearchBound='';box.removeAttribute('data-item-search-bound');const results=box.querySelector('.item-search-results');if(results){results.hidden=true;results.innerHTML='';}});const clear=tpl.querySelector('.item-search-clear');if(clear)clear.style.display='none';tpl.querySelector('.doc-amt').textContent='৳0.00';tpl.firstElementChild.textContent=n;body.appendChild(tpl);docEnsureQtyStep();if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(tpl);}
-    document.addEventListener('input',e=>{if(e.target.closest('#docRows')||['docInvDisc','docTax','docDirect'].includes(e.target.id)||e.target.matches('input[name="pay_amount[]"]'))docRecalc();});document.addEventListener('change',e=>{if(e.target.closest('#docRows'))docRecalc();if(e.target.matches('select[name="pay_method[]"]')){togglePoPaymentFields(e.target);docRecalc();}});document.querySelectorAll('#poPaymentRows select[name="pay_method[]"]').forEach(togglePoPaymentFields);docEnsureQtyStep();docRecalc();
+    function addDocRow(){
+      const body=document.getElementById('docRows'),first=body?.querySelector('tr');if(!body||!first)return;
+      const tpl=first.cloneNode(true);
+      tpl.querySelectorAll('.item-live-search').forEach(box=>{box.dataset.itemSearchBound='';box.removeAttribute('data-item-search-bound');const results=box.querySelector('.item-search-results');if(results){results.hidden=true;results.innerHTML='';}});
+      docResetRow(tpl);
+      body.appendChild(tpl);
+      docRenumberRows();docEnsureQtyStep();
+      if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(tpl);
+      docRecalc();
+    }
+    document.addEventListener('input',e=>{
+      if(e.target.closest('#docRows')){
+        const row=e.target.closest('tr');
+        if(row&&e.target.matches('.doc-qty,.doc-price,.doc-disc'))row.dataset.docRecalcFromPrice='1';
+        if(row&&e.target.matches('.doc-amt-input')){
+          const q=Math.max(0,parseFloat(row.querySelector('.doc-qty')?.value||0)||0);
+          const d=Math.max(0,parseFloat(row.querySelector('.doc-disc')?.value||0)||0);
+          const amount=e.target.value.trim()===''?0:parseFloat(e.target.value);
+          const price=row.querySelector('.doc-price');
+          if(price&&q>0&&Number.isFinite(amount))price.value=String(Number(((Math.max(0,amount)+d)/q).toFixed(4)));
+          delete row.dataset.docRecalcFromPrice;
+        }
+        docRecalc();
+      }
+      if(['docInvDisc','docTax','docDirect'].includes(e.target.id)||e.target.matches('input[name="pay_amount[]"]'))docRecalc();
+    });
+    document.addEventListener('change',e=>{
+      if(e.target.matches('#docRows .item-select'))docPrice(e.target);
+      if(e.target.matches('select[name="pay_method[]"]')){togglePoPaymentFields(e.target);docRecalc();}
+    });
+    document.querySelectorAll('#poPaymentRows select[name="pay_method[]"]').forEach(togglePoPaymentFields);docEnsureQtyStep();docRecalc();
     </script><?php render_inline_creation_modals(); page_end();
 }
 
