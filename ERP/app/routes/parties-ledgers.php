@@ -330,7 +330,6 @@ if($route==='parties'){
     <?php endif; ?>
     <div class="parties-layout-v110">
       <aside class="parties-sidebar-v110">
-        <div class="party-import-card-v110"><a href="<?=e(url('import-parties'))?>"><span class="party-import-icon">↥</span><span><b>Import Parties</b><small>Use contacts from your Phone or Gmail to create parties.</small></span><span class="party-import-arrow">›</span></a></div>
         <div class="party-list-tools-v110 party-tools-v111-search">
           <form class="party-list-search-v110 party-search-always-v111" method="get" id="partyListSearchForm" onsubmit="return false;">
             <input type="hidden" name="type" value="<?=e($type)?>"><?php if($selectedId):?><input type="hidden" name="id" value="<?=$selectedId?>"><?php endif;?>
