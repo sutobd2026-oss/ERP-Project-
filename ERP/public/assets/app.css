@@ -522,6 +522,18 @@
 .party-search-input-v111{width:100%!important;height:50px!important;box-sizing:border-box!important;border:2px solid #2f3033!important;border-radius:18px!important;background:#fff!important;color:#27313f!important;padding:0 18px!important;font-size:18px!important;font-weight:500!important;outline:none!important}
 .party-search-input-v111:focus{border-color:#1887f2!important;box-shadow:0 0 0 2px rgba(24,135,242,.08)!important}
 .party-search-input-v111::placeholder{color:#7f858d!important;opacity:1!important}
+
+/* November UI cleanup: stronger sidebar labels and compact Party search controls. */
+.nav .nav-item,
+.nav .nav-section>summary,
+.nav .submenu a{font-weight:600!important}
+.party-tools-v111-search{gap:8px!important;padding:8px 10px!important}
+.party-search-input-v111{height:36px!important;min-height:36px!important;border:1px solid #cfd9e5!important;border-radius:8px!important;padding:0 11px!important;font-size:14px!important;font-weight:500!important}
+.party-tools-v111-search .party-add-v110{height:36px!important;min-height:36px!important;padding:7px 12px!important;border-radius:8px!important;font-size:12px!important;line-height:1.2!important}
+@media(max-width:620px){
+ .party-search-input-v111{height:36px!important;min-height:36px!important;font-size:14px!important}
+ .party-tools-v111-search .party-add-v110{height:36px!important;min-height:36px!important;padding:7px 10px!important;font-size:12px!important}
+}
 .party-tools-v111-search .party-add-v110{flex:0 0 auto!important;margin-left:0!important;border-radius:22px!important;padding:13px 16px!important;font-size:13px!important;min-height:50px!important;display:flex!important;align-items:center!important;gap:4px!important}
 @media(max-width:620px){.party-tools-v111-search{gap:8px!important}.party-search-input-v111{font-size:16px!important}.party-tools-v111-search .party-add-v110{padding:12px 13px!important}}
 
