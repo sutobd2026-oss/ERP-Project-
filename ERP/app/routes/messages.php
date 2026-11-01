@@ -203,10 +203,6 @@ if($route==='messages'){
       .sense-msg-empty{padding:40px 20px;text-align:center;color:#7a8799}
       @media(max-width:920px){.sense-msg-layout{grid-template-columns:1fr}.sense-msg-list{max-height:360px}.sense-msg-body{max-height:none}}
     </style>
-    <div class="page-title">
-      <div><h1>Messages</h1><p>Private messages between users and connected companies</p></div>
-      <span class="status paid"><?=unread_messages_count((int)$u['id'])?> unread</span>
-    </div>
     <div class="panel" style="margin-bottom:14px">
       <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input name="q" value="<?=e($q)?>" placeholder="Search messages, users or companies..." style="flex:1;min-width:240px">
