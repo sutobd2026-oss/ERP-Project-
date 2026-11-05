@@ -441,8 +441,77 @@ function delivery_challan_new(): void {
 .delivery-entry-form .dc-summary-grid{gap:12px!important;margin-top:8px!important}.delivery-entry-form .dc-description-box textarea{width:100%!important;min-height:76px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important}.delivery-entry-form .dc-field{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)!important;gap:10px!important;align-items:center!important;margin-bottom:8px!important}.delivery-entry-form .dc-field label{font-size:12px!important;color:#6d7c91!important}.delivery-entry-form .dc-field input{height:34px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important;min-width:0!important;box-sizing:border-box!important}.delivery-entry-form .dc-summary-box{border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fbfdff!important;padding:10px!important}.delivery-entry-form .dc-advance-panel{padding:8px 0!important}.delivery-entry-form .dc-total-row{font-size:14px!important;padding:5px 0!important}.delivery-entry-form .dc-total-row strong{font-size:16px!important}.delivery-entry-form .dc-items-total{font-size:15px!important;display:flex!important;align-items:center!important;gap:5px!important}.delivery-entry-form .dc-items-total strong{font-size:15px!important}
 .delivery-entry-form .dc-form-footer{position:fixed!important;left:235px!important;right:0!important;bottom:0!important;z-index:55!important;margin:0!important;min-height:68px!important;padding:10px 14px!important;background:rgba(255,255,255,.98)!important;border-top:1px solid #dfe5ec!important;box-shadow:0 -3px 14px rgba(15,23,42,.08)!important}.delivery-entry-form .dc-footer-actions .btn{font-size:18px!important;height:42px!important;min-height:42px!important;padding:0 16px!important;line-height:1.1!important}body:has(.delivery-entry-form) .content{padding-bottom:90px!important}body.sidebar-collapsed:has(.delivery-entry-form) .delivery-entry-form .dc-form-footer{left:68px!important}
 @media(max-width:850px){.delivery-entry-form .dc-entry-top{display:grid!important;grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}.delivery-entry-form .dc-customer-column{grid-column:1!important}.delivery-entry-form .dc-add-party-slot{grid-column:2!important;grid-row:1!important;padding-top:23px!important}.delivery-entry-form .dc-add-party-slot .btn{width:100%!important;padding:0 5px!important;font-size:11px!important}.delivery-entry-form .dc-entry-top .form-group{grid-column:1/-1!important}.delivery-entry-form .dc-summary-grid{grid-template-columns:1fr!important}.delivery-entry-form .dc-field{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}.delivery-entry-form .dc-form-footer{left:0!important;right:0!important;padding:8px 10px!important}.delivery-entry-form .dc-footer-actions{gap:6px!important;flex-wrap:wrap!important}.delivery-entry-form .dc-footer-cod{font-size:15px!important}.delivery-entry-form .dc-footer-actions .btn{font-size:14px!important;height:36px!important;min-height:36px!important;padding:0 10px!important}}
+.delivery-entry-form.sale-invoice-ui .entry-table{margin-top:2px!important;border:1px solid #dfe6ef!important;border-radius:8px!important;overflow:hidden!important}
+.delivery-entry-form.sale-invoice-ui .entry-table table{width:100%!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+.delivery-entry-form.sale-invoice-ui .entry-table thead th{height:31px!important;padding:5px 8px!important;background:#f4f7fb!important;color:#66758a!important;border-bottom:1px solid #dce4ee!important;font-size:9px!important;letter-spacing:.02em!important;font-weight:700!important;text-transform:uppercase!important}
+.delivery-entry-form.sale-invoice-ui .entry-table tbody td{padding:5px 7px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important}
+.delivery-entry-form.sale-invoice-ui .entry-table tbody tr:last-child td{border-bottom:0!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(1),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(1){width:42px!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(2),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(2){width:39%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(3),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(3){width:9%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(4),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(4){width:9%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(5),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(5){width:13%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(6),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(6){width:13%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(7),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(7){width:12%!important}
+.delivery-entry-form.sale-invoice-ui .entry-table th:nth-child(8),.delivery-entry-form.sale-invoice-ui .entry-table td:nth-child(8){width:78px!important}
+.delivery-entry-form.sale-invoice-ui .txn-row-index-cell{text-align:center!important;vertical-align:middle!important;white-space:nowrap!important;color:#5f6d82!important}
+.delivery-entry-form.sale-invoice-ui .txn-drag-handle{display:inline-block;color:#99a6b7;font-size:15px;line-height:1;margin-right:3px;vertical-align:middle}
+.delivery-entry-form.sale-invoice-ui .txn-row-number{font-size:11px;font-weight:600;color:#445269;vertical-align:middle}
+.delivery-entry-form.sale-invoice-ui .item-picker-cell{min-width:0!important}
+.delivery-entry-form.sale-invoice-ui .item-live-search{position:relative!important}
+.delivery-entry-form.sale-invoice-ui .item-search-wrap{position:relative!important}
+.delivery-entry-form.sale-invoice-ui .item-search-wrap:before{content:none!important;display:none!important}
+.delivery-entry-form.sale-invoice-ui .item-search-wrap:after{content:"";position:absolute;right:10px;top:50%;margin-top:-2px;width:6px;height:6px;border-right:1.5px solid #7b899a;border-bottom:1.5px solid #7b899a;transform:translateY(-50%) rotate(45deg);z-index:2;pointer-events:none}
+.delivery-entry-form.sale-invoice-ui .item-search-input{height:34px!important;width:100%!important;padding:0 28px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:12px!important;color:#263548!important}
+.delivery-entry-form.sale-invoice-ui .item-search-input:focus{border-color:#7db7ea!important;box-shadow:0 0 0 2px rgba(22,134,234,.08)!important;outline:none!important}
+.delivery-entry-form.sale-invoice-ui .item-selected-summary{display:none!important}
+.delivery-entry-form.sale-invoice-ui .item-search-clear{right:28px!important;font-size:16px!important}
+.delivery-entry-form.sale-invoice-ui .item-line-meta{margin-top:4px!important;padding:0!important;border:0!important;background:transparent!important}
+.delivery-entry-form.sale-invoice-ui .item-line-meta-grid{gap:5px!important;align-items:center!important}
+.delivery-entry-form.sale-invoice-ui .item-line-meta-grid>div:first-child{flex:1 1 auto!important}
+.delivery-entry-form.sale-invoice-ui .item-line-meta-grid>div:last-child{flex:0 0 34%!important;width:auto!important}
+.delivery-entry-form.sale-invoice-ui .item-line-meta input,.delivery-entry-form.sale-invoice-ui .item-line-meta textarea{height:27px!important;min-height:27px!important;padding:4px 8px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;font-size:9.5px!important;color:#536278!important}
+.delivery-entry-form.sale-invoice-ui .qty,.delivery-entry-form.sale-invoice-ui .price,.delivery-entry-form.sale-invoice-ui .line-disc,.delivery-entry-form.sale-invoice-ui .item-weight-kg{width:100%!important;min-width:0!important;height:34px!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:11.5px!important;color:#253347!important;box-shadow:none!important}
+.delivery-entry-form.sale-invoice-ui .qty-weight-stack{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+.delivery-entry-form.sale-invoice-ui .qty-weight-stack .qty{height:32px!important;padding:0 6px!important}
+.delivery-entry-form.sale-invoice-ui .qty-weight-stack .item-weight-kg{height:27px!important;padding:0 5px!important;font-size:10.5px!important}
+.delivery-entry-form.sale-invoice-ui .qty-weight-stack .item-weight-kg[readonly]{background:#f7f9fc!important;color:#8491a2!important}
+.delivery-entry-form.sale-invoice-ui .unit-label{display:flex!important;align-items:center!important;height:34px!important;color:#64748b!important;font-size:11px!important}
+.delivery-entry-form.sale-invoice-ui .amount{height:34px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;font-size:12px!important;font-weight:700!important;color:#26354a!important;white-space:nowrap!important}
+.delivery-entry-form.sale-invoice-ui .line-weight-total{margin-top:3px!important;text-align:right!important;font-size:10px!important;line-height:1.2!important;font-weight:600!important;color:#738198!important;white-space:nowrap!important}
+.delivery-entry-form.sale-invoice-ui .txn-row-actions-cell{text-align:center!important;vertical-align:middle!important;white-space:nowrap!important}
+.delivery-entry-form.sale-invoice-ui .txn-action-btn{width:30px!important;height:30px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0 2px!important;border:1px solid #d6dfeb!important;border-radius:7px!important;background:#fff!important;color:#718096!important;cursor:pointer!important;font-size:15px!important;line-height:1!important}
+.delivery-entry-form.sale-invoice-ui .txn-copy-btn:hover{background:#f5f9ff!important;color:#2d6fa8!important;border-color:#bcd7ee!important}
+.delivery-entry-form.sale-invoice-ui .txn-delete-btn{font-size:13px!important}
+.delivery-entry-form.sale-invoice-ui .txn-delete-btn:hover{background:#fff5f5!important;color:#dc4a4a!important;border-color:#f1c1c1!important}
+.delivery-entry-form.sale-invoice-ui .bundle-child-row td{background:#fbfdff!important}
+.delivery-entry-form.sale-invoice-ui .bundle-child-label{margin:0!important;height:27px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;padding:3px 8px!important;border:1px solid #e5ebf2!important;border-radius:6px!important;background:#fff!important;font-size:9.5px!important}
+.delivery-entry-form.sale-invoice-ui .bundle-child-label span:last-child{font-size:8.5px!important;font-weight:800!important;color:#0f8a5a!important}
+
+.delivery-entry-form.sale-invoice-ui .entry-table .dc-amt{display:table-cell!important;vertical-align:top!important;padding:5px 7px!important;text-align:right!important;white-space:nowrap!important;font-variant-numeric:tabular-nums!important}
+.delivery-entry-form.sale-invoice-ui .entry-table .amount-input{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:34px!important;box-sizing:border-box!important;padding:0 5px!important;text-align:right!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#26354a!important;font-weight:700!important}
+.delivery-entry-form.sale-invoice-ui .dc-qty-stack{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+.delivery-entry-form.sale-invoice-ui .dc-qty-stack .dc-qty{height:32px!important;padding:0 6px!important}
+.delivery-entry-form.sale-invoice-ui .dc-qty-stack .dc-item-weight{height:27px!important;padding:0 5px!important;font-size:10.5px!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-weight{margin-top:3px!important;text-align:right!important;font-size:10px!important;line-height:1.2!important;font-weight:600!important;color:#738198!important;white-space:nowrap!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-meta{margin-top:4px!important;padding:0!important;border:0!important;background:transparent!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-meta-grid{display:flex!important;gap:5px!important;align-items:center!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-meta-grid>div:first-child{flex:1 1 auto!important;min-width:0!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-meta-grid>div:last-child{flex:0 0 34%!important;width:auto!important;min-width:0!important}
+.delivery-entry-form.sale-invoice-ui .dc-line-meta input{width:100%!important;min-width:0!important;height:27px!important;min-height:27px!important;padding:4px 8px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;font-size:9.5px!important;color:#536278!important;box-sizing:border-box!important}
+.delivery-entry-form.sale-invoice-ui .entry-table .dc-price,.delivery-entry-form.sale-invoice-ui .entry-table .dc-line-discount,.delivery-entry-form.sale-invoice-ui .entry-table .dc-qty,.delivery-entry-form.sale-invoice-ui .entry-table .dc-item-weight{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.delivery-entry-form.sale-invoice-ui .entry-table .dc-qty{height:32px!important}
+.delivery-entry-form.sale-invoice-ui .entry-table .dc-price,.delivery-entry-form.sale-invoice-ui .entry-table .dc-line-discount{height:34px!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:11.5px!important;color:#253347!important}
+.delivery-entry-form.sale-invoice-ui .entry-table .dc-price[readonly],.delivery-entry-form.sale-invoice-ui .entry-table .dc-line-discount[readonly]{background:#f7f9fc!important;color:#8491a2!important}
+.delivery-entry-form.sale-invoice-ui .entry-table tbody td .dc-unit{display:flex!important;align-items:center!important;height:34px!important;color:#64748b!important;font-size:11px!important}
+.delivery-entry-form.sale-invoice-ui .txn-row-remove-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important;width:20px!important;height:22px!important;min-width:20px!important;margin-left:4px!important;padding:0!important;border:1px solid #efcaca!important;border-radius:5px!important;background:#fff!important;color:#c33!important;font-size:16px!important;line-height:1!important;cursor:pointer!important}
+.delivery-entry-form.sale-invoice-ui .dc-bundle-child-row td{background:#fbfdff!important}
+@media(max-width:1000px){
+ .delivery-entry-form.sale-invoice-ui .entry-table{overflow-x:auto!important}
+ .delivery-entry-form.sale-invoice-ui .entry-table table{min-width:900px!important}
+}
 </style>
-<form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form">
+<form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form sale-invoice-ui">
       <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_delivery_challan"><?php if($editMode): ?><input type="hidden" name="transaction_id" value="<?=e((string)$editTx['id'])?>"><?php endif; ?>
       <div class="entry-top standard-entry-top dc-entry-top">
         <div class="dc-customer-column standard-party-field"><?php party_search_field('Customer','customer',$editMode?(int)$editTx['party_id']:0,$editMode?(string)($editTx['party_name']??''):'',$editMode?(string)($editTx['party_phone']??''):'',true); ?></div>
@@ -450,7 +519,7 @@ function delivery_challan_new(): void {
         <div class="form-group"><label>Challan Number</label><input name="document_no" value="<?=e($editMode?(string)$editTx['document_no']:'')?>" placeholder="Auto: DC-01"></div>
         <div class="form-group"><label>Challan Date*</label><input type="date" name="txn_date" value="<?=e($editMode?date('Y-m-d',strtotime($editTx['txn_date'])):date('Y-m-d'))?>" required></div>
       </div>
-      <div class="entry-table"><table><thead><tr><th>#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
+      <div class="entry-table"><table><thead><tr><th class="txn-head-index">#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead><tbody id="dcRows">
         <?php $renderLines=$editMode&&$editLines?$editLines:[null]; foreach($renderLines as $idx=>$ln):
           $liId=(int)($ln['item_id']??0);
           $liName=(string)($ln['item_name']??'');
@@ -468,7 +537,7 @@ function delivery_challan_new(): void {
         ?>
         <tr class="<?= $isChild?'dc-bundle-child-row':'' ?>" data-bundle-child="<?= $isChild?'1':'0' ?>" data-bundle-parent-key="<?=e($parentKey)?>" data-bundle-row-key="<?=e($rowKey)?>">
           <td class="txn-row-index-cell">
-            <button type="button" class="row-remove-btn txn-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>
+            <button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>
             <span class="txn-row-number"><?=($idx+1)?></span>
           </td>
           <td>
@@ -479,7 +548,7 @@ function delivery_challan_new(): void {
               <?php if($isChild): ?>
                 <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=$liId?>"><input type="hidden" name="item_description[]" value="<?=e($liDescription)?>"><input type="hidden" name="item_warranty[]" value="<?=e($liWarranty)?>">
               <?php else: ?>
-                <?php item_search_field($liId,$liName,'','sale'); ?><div class="dc-line-meta" style="<?= $liId?'':'display:none' ?>"><div class="dc-line-meta-grid"><input type="text" class="dc-item-description" name="item_description[]" value="<?=e($liDescription)?>" placeholder="Description"><input type="text" class="dc-item-warranty" name="item_warranty[]" value="<?=e($liWarranty)?>" placeholder="Warranty"></div></div>
+                <?php item_search_field($liId,$liName,'','sale'); ?><div class="dc-line-meta item-line-meta" style="<?= $liId?'':'display:none' ?>"><div class="dc-line-meta-grid item-line-meta-grid"><div><input type="text" class="dc-item-description item-line-description" name="item_description[]" value="<?=e($liDescription)?>" placeholder="Description"></div><div><input type="text" class="dc-item-warranty item-line-warranty" name="item_warranty[]" value="<?=e($liWarranty)?>" placeholder="Warranty"></div></div></div>
                 <select name="item_id[]" class="dc-item item-source-select" tabindex="-1" aria-hidden="true">
                   <?php if($liId>0): $liBundle=bundle_components_for_parent($pdo,$cid,$liId); ?>
                     <option value="<?=$liId?>" data-price="<?=e((string)$liPrice)?>" data-unit="<?=e($liUnit)?>" data-sale="<?=e((string)$liPrice)?>" data-buy="0" data-type="<?=e((string)($ln['item_type']??'product'))?>" data-description="<?=e((string)($ln['item_master_description']??''))?>" data-warranty="<?=e((string)($ln['item_master_warranty']??''))?>" data-weight-grams="<?=e((string)((float)($ln['weight_value']??0)*(strtolower((string)($ln['weight_unit']??'g'))==='kg'?1000:1)))?>" data-bundle="<?=e(bundle_option_json($liBundle))?>" selected><?=e($liName)?></option>
@@ -488,11 +557,11 @@ function delivery_challan_new(): void {
               <?php endif; ?>
             </div>
           </td>
-          <td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e(number_format(max(0,$liWeightGrams/1000),4,'.',''))?>" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?>><?php endif; ?></div></td>
-          <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
-          <td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
-          <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
-          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span><?php else:?><input type="number" class="dc-amt-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?><?php if($showProductWeight): ?><div class="dc-line-weight">0 kg</div><?php endif; ?></td>
+          <td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight item-weight-kg" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e(number_format(max(0,$liWeightGrams/1000),4,'.',''))?>" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?>><?php endif; ?></div></td>
+          <td class="dc-unit unit-label"><?=e($liUnit!==''?$liUnit:'—')?></td>
+          <td><input type="number" class="dc-price price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
+          <td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
+          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text amount">৳0.00</span><?php else:?><input type="number" class="dc-amt-input amount amount-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?><?php if($showProductWeight): ?><div class="dc-line-weight line-weight-total">0 kg</div><?php endif; ?></td>
         </tr>
         <?php endforeach; ?>
       </tbody></table></div>
@@ -822,7 +891,7 @@ function delivery_challan_new(): void {
     }
     function dcCreateBundleChildRow(parentRow,component,parentKey){
       const tr=document.createElement('tr');
-      tr.className='dc-bundle-child-row';
+      tr.className='dc-bundle-child-row bundle-child-row';
       tr.dataset.bundleChild='1';
       tr.dataset.bundleParentKey=String(parentKey);
       tr.dataset.bundleRowKey=dcMakeRowKey();
@@ -831,13 +900,13 @@ function delivery_challan_new(): void {
       const esc=function(v){return String(v||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});};
       const name=esc(component.name),unit=esc(component.unit_symbol),itemId=Number(component.item_id||0);
       tr.innerHTML=
-        '<td class="txn-row-index-cell"><button type="button" class="row-remove-btn txn-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button><span class="txn-row-number"></span></td>'+
+        '<td class="txn-row-index-cell"><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button><span class="txn-row-number"></span></td>'+
         '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><input type="hidden" name="item_description[]" value="'+esc(component.description||'')+'"><input type="hidden" name="item_warranty[]" value="'+esc(component.warranty||'')+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
-        '<td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4)+'">':'')+'</div></td>'+
-        '<td class="dc-unit">'+unit+'</td>'+
-        '<td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
-        '<td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="0" readonly></td>'+
-        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span>'+(window.SutoProductWeightEnabled?'<div class="dc-line-weight">0 kg</div>':'')+'</td>';
+        '<td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight item-weight-kg" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4)+'">':'')+'</div></td>'+
+        '<td class="dc-unit unit-label">'+unit+'</td>'+
+        '<td><input type="number" class="dc-price price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
+        '<td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="1" min="0" value="0" readonly></td>'+
+        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text amount">৳0.00</span>'+(window.SutoProductWeightEnabled?'<div class="dc-line-weight line-weight-total">0 kg</div>':'')+'</td>';
       return tr;
     }
     function dcRenderBundleChildren(parentRow,components){
