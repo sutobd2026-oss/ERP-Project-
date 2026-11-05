@@ -892,6 +892,15 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $sub=0;$itemDisc=0;
     try{
         $pdo->beginTransaction();
+        // Preserve the saved per-line weight snapshot when an existing invoice is edited.
+        $existingLineWeightMap=[];
+        if($txId>0){
+            $oldWeightSt=$pdo->prepare('SELECT ti.id,ti.item_id,ti.item_weight_grams FROM transaction_items ti JOIN transactions t ON t.id=ti.transaction_id WHERE ti.transaction_id=? AND t.company_id=? AND t.txn_type=? AND t.deleted_at IS NULL');
+            $oldWeightSt->execute([$txId,$cid,$type]);
+            foreach($oldWeightSt->fetchAll(PDO::FETCH_ASSOC) as $oldWeightRow){
+                $existingLineWeightMap[(int)$oldWeightRow['id']]=['item_id'=>(int)$oldWeightRow['item_id'],'weight_grams'=>(float)$oldWeightRow['item_weight_grams']];
+            }
+        }
         $roleNeeded=$type==='sale'?'customer':'supplier';
         if($party>0){
             $stParty=$pdo->prepare('SELECT p.id FROM parties p WHERE p.id=? AND p.company_id=? AND EXISTS(SELECT 1 FROM party_roles pr WHERE pr.party_id=p.id AND pr.role=?) LIMIT 1');$stParty->execute([$party,$cid,$roleNeeded]);$partyRow=$stParty->fetch();if(!$partyRow)throw new RuntimeException($type==='sale'?'Invalid customer.':'Invalid supplier.');
@@ -936,6 +945,12 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $lineDescription=trim((string)($itemDescriptions[$rr['index']]??''));if($lineDescription==='')$lineDescription=trim((string)($it['description']??''));
             $lineWarranty=trim((string)($itemWarranties[$rr['index']]??''));if($lineWarranty==='')$lineWarranty=trim((string)($it['warranty']??''));
             $unitWeightGrams=$it['item_type']==='product'?(float)($it['weight_value']??0)*((string)($it['weight_unit']??'g')==='kg'?1000:1):0;
+            if($txId>0 && preg_match('/^tx-ti-(\\d+)$/',$rr['rowKey'],$weightMatch)){
+                $oldLineId=(int)$weightMatch[1];
+                if(isset($existingLineWeightMap[$oldLineId]) && $existingLineWeightMap[$oldLineId]['item_id']===$iid){
+                    $unitWeightGrams=$existingLineWeightMap[$oldLineId]['weight_grams'];
+                }
+            }
             $validItems[]=[$iid,$q,$p,$d,$it,$serials,$lineDescription,$lineWarranty,$rr['rowKey'],$rr['parentKey'],$isBundleChild,$parentItemId,$requestedAmount,$unitWeightGrams];
         }
         if(!$validItems)throw new RuntimeException('Add at least one item.');
