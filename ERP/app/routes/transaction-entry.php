@@ -113,7 +113,7 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
     <table><thead><tr><th class="txn-head-index">#</th><th>ITEM</th><th>QTY</th><th>UNIT</th><th>PRICE/UNIT</th><th>DISCOUNT</th><th>AMOUNT</th></tr></thead>
     <tbody id="entryRows">
 <?php foreach($rows as $ri=>$r): $rid=(int)($r['item_id']??0); $rv=(float)($r['qty']??1); $rp=(float)($r['unit_price']??0); $rd=(float)($r['discount']??0); $meta=$rid&&isset($itemMetaById[$rid])?$itemMetaById[$rid]:[]; $bundleChildId=(int)($r['bundle_parent_transaction_item_id']??0); $bundleRowKey=isset($r['bundle_row_key'])?(string)$r['bundle_row_key']:($r?'tx-ti-'.(int)$r['id']:'new-row-'.bin2hex(random_bytes(4))); $bundleParentKey=isset($r['bundle_parent_key'])?(string)$r['bundle_parent_key']:($bundleChildId>0?'tx-ti-'.$bundleChildId:''); $isBundleChild=isset($r['bundle_child'])?(int)$r['bundle_child']===1:$bundleChildId>0; $lineDesc=trim((string)($r['item_description']??'')); if($lineDesc==='')$lineDesc=trim((string)($r['item_master_description']??($meta['description']??''))); $lineWarranty=trim((string)($r['item_warranty']??'')); if($lineWarranty==='')$lineWarranty=trim((string)($r['item_master_warranty']??($meta['warranty']??''))); $unitWeightGrams=(float)($r['item_weight_grams']??0); if(($r['item_type']??($meta['item_type']??'product'))==='service')$unitWeightGrams=0; ?>
-      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>" data-weight-grams="<?=e((string)$unitWeightGrams)?>"><td class="txn-row-index-cell"><span class="txn-row-number"><?=($ri+1)?></span><?php if($isSale):?><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php else:?><button type="button" class="txn-action-btn txn-copy-btn txn-row-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php endif;?></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-weight-grams="<?=e((string)(((float)($it['weight_value']??0))*((string)($it['weight_unit']??'g')==='kg'?1000:1)))?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??($r['serial_numbers']??[])))?></textarea></div></div></td><td><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= $isSale ? '0.0001' : (in_array($type,['delivery_challan','purchase'],true) ? '0.01' : '1') ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><?php if(!$isBundleChild):?><td><input class="amount amount-input" type="number" step="0.01" min="0" name="amount[]" value="<?=e(number_format(max(0,(float)($r['amount']??($rv*$rp-$rd))),2,'.',''))?>" aria-label="Amount"></td><?php else:?><td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span></td><?php endif;?></tr>
+      <tr class="sale-row <?= $isBundleChild?'bundle-child-row':'' ?>" data-bundle-child="<?= $isBundleChild?'1':'0' ?>" data-bundle-parent-key="<?=e($bundleParentKey)?>" data-bundle-row-key="<?=e($bundleRowKey)?>" data-weight-grams="<?=e((string)$unitWeightGrams)?>"><td class="txn-row-index-cell"><span class="txn-row-number"><?=($ri+1)?></span><?php if($isSale):?><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php else:?><button type="button" class="txn-action-btn txn-copy-btn txn-row-copy-btn" onclick="duplicateTxnRow(this)" aria-label="Duplicate item" title="Duplicate item">⧉</button><button type="button" class="txn-action-btn txn-delete-btn txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button><?php endif;?></td><td><input type="hidden" name="bundle_row_key[]" value="<?=e($bundleRowKey)?>"><input type="hidden" name="bundle_parent_key[]" value="<?=e($bundleParentKey)?>"><input type="hidden" name="bundle_child[]" value="<?= $isBundleChild?'1':'0' ?>"><div class="item-picker-cell"><?php if($isBundleChild): ?><div class="bundle-child-label"><span>└─ <strong><?=e($r['item_name']??($meta['name']??''))?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=((int)$rid)?>"><input type="hidden" name="item_description[]" value="<?=e($lineDesc)?>"><input type="hidden" name="item_warranty[]" value="<?=e($lineWarranty)?>"><?php else: ?><?php item_search_field($rid,'','',$isSale?'sale':'purchase'); ?><div class="item-line-meta" style="<?= $rid?'':'display:none' ?>"><div class="item-line-meta-grid"><div><input type="text" class="item-line-description" name="item_description[]" value="<?=e($lineDesc)?>" placeholder="Optional description"></div><div><input type="text" class="item-line-warranty" name="item_warranty[]" value="<?=e($lineWarranty)?>" placeholder="Warranty"></div></div></div><?php endif; ?><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><?php if(!$isBundleChild): ?><select class="item-select item-source-select" name="item_id[]" onchange="updatePrice(this)"><option value="">Select item</option><?php foreach($items as $it):?><option value="<?=$it['id']?>" data-sale="<?=$it['sale_price']?>" data-buy="<?=$it['purchase_price']?>" data-unit="<?=e($unitSymbols[(int)($it['unit_id']??0)]??'')?>" data-type="<?=$it['item_type']?>" data-serial-tracked="<?=((int)($it['serial_tracked']??0))?>" data-description="<?=e($it['description']??'')?>" data-warranty="<?=e($it['warranty']??'')?>" data-weight-grams="<?=e((string)(((float)($it['weight_value']??0))*((string)($it['weight_unit']??'g')==='kg'?1000:1)))?>" data-bundle="<?=e(bundle_option_json($bundleMapTxn[(int)$it['id']]??[]))?>" <?=($rid===(int)$it['id'])?'selected':''?>><?=e($it['name'])?></option><?php endforeach;?></select><?php else: ?><input type="hidden" name="price[]" value="0"><input type="hidden" name="discount[]" value="0"><?php endif; ?><div class="serial-entry-box" hidden data-mode="<?=$type?>"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"><?=e(implode("\n",$serialMap[$r['id']]??($r['serial_numbers']??[])))?></textarea></div></div></td><td class="qty-weight-cell"><div class="qty-weight-stack"><input class="qty" type="number" min="1" step="1" name="qty[]" value="<?=e((string)$rv)?>" <?= $isBundleChild?'readonly':'' ?>><?php if($isSale): ?><label class="weight-field-label">Weight (kg)</label><input class="item-weight-kg" type="number" min="0" step="0.0001" name="item_weight_kg[]" value="<?=e(number_format(max(0,$unitWeightGrams/1000),4,'.',''))?>" <?=(!$rid || (($r['item_type']??($meta['item_type']??'product'))==='service'))?'readonly':'' ?>><?php endif; ?></div></td><td><span class="unit-label subtle"><?=e($r['unit_symbol']??'—')?></span></td><td><?php if(!$isBundleChild): ?><input class="price" type="number" step="<?= $isSale ? '0.0001' : (in_array($type,['delivery_challan','purchase'],true) ? '0.01' : '1') ?>" min="0" name="price[]" value="<?=e((string)$rp)?>"><?php else: ?><span class="bundle-free-label">Free</span><?php endif; ?></td><td><?php if(!$isBundleChild): ?><input class="line-disc" type="number" step="1" min="0" name="discount[]" value="<?=e((string)$rd)?>"><?php else: ?><span>—</span><?php endif; ?></td><?php if(!$isBundleChild):?><td><input class="amount amount-input" type="number" step="0.01" min="0" name="amount[]" value="<?=e(number_format(max(0,(float)($r['amount']??($rv*$rp-$rd))),2,'.',''))?>" aria-label="Amount"><?php if($isSale): ?><div class="line-weight-total">0 kg</div><?php endif; ?></td><?php else:?><td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span><?php if($isSale): ?><div class="line-weight-total">0 kg</div><?php endif; ?></td><?php endif;?></tr>
 <?php endforeach; ?>
     </tbody></table>
   </div>
@@ -189,11 +189,11 @@ function removeRow(btn){
   if(remaining.length<=1){
     const r=remaining[0];
     r.querySelectorAll('select').forEach(x=>x.selectedIndex=0);
-    r.querySelectorAll('input').forEach(x=>{if(x.classList.contains('qty'))x.value='1';else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';else if(x.classList.contains('item-search-input'))x.value=''});
+    r.querySelectorAll('input').forEach(x=>{if(x.classList.contains('qty'))x.value='1';else if(x.classList.contains('item-weight-kg')){x.value='0';x.readOnly=true;}else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';else if(x.classList.contains('item-search-input'))x.value=''});
     const k=r.querySelector('input[name=\"bundle_row_key[]\"]'); if(k){k.value=makeBundleRowKey();r.dataset.bundleRowKey=k.value;}
     r.querySelector('.item-search-clear')?.style && (r.querySelector('.item-search-clear').style.display='none');
     r.querySelector('.item-selected-summary')?.remove();
-    const u=r.querySelector('.unit-label');if(u)u.textContent='—';const a=r.querySelector('.amount');if(a)a.textContent='৳0.00';
+    const u=r.querySelector('.unit-label');if(u)u.textContent='—';const a=r.querySelector('.amount');if(a)a.textContent='৳0.00';const lw=r.querySelector('.line-weight-total');if(lw)lw.textContent='0 kg';r.dataset.weightGrams='0';
   }else{row.remove();}
   renumberTxnRows(); if(typeof recalc==='function') recalc();
 }
@@ -202,6 +202,7 @@ function addRow(type){
   const clone=first.cloneNode(true);
   clone.querySelectorAll('input').forEach(function(i){
     if(i.classList.contains('qty')) i.value='1';
+    else if(i.classList.contains('item-weight-kg')){i.value='0';i.readOnly=true;}
     else if(i.classList.contains('price')||i.classList.contains('line-disc')) i.value='0';
     else if(i.name==='serial_numbers[]') i.value='';
   });
@@ -218,6 +219,8 @@ function addRow(type){
   const unit=clone.querySelector('.unit-label'); if(unit)unit.textContent='—';
   clone.dataset.weightGrams='0';
   const amt=clone.querySelector('.amount'); if(amt)amt.textContent='৳0.00';
+  const lineWeight=clone.querySelector('.line-weight-total');if(lineWeight)lineWeight.textContent='0 kg';
+  clone.dataset.weightGrams='0';
   body.appendChild(clone); renumberTxnRows();
   if(typeof bindEntryRow==='function') bindEntryRow(clone);
   if(typeof window.SutoInitItemSearch==='function') window.SutoInitItemSearch(clone);
@@ -328,9 +331,15 @@ function duplicateTxnRow(btn){
 .sale-invoice-ui .item-line-meta-grid>div:first-child{flex:1 1 auto!important}
 .sale-invoice-ui .item-line-meta-grid>div:last-child{flex:0 0 34%!important;width:auto!important}
 .sale-invoice-ui .item-line-meta input,.sale-invoice-ui .item-line-meta textarea{height:27px!important;min-height:27px!important;padding:4px 8px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;font-size:9.5px!important;color:#536278!important}
-.sale-invoice-ui .qty,.sale-invoice-ui .price,.sale-invoice-ui .line-disc{width:100%!important;height:34px!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:11.5px!important;color:#253347!important;box-shadow:none!important}
+.sale-invoice-ui .qty,.sale-invoice-ui .price,.sale-invoice-ui .line-disc,.sale-invoice-ui .item-weight-kg{width:100%!important;min-width:0!important;height:34px!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;font-size:11.5px!important;color:#253347!important;box-shadow:none!important}
+.sale-invoice-ui .qty-weight-stack{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important}
+.sale-invoice-ui .qty-weight-stack .qty{height:32px!important;padding:0 6px!important}
+.sale-invoice-ui .weight-field-label{display:block!important;margin:1px 0 0!important;font-size:8px!important;line-height:1.1!important;color:#8491a2!important;font-weight:600!important;white-space:nowrap!important}
+.sale-invoice-ui .qty-weight-stack .item-weight-kg{height:27px!important;padding:0 5px!important;font-size:10.5px!important}
+.sale-invoice-ui .qty-weight-stack .item-weight-kg[readonly]{background:#f7f9fc!important;color:#8491a2!important}
 .sale-invoice-ui .unit-label{display:flex!important;align-items:center!important;height:34px!important;color:#64748b!important;font-size:11px!important}
 .sale-invoice-ui .amount{height:34px!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;font-size:12px!important;font-weight:700!important;color:#26354a!important;white-space:nowrap!important}
+.sale-invoice-ui .line-weight-total{margin-top:3px!important;text-align:right!important;font-size:10px!important;line-height:1.2!important;font-weight:600!important;color:#738198!important;white-space:nowrap!important}
 .sale-invoice-ui .txn-row-actions-cell{text-align:center!important;vertical-align:middle!important;white-space:nowrap!important}
 .sale-invoice-ui .txn-action-btn{width:30px!important;height:30px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;margin:0 2px!important;border:1px solid #d6dfeb!important;border-radius:7px!important;background:#fff!important;color:#718096!important;cursor:pointer!important;font-size:15px!important;line-height:1!important}
 .sale-invoice-ui .txn-copy-btn:hover{background:#f5f9ff!important;color:#2d6fa8!important;border-color:#bcd7ee!important}
@@ -711,11 +720,11 @@ function createBundleChildRow(parentRow,component,parentKey,index){
     '<input type="hidden" name="item_description[]" value="">'+
     '<input type="hidden" name="item_warranty[]" value="">'+
     '<div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><div class="serial-entry-box" hidden data-mode="sale"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"></textarea><div class="serial-entry-meta"></div></div></div></td>'+
-    '<td><input class="qty" type="number" min="0.001" step="0.001" name="qty[]" value="'+totalQty+'" readonly></td>'+ 
+    '<td class="qty-weight-cell"><div class="qty-weight-stack"><input class="qty" type="number" min="0.001" step="0.001" name="qty[]" value="'+totalQty+'" readonly><label class="weight-field-label">Weight (kg)</label><input class="item-weight-kg" type="number" min="0" step="0.0001" name="item_weight_kg[]" value="'+(Math.max(0,weightGrams)/1000).toFixed(4)+'"></div></td>'+ 
     '<td><span class="unit-label subtle">'+unit+'</span></td>'+ 
     '<td><input type="hidden" name="price[]" value="0"><span class="bundle-free-label">Free</span></td>'+ 
     '<td><input type="hidden" name="discount[]" value="0"><span>—</span></td>'+ 
-    '<td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span></td>';
+    '<td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span><div class="line-weight-total">0 kg</div></td>';
   return tr;
 }
 function renderBundleChildrenForRow(row,components){
@@ -724,7 +733,7 @@ function renderBundleChildrenForRow(row,components){
   removeBundleChildren(parentKey);
   row.dataset.bundleJson=JSON.stringify(components||[]);
   let anchor=row;
-  (components||[]).forEach(function(component,index){const child=createBundleChildRow(row,component,parentKey,index);insertAfter(anchor,child);anchor=child;});
+  (components||[]).forEach(function(component,index){const child=createBundleChildRow(row,component,parentKey,index);insertAfter(anchor,child);if(typeof bindEntryRow==='function')bindEntryRow(child);anchor=child;});
   renumberTxnRows();if(typeof recalc==='function')recalc();
 }
 function syncBundleForRow(row){
@@ -758,12 +767,15 @@ function syncBundleForRow(row){
 function updatePrice(sel){
   const row=sel?.closest('.sale-row'), opt=sel?.selectedOptions?.[0];
   if(row&&opt){
-    const price=qs('.price',row),unit=qs('.unit-label',row);
+    const price=qs('.price',row),unit=qs('.unit-label',row),weightInput=qs('.item-weight-kg',row);
     const txType=document.body.dataset.txntype||'sale';
     if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;
     if(row && txType==='sale')row.dataset.recalcAmountFromPrice='1';
     if(unit)unit.textContent=opt.dataset.unit||'—';
-    row.dataset.weightGrams=String(Number(opt.dataset.weightGrams||0));
+    const selectedType=opt.dataset.type||'product';
+    const selectedWeightGrams=selectedType==='service'?0:Math.max(0,Number(opt.dataset.weightGrams||0));
+    if(weightInput){weightInput.value=(selectedWeightGrams/1000).toFixed(4);weightInput.readOnly=selectedType==='service';}
+    row.dataset.weightGrams=String(selectedWeightGrams);
     const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);
     if(desc&&!desc.value)desc.value=opt.dataset.description||'';
     if(war&&!war.value)war.value=opt.dataset.warranty||'';
@@ -880,7 +892,7 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $cid=(int)$u['company_id']; $pdo=db();
     try{$tiCols=$pdo->query('SHOW COLUMNS FROM transaction_items')->fetchAll(PDO::FETCH_COLUMN,0);if(!in_array('item_weight_grams',$tiCols,true))$pdo->exec('ALTER TABLE transaction_items ADD COLUMN item_weight_grams DECIMAL(14,4) NOT NULL DEFAULT 0');}catch(Throwable $schemaError){error_log('transaction save item weight schema: '.$schemaError->getMessage());}
     try{$itemCols=$pdo->query('SHOW COLUMNS FROM items')->fetchAll(PDO::FETCH_COLUMN,0);foreach(['weight_value'=>'DECIMAL(12,4) NULL','weight_unit'=>"VARCHAR(2) NOT NULL DEFAULT 'g'"] as $col=>$def){if(!in_array($col,$itemCols,true))$pdo->exec('ALTER TABLE items ADD COLUMN `'.$col.'` '.$def);}}catch(Throwable $schemaError){error_log('transaction save product weight schema: '.$schemaError->getMessage());}
-    $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=$_POST['amount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
+    $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=$_POST['amount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[]; $itemWeightInputs=$_POST['item_weight_kg']??[];
     if($type==='purchase' && $party<=0){
         $_SESSION['transaction_form_restore']=['company_id'=>$cid,'type'=>'purchase','payload'=>$_POST];
         flash('error','Supplier is required. Your entered items and amounts have been restored below; select a Supplier and save again.');
@@ -917,7 +929,8 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1 LIMIT 1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');
             $requestedAmount=null;
             if(in_array($type,['sale','purchase'],true) && array_key_exists($i,$amounts) && trim((string)$amounts[$i])!=='')$requestedAmount=max(0,(float)$amounts[$i]);
-            $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'requestedAmount'=>$requestedAmount,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
+            $postedWeightKg=array_key_exists($i,$itemWeightInputs) && trim((string)$itemWeightInputs[$i])!=='' ? max(0,(float)$itemWeightInputs[$i]) : null;
+            $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'requestedAmount'=>$requestedAmount,'weightKg'=>$postedWeightKg,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
         }
         if(!$rawRows)throw new RuntimeException('Add at least one item.');
         $parentByKey=[]; foreach($rawRows as $rr){if(!$rr['isChild'])$parentByKey[$rr['rowKey']]=$rr['iid'];}
@@ -945,6 +958,9 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $lineDescription=trim((string)($itemDescriptions[$rr['index']]??''));if($lineDescription==='')$lineDescription=trim((string)($it['description']??''));
             $lineWarranty=trim((string)($itemWarranties[$rr['index']]??''));if($lineWarranty==='')$lineWarranty=trim((string)($it['warranty']??''));
             $unitWeightGrams=$it['item_type']==='product'?(float)($it['weight_value']??0)*((string)($it['weight_unit']??'g')==='kg'?1000:1):0;
+            if($rr['weightKg']!==null){
+                $unitWeightGrams=$it['item_type']==='product'?$rr['weightKg']*1000:0;
+            }
             if($txId>0 && preg_match('/^tx-ti-(\\d+)$/',$rr['rowKey'],$weightMatch)){
                 $oldLineId=(int)$weightMatch[1];
                 if(isset($existingLineWeightMap[$oldLineId]) && $existingLineWeightMap[$oldLineId]['item_id']===$iid){
