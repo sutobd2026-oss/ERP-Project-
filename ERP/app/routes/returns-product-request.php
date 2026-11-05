@@ -518,13 +518,13 @@ function delivery_challan_new(): void {
    display:grid!important;
    grid-template-columns:minmax(0,2.1fr) minmax(130px,.85fr) minmax(0,1fr) minmax(0,1fr)!important;
    grid-auto-flow:row!important;
-   align-items:end!important;
+   align-items:start!important;
    gap:10px!important;
  }
- #dcForm .dc-entry-top>.dc-customer-column{grid-column:1!important;grid-row:1!important}
- #dcForm .dc-entry-top>.dc-add-party-slot{grid-column:2!important;grid-row:1!important;align-self:end!important;padding:0!important;margin:0!important}
- #dcForm .dc-entry-top>.form-group:nth-child(3){grid-column:3!important;grid-row:1!important}
- #dcForm .dc-entry-top>.form-group:nth-child(4){grid-column:4!important;grid-row:1!important}
+ #dcForm .dc-entry-top>.dc-customer-column{grid-column:1!important;grid-row:1!important;align-self:start!important}
+ #dcForm .dc-entry-top>.dc-add-party-slot{grid-column:2!important;grid-row:1!important;align-self:start!important;padding:27px 0 0!important;margin:0!important}
+ #dcForm .dc-entry-top>.form-group:nth-child(3){grid-column:3!important;grid-row:1!important;align-self:start!important}
+ #dcForm .dc-entry-top>.form-group:nth-child(4){grid-column:4!important;grid-row:1!important;align-self:start!important}
 }
 </style>
 <form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form sale-invoice-ui">
