@@ -537,8 +537,8 @@ function delivery_challan_new(): void {
         ?>
         <tr class="<?= $isChild?'dc-bundle-child-row':'' ?>" data-bundle-child="<?= $isChild?'1':'0' ?>" data-bundle-parent-key="<?=e($parentKey)?>" data-bundle-row-key="<?=e($rowKey)?>">
           <td class="txn-row-index-cell">
-            <button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>
             <span class="txn-row-number"><?=($idx+1)?></span>
+            <button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove item row" title="Remove row">×</button>
           </td>
           <td>
             <input type="hidden" name="bundle_row_key[]" value="<?=e($rowKey)?>">
@@ -900,7 +900,7 @@ function delivery_challan_new(): void {
       const esc=function(v){return String(v||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});};
       const name=esc(component.name),unit=esc(component.unit_symbol),itemId=Number(component.item_id||0);
       tr.innerHTML=
-        '<td class="txn-row-index-cell"><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button><span class="txn-row-number"></span></td>'+
+        '<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button></td>'+
         '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><input type="hidden" name="item_description[]" value="'+esc(component.description||'')+'"><input type="hidden" name="item_warranty[]" value="'+esc(component.warranty||'')+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
         '<td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight item-weight-kg" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4)+'">':'')+'</div></td>'+
         '<td class="dc-unit unit-label">'+unit+'</td>'+
