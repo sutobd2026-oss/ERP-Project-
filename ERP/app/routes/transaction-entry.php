@@ -929,7 +929,7 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
             $st=$pdo->prepare('SELECT * FROM items WHERE id=? AND company_id=? AND active=1 LIMIT 1');$st->execute([$iid,$cid]);$it=$st->fetch();if(!$it)throw new RuntimeException('Invalid item selected.');
             $requestedAmount=null;
             if(in_array($type,['sale','purchase'],true) && array_key_exists($i,$amounts) && trim((string)$amounts[$i])!=='')$requestedAmount=max(0,(float)$amounts[$i]);
-            $postedWeightKg=array_key_exists($i,$itemWeightInputs) && trim((string)$itemWeightInputs[$i])!=='' ? max(0,(float)$itemWeightInputs[$i]) : null;
+            $postedWeightKg=array_key_exists($i,$itemWeightInputs) ? max(0,(float)$itemWeightInputs[$i]) : null;
             $rawRows[]=['index'=>$i,'iid'=>$iid,'q'=>$q,'p'=>$p,'d'=>$d,'requestedAmount'=>$requestedAmount,'weightKg'=>$postedWeightKg,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isBundleChild,'it'=>$it,'serials'=>normalize_serials((string)($serialRows[$i]??''))];
         }
         if(!$rawRows)throw new RuntimeException('Add at least one item.');
