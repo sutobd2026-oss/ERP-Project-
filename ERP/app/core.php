@@ -1068,7 +1068,7 @@ body .sense-transaction-entry{box-sizing:border-box!important;width:100%!importa
 body form.sense-transaction-entry{display:block!important;padding:10px 10px 88px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important}
 body form.sense-transaction-entry>.panel{margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
 body div.sense-transaction-entry{margin-top:10px!important;padding:10px 10px 88px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important}
-body .sense-transaction-entry .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #edf1f5!important}
+body .sense-transaction-entry#returnForm>.panel-head,body .sense-transaction-entry .payment-box .panel-head,body .sense-transaction-entry #poAdvancePayment>.panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #edf1f5!important}
 body .sense-transaction-entry .panel-head h2{margin:0!important;color:#263548!important;font-size:14px!important;font-weight:700!important}
 body .sense-transaction-entry .entry-top,
 body .sense-transaction-entry .doc-entry-top{display:grid!important;gap:10px!important;align-items:end!important;margin:0!important;padding:0 1px 10px!important}
@@ -1102,16 +1102,16 @@ body .sense-transaction-entry .entry-table,
 body .sense-transaction-entry .table-wrap{width:100%!important;min-width:0!important;overflow-x:auto!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fff!important}
 body .sense-transaction-entry .entry-table table,
 body .sense-transaction-entry .doc-entry-table,
-body .sense-transaction-entry #returnForm .table-wrap table{width:100%!important;min-width:860px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+body .sense-transaction-entry#returnForm .table-wrap table{width:100%!important;min-width:860px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
 body .sense-transaction-entry .entry-table thead th,
 body .sense-transaction-entry .doc-entry-table thead th,
-body .sense-transaction-entry #returnForm .table-wrap thead th{height:34px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;font-weight:700!important;letter-spacing:.02em!important;text-align:left!important;text-transform:uppercase!important;white-space:nowrap!important}
+body .sense-transaction-entry#returnForm .table-wrap thead th{height:34px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;font-weight:700!important;letter-spacing:.02em!important;text-align:left!important;text-transform:uppercase!important;white-space:nowrap!important}
 body .sense-transaction-entry .entry-table tbody td,
 body .sense-transaction-entry .doc-entry-table tbody td,
-body .sense-transaction-entry #returnForm .table-wrap tbody td{padding:7px 8px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important;font-size:14px!important}
+body .sense-transaction-entry#returnForm .table-wrap tbody td{padding:7px 8px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important;font-size:14px!important}
 body .sense-transaction-entry .entry-table tbody tr:last-child td,
 body .sense-transaction-entry .doc-entry-table tbody tr:last-child td,
-body .sense-transaction-entry #returnForm .table-wrap tbody tr:last-child td{border-bottom:0!important}
+body .sense-transaction-entry#returnForm .table-wrap tbody tr:last-child td{border-bottom:0!important}
 body .sense-transaction-entry .item-picker-cell,
 body .sense-transaction-entry .item-live-search,
 body .sense-transaction-entry .item-search-wrap{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
@@ -1179,8 +1179,8 @@ body .sense-transaction-entry .txn-footer-actions .btn,
 body .sense-transaction-entry .document-footer-actions .btn,
 body .sense-transaction-entry .form-footer .btn{height:38px!important;min-height:38px!important;padding:0 14px!important;border-radius:8px!important;font-size:14px!important;white-space:nowrap!important}
 body .sense-transaction-entry .return-meta-strip{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 0 10px!important;padding:8px 10px!important;border:1px solid #e5ebf2!important;border-radius:7px!important;background:#f8fafc!important}
-body .sense-transaction-entry #returnForm .grid2{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)!important;gap:12px!important;margin-top:12px!important}
-body .sense-transaction-entry #returnForm .grid2 .metric-card{margin:0!important;border:1px solid #dfe6ef!important;border-radius:9px!important;background:#fbfdff!important}
+body .sense-transaction-entry#returnForm .grid2{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)!important;gap:12px!important;margin-top:12px!important}
+body .sense-transaction-entry#returnForm .grid2 .metric-card{margin:0!important;border:1px solid #dfe6ef!important;border-radius:9px!important;background:#fbfdff!important}
 @media(max-width:1180px){
  body .sense-transaction-entry .sale-entry-top,
  body .sense-transaction-entry .purchase-entry-top{grid-template-columns:minmax(0,1.5fr) minmax(100px,.6fr) minmax(250px,1.6fr)!important}
@@ -1207,7 +1207,7 @@ body .sense-transaction-entry #returnForm .grid2 .metric-card{margin:0!important
  body .sense-transaction-entry .purchase-add-party-slot{grid-column:2!important;grid-row:1!important;padding:22px 0 0!important}
  body .sense-transaction-entry .sale-adjustments,
  body .sense-transaction-entry form>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- body .sense-transaction-entry #returnForm .grid2{grid-template-columns:minmax(0,1fr)!important}
+ body .sense-transaction-entry#returnForm .grid2{grid-template-columns:minmax(0,1fr)!important}
  body .sense-transaction-entry .txn-form-footer,
  body .sense-transaction-entry .document-form-footer,
  body .sense-transaction-entry .form-footer{left:0!important;right:0!important;min-height:94px!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;gap:8px!important;padding:8px 10px!important}
