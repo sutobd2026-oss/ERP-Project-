@@ -106,6 +106,32 @@ if($route==='party-search-api'){
     }
 }
 
+if($route==='item-bundle-manage-api'){
+    $u=require_login(); $cid=(int)$u['company_id']; $itemId=(int)($_GET['id']??0);
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+        if($itemId<=0) throw new RuntimeException('Invalid product.');
+        ensure_bundle_schema();
+        $st=db()->prepare('SELECT id,name,item_type,active FROM items WHERE id=? AND company_id=? LIMIT 1');
+        $st->execute([$itemId,$cid]); $parent=$st->fetch(PDO::FETCH_ASSOC);
+        if(!$parent || (int)$parent['active']!==1 || $parent['item_type']!=='product') throw new RuntimeException('Bundle product not found.');
+        $ps=db()->prepare('SELECT i.id,i.name,i.code,COALESCE(u.symbol,"") unit_symbol FROM items i LEFT JOIN units u ON u.id=i.unit_id WHERE i.company_id=? AND i.active=1 AND i.item_type="product" AND i.id<>? ORDER BY i.name,i.id');
+        $ps->execute([$cid,$itemId]); $products=$ps->fetchAll(PDO::FETCH_ASSOC);
+        foreach($products as &$product){$product['id']=(int)$product['id'];} unset($product);
+        echo json_encode([
+            'ok'=>true,
+            'parent'=>['id'=>(int)$parent['id'],'name'=>(string)$parent['name']],
+            'components'=>bundle_components_for_parent(db(),$cid,$itemId),
+            'products'=>$products,
+            'csrf'=>csrf_token()
+        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    }catch(Throwable $e){
+        http_response_code(400);
+        echo json_encode(['ok'=>false,'error'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 if($route==='item-detail-api'){
     $u=require_login(); $cid=(int)$u['company_id']; $itemId=(int)($_GET['id']??0);
     header('Content-Type: application/json; charset=utf-8');
