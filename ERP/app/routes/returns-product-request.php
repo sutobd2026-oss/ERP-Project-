@@ -488,7 +488,7 @@ function delivery_challan_new(): void {
               <?php endif; ?>
             </div>
           </td>
-          <td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e(number_format(max(0,$liWeightGrams/1000),4,'.',''))?>" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?> placeholder="kg"><?php endif; ?></div></td>
+          <td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e(number_format(max(0,$liWeightGrams/1000),4,'.',''))?>" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?>><?php endif; ?></div></td>
           <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
           <td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
           <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
