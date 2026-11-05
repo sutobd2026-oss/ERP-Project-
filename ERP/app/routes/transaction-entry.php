@@ -702,6 +702,7 @@ function normalizeRowBundle(raw){
     quantity:Number(c.quantity||1),
     unit_symbol:String(c.unit_symbol||''),
     serial_tracked:Number(c.serial_tracked||0),
+    unit_price:Math.max(0,Number(c.unit_price||0)),
     weight_grams:Number(c.weight_grams||0),
     description:String(c.description||''),
     warranty:String(c.warranty||'')
@@ -716,9 +717,10 @@ function createBundleChildRow(parentRow,component,parentKey,index){
   const tr=document.createElement('tr');tr.className='sale-row bundle-child-row';tr.dataset.bundleChild='1';tr.dataset.bundleParentKey=String(parentKey);tr.dataset.bundleRowKey=makeBundleRowKey();
   const qty=parseFloat(parentRow.querySelector('.qty')?.value||0)||0, factor=parseFloat(component.quantity||1)||1, totalQty=qty*factor;
   const esc=function(v){return String(v||'').replace(/[&<>]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[m];});};
-  const name=esc(component.name), unit=esc(component.unit_symbol), itemId=Number(component.item_id||0), weightGrams=Number(component.weight_grams||0);
+  const name=esc(component.name), unit=esc(component.unit_symbol), itemId=Number(component.item_id||0), weightGrams=Number(component.weight_grams||0), unitPrice=Math.max(0,Number(component.unit_price||0));
   const productWeightMarkup=window.SutoProductWeightEnabled?'<input class="item-weight-kg" type="number" min="0" step="0.0001" name="item_weight_kg[]" value="'+(Math.max(0,weightGrams)/1000).toFixed(4)+'">':'';
   const lineWeightMarkup=window.SutoProductWeightEnabled?'<div class="line-weight-total">0 kg</div>':'';
+  const initialAmount=(totalQty*unitPrice).toFixed(2);
   tr.setAttribute('data-weight-grams',String(weightGrams));
   tr.innerHTML='<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button></td>'+
     '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'">'+
@@ -727,12 +729,12 @@ function createBundleChildRow(parentRow,component,parentKey,index){
     '<input type="hidden" name="item_id[]" value="'+itemId+'">'+
     '<input type="hidden" name="item_description[]" value="">'+
     '<input type="hidden" name="item_warranty[]" value="">'+
-    '<div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><div class="serial-entry-box" hidden data-mode="sale"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"></textarea><div class="serial-entry-meta"></div></div></div></td>'+
+    '<div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span></div><button type="button" class="serial-trigger-btn" hidden title="Enter serial numbers">Serial</button><div class="serial-entry-box" hidden data-mode="sale"><textarea name="serial_numbers[]" class="serial-number-input" tabindex="-1" aria-hidden="true"></textarea><div class="serial-entry-meta"></div></div></div></td>'+
     '<td class="qty-weight-cell"><div class="qty-weight-stack"><input class="qty" type="number" min="0.001" step="0.001" name="qty[]" value="'+totalQty+'" readonly>'+productWeightMarkup+'</div></td>'+ 
     '<td><span class="unit-label subtle">'+unit+'</span></td>'+ 
-    '<td><input type="hidden" name="price[]" value="0"><span class="bundle-free-label">Free</span></td>'+ 
-    '<td><input type="hidden" name="discount[]" value="0"><span>—</span></td>'+ 
-    '<td><input type="hidden" name="amount[]" value="0"><span class="amount">৳0.00</span>'+lineWeightMarkup+'</td>';
+    '<td><input class="price" type="number" min="0" step="0.0001" name="price[]" value="'+unitPrice+'"></td>'+ 
+    '<td><input class="line-disc" type="number" min="0" step="0.01" name="discount[]" value="0"></td>'+ 
+    '<td><input class="amount amount-input" type="number" min="0" step="0.01" name="amount[]" value="'+initialAmount+'" aria-label="Amount">'+lineWeightMarkup+'</td>';
   return tr;
 }
 function renderBundleChildrenForRow(row,components){
@@ -973,10 +975,10 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
                 $parentKey=$rr['parentKey']; if($parentKey===''||!isset($parentByKey[$parentKey]))throw new RuntimeException('A bundle child item is missing its parent product.');
                 $parentItemId=(int)$parentByKey[$parentKey]; $component=bundle_component_lookup($pdo,$cid,$parentItemId,$iid); if(!$component)throw new RuntimeException('Invalid included free item for the selected bundle product.');
                 $parentQty=0; foreach($rawRows as $pr){if(!$pr['isChild']&&$pr['rowKey']===$parentKey){$parentQty=(float)$pr['q'];break;}}
-                $expectedQty=round($parentQty*(float)$component['quantity'],6); if(abs($q-$expectedQty)>0.000001)throw new RuntimeException('Included free item quantity does not match the bundle quantity.'); $p=0;$d=0;$requestedAmount=0.0;
+                $expectedQty=round($parentQty*(float)$component['quantity'],6); if(abs($q-$expectedQty)>0.000001)throw new RuntimeException('Included item quantity does not match the bundle quantity.');
             }
             if($it['item_type']==='service'&&$q<=0)throw new RuntimeException('Invalid quantity.');
-            if(in_array($type,['sale','purchase'],true) && $requestedAmount!==null && !$isBundleChild){
+            if(in_array($type,['sale','purchase'],true) && $requestedAmount!==null){
                 // Sale/Purchase line Amount is editable; derive Price/Unit from the entered net amount plus line discount.
                 $lineGross=max(0,(float)$requestedAmount)+$d;
                 $p=$q>0?$lineGross/$q:0;
