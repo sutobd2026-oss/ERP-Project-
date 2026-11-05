@@ -720,7 +720,7 @@ function createBundleChildRow(parentRow,component,parentKey,index){
   const productWeightMarkup=window.SutoProductWeightEnabled?'<input class="item-weight-kg" type="number" min="0" step="0.0001" name="item_weight_kg[]" value="'+(Math.max(0,weightGrams)/1000).toFixed(4)+'">':'';
   const lineWeightMarkup=window.SutoProductWeightEnabled?'<div class="line-weight-total">0 kg</div>':'';
   tr.setAttribute('data-weight-grams',String(weightGrams));
-  tr.innerHTML='<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button></td>'+\
+  tr.innerHTML='<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="txn-row-remove-btn" onclick="removeRow(this)" aria-label="Remove row" title="Remove row">×</button></td>'+
     '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'">'+
     '<input type="hidden" name="bundle_parent_key[]" value="'+String(parentKey).replace(/"/g,'&quot;')+'">'+
     '<input type="hidden" name="bundle_child[]" value="1">'+
