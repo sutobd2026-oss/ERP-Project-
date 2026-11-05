@@ -673,34 +673,40 @@ function makeBundleRowKey(){return 'bundle-row-'+Date.now().toString(36)+'-'+Mat
 function getRowBundle(row){
   const sel=row?.querySelector('.item-select');
   if(!sel||!sel.value)return [];
+  const itemId=String(sel.value);
   try{
-    const optBundleText=sel.selectedOptions?.[0]?.dataset?.bundle || '';
-    const rowBundleText=row?.dataset?.bundleJson || '';
     let raw=[];
+    const optBundleText=sel.selectedOptions?.[0]?.dataset?.bundle;
     if(optBundleText){
-      raw=JSON.parse(optBundleText||'[]')||[];
+      raw=JSON.parse(optBundleText)||[];
+      if(Array.isArray(raw)&&raw.length)return normalizeRowBundle(raw);
     }
-    if(!Array.isArray(raw)||!raw.length){
-      if(rowBundleText){
-        raw=JSON.parse(rowBundleText||'[]')||[];
-      }
+    // A row-level bundle cache is valid only for the exact currently-selected
+    // parent item. Never reuse a previous product's bundle after the row changes.
+    if(row.dataset.bundleJsonItem===itemId && row.dataset.bundleJson){
+      raw=JSON.parse(row.dataset.bundleJson)||[];
+      if(Array.isArray(raw)&&raw.length)return normalizeRowBundle(raw);
     }
-    // Live item search creates a new <option>, so it may not carry the
-    // server-rendered data-bundle attribute. Fall back to the page's
-    // server-side bundle map by selected item id.
-    if(!Array.isArray(raw)||!raw.length){
-      const map=window.SutoTxnBundleMap||{};
-      raw=Array.isArray(map[String(sel.value)])?map[String(sel.value)]:[];
-    }
-    return (Array.isArray(raw)?raw:[]).map(function(c){return {
-      item_id:Number(c.item_id||c.component_item_id||0),
-      name:String(c.name||''),
-      quantity:Number(c.quantity||1),
-      unit_symbol:String(c.unit_symbol||''),
-      serial_tracked:Number(c.serial_tracked||0),
-      weight_grams:Number(c.weight_grams||0)
-    };}).filter(function(c){return c.item_id>0;});
-  }catch(e){return [];} }
+    const map=window.SutoTxnBundleMap||{};
+    raw=Array.isArray(map[itemId])?map[itemId]:[];
+    return normalizeRowBundle(raw);
+  }catch(e){
+    console.error('Sale bundle data could not be parsed:',e);
+    return [];
+  }
+}
+function normalizeRowBundle(raw){
+  return (Array.isArray(raw)?raw:[]).map(function(c){return {
+    item_id:Number(c.item_id||c.component_item_id||0),
+    name:String(c.name||''),
+    quantity:Number(c.quantity||1),
+    unit_symbol:String(c.unit_symbol||''),
+    serial_tracked:Number(c.serial_tracked||0),
+    weight_grams:Number(c.weight_grams||0),
+    description:String(c.description||''),
+    warranty:String(c.warranty||'')
+  };}).filter(function(c){return c.item_id>0;});
+}
 function removeBundleChildren(parentKey){
   if(!parentKey)return;
   document.querySelectorAll('#entryRows .bundle-child-row').forEach(function(r){if((r.dataset.bundleParentKey||'')===String(parentKey))r.remove();});
@@ -733,7 +739,9 @@ function renderBundleChildrenForRow(row,components){
   const body=document.getElementById('entryRows');if(!body)return;
   const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';if(!parentKey)return;
   removeBundleChildren(parentKey);
+  const currentItemId=String(row.querySelector('.item-select')?.value||'');
   row.dataset.bundleJson=JSON.stringify(components||[]);
+  row.dataset.bundleJsonItem=currentItemId;
   let anchor=row;
   (components||[]).forEach(function(component,index){const child=createBundleChildRow(row,component,parentKey,index);insertAfter(anchor,child);if(typeof bindEntryRow==='function')bindEntryRow(child);anchor=child;});
   renumberTxnRows();if(typeof recalc==='function')recalc();
@@ -745,8 +753,19 @@ function syncBundleForRow(row){
   removeBundleChildren(parentKey);
   if(document.body.dataset.txntype!=='sale')return;
   const sel=row.querySelector('.item-select'), itemId=Number(sel?.value||0);if(!itemId){row.dataset.bundleJson='[]';return;}
+  // Clear cached bundle metadata whenever the selected parent changes.
+  if(row.dataset.bundleJsonItem && row.dataset.bundleJsonItem!==String(itemId)){
+    row.dataset.bundleJson='[]';
+    row.dataset.bundleJsonItem='';
+    row.dataset.bundleFetchedItem='';
+  }
   let components=getRowBundle(row);
-  if(components.length){row.dataset.bundleFetchedItem=String(itemId);renderBundleChildrenForRow(row,components);return;}
+  if(components.length){
+    row.dataset.bundleFetchedItem=String(itemId);
+    row.dataset.bundleJsonItem=String(itemId);
+    renderBundleChildrenForRow(row,components);
+    return;
+  }
   if(row.dataset.bundleFetchedItem===String(itemId))return;
   const api=(window.SutoBundleComponentsConfig||{}).url;
   if(!api)return;
@@ -757,15 +776,22 @@ function syncBundleForRow(row){
     .then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.error||('HTTP '+res.status));return data;});})
     .then(function(data){
       row.dataset.bundleFetchPending='';
-      row.dataset.bundleFetchedItem=String(itemId);
       const latestSel=row.querySelector('.item-select');if(!latestSel||Number(latestSel.value||0)!==itemId)return;
-      const list=Array.isArray(data.items)?data.items:[];
+      const list=normalizeRowBundle(Array.isArray(data.items)?data.items:[]);
+      row.dataset.bundleFetchedItem=String(itemId);
+      row.dataset.bundleJsonItem=String(itemId);
       row.dataset.bundleJson=JSON.stringify(list);
       if(list.length)renderBundleChildrenForRow(row,list);
       else {removeBundleChildren(parentKey);if(typeof recalc==='function')recalc();}
     })
     .catch(function(err){row.dataset.bundleFetchPending='';console.error('Bundle API sync failed:',err);});
 }
+// Explicit exports keep the Sale Invoice item-search and change handlers connected
+// to the same bundle renderer regardless of script load order.
+window.getRowBundle=getRowBundle;
+window.removeBundleChildren=removeBundleChildren;
+window.renderBundleChildrenForRow=renderBundleChildrenForRow;
+window.syncBundleForRow=syncBundleForRow;
 function updatePrice(sel){
   const row=sel?.closest('.sale-row'), opt=sel?.selectedOptions?.[0];
   if(row&&opt){
@@ -817,6 +843,10 @@ document.addEventListener('change',function(e){
 
     const parentKey=row.querySelector('input[name="bundle_row_key[]"]')?.value||row.dataset.bundleRowKey||'';
     if(!parentKey) return;
+
+    // Always invoke the same bundle sync used by Delivery Challan after the
+    // native select change cycle; it also falls back to the authenticated API.
+    if(typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);
 
     const hasChildren=[...document.querySelectorAll('#entryRows .bundle-child-row')].some(function(child){
       return String(child.dataset.bundleParentKey||'')===String(parentKey);
