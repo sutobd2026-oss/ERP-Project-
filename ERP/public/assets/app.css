@@ -1998,3 +1998,17 @@ html,body,button,input,select,textarea{font-family:"Roboto",Arial,sans-serif!imp
 .item-note-list-v241{display:block!important;margin-top:4px!important;color:#8a5b00!important;font-size:10.5px!important;line-height:1.35!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important;}
 .item-note-list-v241 b{font-size:9.5px!important;letter-spacing:.02em!important;color:#a56b00!important;}
 .item-master-row.selected .item-note-list-v241{color:#805a00!important;}
+
+/* v160: Settings navigation stays visible below the global top bar while scrolling. */
+.settings-shell>.settings-tabs{
+  position:sticky!important;
+  top:50px!important;
+  z-index:39!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.07);
+  backdrop-filter:blur(8px);
+  align-self:flex-start;
+}
+@media(max-width:850px){
+  .settings-shell>.settings-tabs{top:104px!important}
+}
