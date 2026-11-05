@@ -29,8 +29,13 @@ function applyReceivedPayment(total){
   if(inputs[0]) inputs[0].value=(Math.max(0,Number(total)||0)).toFixed(2);
   inputs.slice(1).forEach(i=>{i.value='0';});
 }
+function formatProductWeight(grams){
+  const g=Math.max(0,Number(grams)||0);
+  if(g>=1000)return (g/1000).toLocaleString('en-US',{maximumFractionDigits:3})+' kg';
+  return g.toLocaleString('en-US',{maximumFractionDigits:2})+' g';
+}
 function recalc(){
-  let sub=0,qtyTotal=0;
+  let sub=0,qtyTotal=0,productWeightGrams=0;
   const txType=document.body.dataset.txntype||'';
   const isSale=txType==='sale';
   const isPurchase=txType==='purchase';
@@ -53,10 +58,18 @@ function recalc(){
       if(amountDisplay)amountDisplay.textContent=fmt(amt);
     }
     sub+=amt;
+    const selectedOption=qs('.item-select',r)?.selectedOptions?.[0];
     const itemId=qs('.item-select',r)?.value||qs('input[type="hidden"][name="item_id[]"]',r)?.value||'';
-    if(itemId)qtyTotal+=Math.max(0,qty);
+    if(itemId){
+      qtyTotal+=Math.max(0,qty);
+      if(isSale && selectedOption?.dataset.type!=='service'){
+        const unitWeightGrams=Number(r.dataset.weightGrams||selectedOption?.dataset.weightGrams||0);
+        productWeightGrams+=Math.max(0,qty)*Math.max(0,unitWeightGrams);
+      }
+    }
   });
   if(qs('#qtyTotal'))qs('#qtyTotal').textContent=qtyTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:3});
+  if(qs('#productWeightTotal'))qs('#productWeightTotal').textContent=formatProductWeight(productWeightGrams);
   const inv=Math.max(0,parseFloat(qs('#invoiceDiscount')?.value||0));
   const tax=Math.max(0,parseFloat(qs('#tax')?.value||0));
   const direct=Math.max(0,parseFloat(qs('#directExpense')?.value||0));
@@ -186,7 +199,7 @@ function ensureNextTxnRow(row,txType){
   // prevents its search AJAX from firing during the parent selection event.
   window.setTimeout(create,0);
 }
-function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
+function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';row.dataset.weightGrams=String(Number(opt.dataset.weightGrams||0));const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){
   const txType=document.body.dataset.txntype||'sale';
   if(txType==='sale'){
