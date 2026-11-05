@@ -94,6 +94,12 @@ page_start('Items');
         $action=$_POST['action']??'';
         try{
             if($action==='save_bundle'){
+                // Run the migration at the point of use, then gracefully support
+                // older installations whose item_bundles table still lacks sort_order.
+                ensure_bundle_schema();
+                $bundleColumns=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
+                if(!$bundleColumns) throw new RuntimeException('Bundle storage is not available. Please check the database permissions.');
+                $bundleHasSort=in_array('sort_order',$bundleColumns,true);
                 $parentId=(int)($_POST['parent_item_id']??0);
                 if($parentId<=0) throw new RuntimeException('Bundle product not found.');
                 $st=$pdo->prepare('SELECT id,name,item_type,active FROM items WHERE id=? AND company_id=? LIMIT 1');
@@ -111,8 +117,17 @@ page_start('Items');
                     $seen[$componentId]=true;$clean[]=[$componentId,$qty,$sort++];
                 }
                 $pdo->beginTransaction();
-                try{$pdo->prepare('DELETE FROM item_bundles WHERE company_id=? AND parent_item_id=?')->execute([$cid,$parentId]);$ins=$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,sort_order) VALUES(?,?,?,?,?)');foreach($clean as $r)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[2]]);$pdo->commit();}
-                catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+                try{
+                    $pdo->prepare('DELETE FROM item_bundles WHERE company_id=? AND parent_item_id=?')->execute([$cid,$parentId]);
+                    $ins=$bundleHasSort
+                        ?$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,sort_order) VALUES(?,?,?,?,?)')
+                        :$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity) VALUES(?,?,?,?)');
+                    foreach($clean as $r){
+                        if($bundleHasSort)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[2]]);
+                        else $ins->execute([$cid,$parentId,$r[0],$r[1]]);
+                    }
+                    $pdo->commit();
+                }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
                 audit('update','item_bundle',$parentId,['component_count'=>count($clean)]);flash('success',count($clean)?'Bundle items saved successfully.':'Bundle items cleared.');redirect('items?tab='.$tab.'&view='.$parentId);
             }
             if($action==='save_item'){
@@ -311,6 +326,9 @@ page_start('Items');
             }
         }catch(Throwable $e){
             flash('error',$e->getCode()==='23000'?'This name already exists.':$e->getMessage());
+            if(($action??'')==='save_bundle' && (int)($_POST['parent_item_id']??0)>0){
+                redirect('items?tab='.$tab.'&view='.(int)$_POST['parent_item_id']);
+            }
             redirect('items'.($editId?'?edit='.$editId:''));
         }
     }
@@ -706,7 +724,16 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
       @media(max-width:900px){.item-meta-grid-v235{grid-template-columns:1fr;}}
     </style>
     <script>
-    function addBundleConfigRow(){var b=document.getElementById('itemBundleRows');if(!b)return;var f=b.querySelector('.bundle-config-row');if(!f)return;var c=f.cloneNode(true);c.querySelectorAll('select').forEach(function(x){x.selectedIndex=0});c.querySelectorAll('input').forEach(function(x){x.value='1'});b.appendChild(c);}
+    // Keep a clean row template so users can remove every component and still add new rows.
+    var itemBundleConfigTemplate=(function(){var b=document.getElementById('itemBundleRows');var r=b?b.querySelector('.bundle-config-row'):null;return r?r.cloneNode(true):null;})();
+    function addBundleConfigRow(){
+      var b=document.getElementById('itemBundleRows');if(!b)return;
+      var f=b.querySelector('.bundle-config-row')||itemBundleConfigTemplate;if(!f)return;
+      var c=f.cloneNode(true);c.classList.add('bundle-config-row');
+      c.querySelectorAll('select').forEach(function(x){x.selectedIndex=0});
+      c.querySelectorAll('input').forEach(function(x){x.value='1'});
+      b.appendChild(c);
+    }
     </script>
     <script>
     function setStockMode(mode){
