@@ -1232,7 +1232,6 @@ body .sense-transaction-entry #returnForm .grid2 .metric-card{margin:0!important
 }
 </style>
 HTML;
-    HTML;
     $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=162"></script></body></html>';
 }
 function get_items(int $cid): array {
