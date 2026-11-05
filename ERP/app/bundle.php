@@ -41,7 +41,7 @@ function ensure_bundle_schema(): void {
 function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId): array {
     try {
         $st=$pdo->prepare('SELECT ib.id bundle_id,ib.component_item_id item_id,ib.quantity,ib.sort_order,
-                                  i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,
+                                  i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
                            FROM item_bundles ib
@@ -64,7 +64,7 @@ function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId)
 function bundle_map_for_company(PDO $pdo,int $companyId): array {
     try {
         $st=$pdo->prepare('SELECT ib.parent_item_id,ib.component_item_id,ib.quantity,ib.sort_order,
-                                  i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,
+                                  i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
                            FROM item_bundles ib
@@ -100,7 +100,7 @@ function bundle_option_json(array $rows): string {
     foreach($rows as $r){
         $out[]=['item_id'=>(int)$r['item_id'],'name'=>(string)$r['name'],'quantity'=>(float)$r['quantity'],
                 'unit_symbol'=>(string)($r['unit_symbol']??''),'serial_tracked'=>(int)($r['serial_tracked']??0),
-                'weight_grams'=>(float)($r['weight_grams']??0)];
+                'weight_grams'=>(float)($r['weight_grams']??0),'description'=>(string)($r['description']??''),'warranty'=>(string)($r['warranty']??'')];
     }
     return json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 }
