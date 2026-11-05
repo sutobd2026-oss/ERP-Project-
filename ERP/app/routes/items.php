@@ -16,9 +16,10 @@ if($route==='items'){
                     WHERE category_id IS NOT NULL AND category_id>0");
     }catch(Throwable $e){ error_log('multi-category schema: '.$e->getMessage()); }
 
-    /* v235: separate item metadata fields. The previous Item Note update reused
-       description; migrate that content into item_note once, then keep the four
-       fields independent going forward. */
+    /* v235: ensure independent item metadata fields.
+       Do not backfill description into item_note here: this route runs on each
+       request, so a repeated migration would move newly saved descriptions into
+       notes. Description and Item Note are now kept independent. */
     static $itemMetaReady = false;
     if(!$itemMetaReady){
         $itemMetaReady = true;
@@ -33,11 +34,6 @@ if($route==='items'){
                     $pdo->exec("ALTER TABLE items ADD COLUMN `$col` $def");
                 }
             }
-            // The previous note feature stored notes in description. Preserve
-            // them by moving them to item_note without overwriting a real note.
-            $pdo->exec("UPDATE items SET item_note=description, description=NULL
-                         WHERE (item_note IS NULL OR item_note='')
-                           AND description IS NOT NULL AND TRIM(description)<>''");
         } catch(Throwable $e) {
             error_log('v235 item metadata schema: '.$e->getMessage());
         }
