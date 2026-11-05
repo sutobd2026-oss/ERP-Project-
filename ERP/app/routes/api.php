@@ -172,7 +172,7 @@ if($route==='item-search-api'){
     $like='%'.$q.'%';
     $sql='SELECT i.id,i.name,i.code,i.barcode,i.item_type,i.serial_tracked,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,
       COALESCE(i.location,"") location,COALESCE(i.item_note,"") item_note,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
-      COALESCE(i.weight_value,0) weight_value,COALESCE(i.weight_unit,"g") weight_unit,CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
+      CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0) ELSE COALESCE(i.weight_value,0)/1000 END weight_value,"kg" weight_unit,CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
       COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm WHERE sm.company_id=i.company_id AND sm.item_id=i.id
                      AND (sm.transaction_id IS NULL OR EXISTS (
                          SELECT 1 FROM transactions st
@@ -293,7 +293,7 @@ if($route==='inline-product-create'){
         $sale=(float)($_POST['sale_price']??0); $wh=(float)($_POST['wholesale_price']??0); $minWh=(float)($_POST['min_wholesale_qty']??0); $buy=(float)($_POST['purchase_price']??0);
         $opening=max(0,(float)($_POST['opening_stock']??0)); $low=max(0,(float)($_POST['low_stock_limit']??0));
         $serial=!empty($_POST['serial_tracked'])?1:0; $desc=trim((string)($_POST['description']??''));
-        $weightRaw=trim((string)($_POST['weight_value']??''));if($weightRaw!==''&&(!is_numeric($weightRaw)||(float)$weightRaw<0))throw new RuntimeException('Product weight must be a number greater than or equal to zero.');$weightValue=$weightRaw===''?null:(float)$weightRaw;$weightUnit=($_POST['weight_unit']??'g')==='kg'?'kg':'g';
+        $weightRaw=trim((string)($_POST['weight_value']??''));if($weightRaw!==''&&(!is_numeric($weightRaw)||(float)$weightRaw<0))throw new RuntimeException('Product weight must be a number greater than or equal to zero.');$weightValue=$weightRaw===''?null:(float)$weightRaw;$weightUnit='kg';
         if($name==='')throw new RuntimeException('Product name is required.');
         // Keep inline Add Product consistent with the main Item form:
         // product names must be unique within the same company, ignoring
@@ -310,7 +310,7 @@ if($route==='inline-product-create'){
                 ->execute([$cid,$id,date('Y-m-d'),$opening,$buy,'opening_stock','Opening Stock']);
         }
         $pdo->commit();
-        $st=$pdo->prepare('SELECT i.id,i.name,i.code,i.barcode,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,i.item_type,i.serial_tracked,COALESCE(i.weight_value,0) weight_value,COALESCE(i.weight_unit,"g") weight_unit,CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,COALESCE(u.symbol,"") unit_symbol FROM items i LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
+        $st=$pdo->prepare('SELECT i.id,i.name,i.code,i.barcode,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,i.item_type,i.serial_tracked,COALESCE(i.weight_value,0) weight_value,"kg" weight_unit,COALESCE(i.weight_value,0)*1000 weight_grams,COALESCE(u.symbol,"") unit_symbol FROM items i LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
         $st->execute([$id,$cid]);$item=$st->fetch(PDO::FETCH_ASSOC) ?: [];
         audit('create','item',$id,['name'=>$name,'type'=>'product','opening_stock'=>$opening,'source'=>'inline_form']);
         foreach(['sale_price','wholesale_price','purchase_price','weight_value','weight_grams'] as $k)$item[$k]=(float)($item[$k]??0);
