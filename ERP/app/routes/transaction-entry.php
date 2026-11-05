@@ -877,7 +877,10 @@ document.addEventListener('DOMContentLoaded',function(){
 if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     check_csrf(); $type=$_POST['txn_type']??''; $txId=(int)($_POST['transaction_id']??0);
     if(!in_array($type,['sale','purchase'],true)){http_response_code(422);exit('Unsupported transaction type.');}
-    $cid=(int)$u['company_id']; $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=$_POST['amount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
+    $cid=(int)$u['company_id']; $pdo=db();
+    try{$tiCols=$pdo->query('SHOW COLUMNS FROM transaction_items')->fetchAll(PDO::FETCH_COLUMN,0);if(!in_array('item_weight_grams',$tiCols,true))$pdo->exec('ALTER TABLE transaction_items ADD COLUMN item_weight_grams DECIMAL(14,4) NOT NULL DEFAULT 0');}catch(Throwable $schemaError){error_log('transaction save item weight schema: '.$schemaError->getMessage());}
+    try{$itemCols=$pdo->query('SHOW COLUMNS FROM items')->fetchAll(PDO::FETCH_COLUMN,0);foreach(['weight_value'=>'DECIMAL(12,4) NULL','weight_unit'=>"VARCHAR(2) NOT NULL DEFAULT 'g'"] as $col=>$def){if(!in_array($col,$itemCols,true))$pdo->exec('ALTER TABLE items ADD COLUMN `'.$col.'` '.$def);}}catch(Throwable $schemaError){error_log('transaction save product weight schema: '.$schemaError->getMessage());}
+    $saveAndPrint=!empty($_POST['save_and_print']) && $type==='sale'; $party=(int)($_POST['party_id']??0); $items=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=$_POST['amount']??[]; $serialRows=$_POST['serial_numbers']??[]; $itemDescriptions=$_POST['item_description']??[]; $itemWarranties=$_POST['item_warranty']??[];
     if($type==='purchase' && $party<=0){
         $_SESSION['transaction_form_restore']=['company_id'=>$cid,'type'=>'purchase','payload'=>$_POST];
         flash('error','Supplier is required. Your entered items and amounts have been restored below; select a Supplier and save again.');
@@ -886,7 +889,7 @@ if($route==='transaction-save'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $txnDate=transaction_datetime($_POST['txn_date']??null);
     $dueDate=$type==='sale'?null:(($_POST['due_date']??'')?:null);
     $partyParam=$party>0?$party:null;
-    $sub=0;$itemDisc=0;$pdo=db();
+    $sub=0;$itemDisc=0;
     try{
         $pdo->beginTransaction();
         $roleNeeded=$type==='sale'?'customer':'supplier';
