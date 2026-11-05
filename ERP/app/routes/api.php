@@ -127,12 +127,9 @@ if($route==='item-detail-api'){
 
         $bundle=[];
         if($item['item_type']==='product'){
-            try{
-                $bs=db()->prepare('SELECT ib.component_item_id item_id,ib.quantity,i.name,i.sale_price,i.purchase_price,u.symbol unit_symbol
-                  FROM item_bundles ib JOIN items i ON i.id=ib.component_item_id AND i.company_id=? AND i.active=1
-                  LEFT JOIN units u ON u.id=i.unit_id WHERE ib.company_id=? AND ib.parent_item_id=? ORDER BY ib.sort_order,ib.id');
-                $bs->execute([$cid,$cid,$itemId]);$bundle=$bs->fetchAll(PDO::FETCH_ASSOC);
-            }catch(Throwable $e){}
+            // Use the shared compatibility reader: some existing databases were
+            // created before item_bundles.sort_order was introduced.
+            $bundle=bundle_components_for_parent(db(),$cid,$itemId);
         }
 
         $txRows=[];
