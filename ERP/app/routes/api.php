@@ -245,6 +245,7 @@ if($route==='bundle-components-api'){
                 'item_id'=>(int)($r['item_id']??$r['component_item_id']??0),
                 'name'=>(string)($r['name']??''),
                 'quantity'=>(float)($r['quantity']??1),
+                'unit_price'=>(float)($r['unit_price']??0),
                 'unit_symbol'=>(string)($r['unit_symbol']??''),
                 'serial_tracked'=>(int)($r['serial_tracked']??0),
                 'sale_price'=>(float)($r['sale_price']??0),
