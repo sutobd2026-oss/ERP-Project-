@@ -61,9 +61,17 @@ function recalc(){
     const itemId=qs('.item-select',r)?.value||qs('input[type="hidden"][name="item_id[]"]',r)?.value||'';
     if(itemId){
       qtyTotal+=Math.max(0,qty);
-      if(isSale && selectedOption?.dataset.type!=='service'){
-        const unitWeightGrams=Number(r.dataset.weightGrams||selectedOption?.dataset.weightGrams||0);
-        productWeightGrams+=Math.max(0,qty)*Math.max(0,unitWeightGrams);
+      if(isSale){
+        const isService=selectedOption?.dataset.type==='service';
+        const weightInput=qs('.item-weight-kg',r);
+        const unitWeightGrams=isService?0:(weightInput
+          ? Math.max(0,Number(weightInput.value)||0)*1000
+          : Math.max(0,Number(r.dataset.weightGrams||selectedOption?.dataset.weightGrams||0)));
+        r.dataset.weightGrams=String(unitWeightGrams);
+        const lineWeightGrams=(!isService?Math.max(0,qty)*unitWeightGrams:0);
+        productWeightGrams+=lineWeightGrams;
+        const lineWeightDisplay=qs('.line-weight-total',r);
+        if(lineWeightDisplay)lineWeightDisplay.textContent=formatProductWeight(lineWeightGrams);
       }
     }
   });
@@ -94,7 +102,7 @@ function forceApplyReceived(){
 }
 function renumberRows(){qsa('#entryRows .sale-row').forEach((r,i)=>{const n=qs('.txn-row-number',r);if(n)n.textContent=i+1})}
 function makeTxnRowKey(){return 'row-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}
-function addRow(type){const rows=qs('#entryRows');if(!rows)return;const first=qs('.sale-row',rows);if(!first)return;const clone=first.cloneNode(true);delete clone.dataset.autoNextRowCreated;qsa('.item-live-search',clone).forEach(b=>{delete b.dataset.itemSearchBound;});qsa('input',clone).forEach(i=>{if(i.classList.contains('qty'))i.value='1';else if(i.classList.contains('price')||i.classList.contains('line-disc'))i.value='0';else if(i.classList.contains('item-search-input'))i.value='';});qsa('select',clone).forEach(s=>s.selectedIndex=0);const key=qs('input[name="bundle_row_key[]"]',clone);if(key){key.value=makeTxnRowKey();clone.dataset.bundleRowKey=key.value;}const parent=qs('input[name="bundle_parent_key[]"]',clone);if(parent){parent.value='';clone.dataset.bundleParentKey='';}const child=qs('input[name="bundle_child[]"]',clone);if(child){child.value='0';clone.dataset.bundleChild='0';}const clear=qs('.item-search-clear',clone);if(clear)clear.style.display='none';qs('.item-selected-summary',clone)?.remove();const unit=qs('.unit-label',clone);if(unit)unit.textContent='—';clone.dataset.weightGrams='0';const st=qs('.serial-number-input',clone);if(st)st.value='';qs('.item-picker-cell',clone)?.classList.remove('serial-ready');const sb=qs('.serial-trigger-btn',clone);if(sb){sb.hidden=true;sb.textContent='Serial';}const amountDisplay=qs('.amount',clone);if(amountDisplay){if(amountDisplay.matches('input'))amountDisplay.value='0.00';else amountDisplay.textContent=fmt(0);}delete clone.dataset.recalcAmountFromPrice;rows.appendChild(clone);bindEntryRow(clone);renumberRows();if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(clone);}
+function addRow(type){const rows=qs('#entryRows');if(!rows)return;const first=qs('.sale-row',rows);if(!first)return;const clone=first.cloneNode(true);delete clone.dataset.autoNextRowCreated;qsa('.item-live-search',clone).forEach(b=>{delete b.dataset.itemSearchBound;});qsa('input',clone).forEach(i=>{if(i.classList.contains('qty'))i.value='1';else if(i.classList.contains('item-weight-kg')){i.value='0';i.readOnly=true;}else if(i.classList.contains('price')||i.classList.contains('line-disc'))i.value='0';else if(i.classList.contains('item-search-input'))i.value='';});qsa('select',clone).forEach(s=>s.selectedIndex=0);const key=qs('input[name="bundle_row_key[]"]',clone);if(key){key.value=makeTxnRowKey();clone.dataset.bundleRowKey=key.value;}const parent=qs('input[name="bundle_parent_key[]"]',clone);if(parent){parent.value='';clone.dataset.bundleParentKey='';}const child=qs('input[name="bundle_child[]"]',clone);if(child){child.value='0';clone.dataset.bundleChild='0';}const clear=qs('.item-search-clear',clone);if(clear)clear.style.display='none';qs('.item-selected-summary',clone)?.remove();const unit=qs('.unit-label',clone);if(unit)unit.textContent='—';clone.dataset.weightGrams='0';const st=qs('.serial-number-input',clone);if(st)st.value='';qs('.item-picker-cell',clone)?.classList.remove('serial-ready');const sb=qs('.serial-trigger-btn',clone);if(sb){sb.hidden=true;sb.textContent='Serial';}const amountDisplay=qs('.amount',clone);if(amountDisplay){if(amountDisplay.matches('input'))amountDisplay.value='0.00';else amountDisplay.textContent=fmt(0);}const lineWeight=qs('.line-weight-total',clone);if(lineWeight)lineWeight.textContent='0 kg';clone.dataset.weightGrams='0';delete clone.dataset.recalcAmountFromPrice;rows.appendChild(clone);bindEntryRow(clone);renumberRows();if(typeof window.SutoInitItemSearch==='function')window.SutoInitItemSearch(clone);}
 function removeRow(btn){
   const rows=qsa('#entryRows .sale-row');
   const target=btn?.closest('.sale-row');
@@ -198,7 +206,7 @@ function ensureNextTxnRow(row,txType){
   // prevents its search AJAX from firing during the parent selection event.
   window.setTimeout(create,0);
 }
-function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';row.dataset.weightGrams=String(Number(opt.dataset.weightGrams||0));const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
+function updatePrice(sel){const row=sel?.closest('.sale-row');const opt=sel?.selectedOptions?.[0];if(row&&opt){const price=qs('.price',row);const unit=qs('.unit-label',row);const weightInput=qs('.item-weight-kg',row);const txType=document.body.dataset.txntype||'sale';if(price)price.value=(txType==='purchase'?opt.dataset.buy:opt.dataset.sale)||0;if(unit)unit.textContent=opt.dataset.unit||'—';const itemType=opt.dataset.type||'product';const weightGrams=itemType==='service'?0:Math.max(0,Number(opt.dataset.weightGrams||0));if(weightInput){weightInput.value=(weightGrams/1000).toFixed(4);weightInput.readOnly=itemType==='service';}row.dataset.weightGrams=String(weightGrams);const desc=qs('.item-line-description',row),war=qs('.item-line-warranty',row);if(desc&&!desc.value)desc.value=opt.dataset.description||'';if(war&&!war.value)war.value=opt.dataset.warranty||'';if(typeof window.SutoUpdateSerialUI==='function')window.SutoUpdateSerialUI(row,opt);ensureNextTxnRow(row,txType);if(txType==='sale'&&typeof window.syncBundleForRow==='function'&&row.dataset.bundleChild!=='1')window.syncBundleForRow(row);if(typeof recalc==='function')recalc()}}
 function bindEntryRow(row){
   const txType=document.body.dataset.txntype||'sale';
   if(txType==='sale'){
@@ -206,7 +214,8 @@ function bindEntryRow(row){
   }else if(txType==='delivery_challan'){
     qsa('.price',row).forEach(function(input){input.setAttribute('step','0.01');input.step='0.01';});
   }
-  qsa('.qty,.price,.line-disc',row).forEach(x=>x.addEventListener('input',()=>{
+  qsa('.qty,.price,.line-disc,.item-weight-kg',row).forEach(x=>x.addEventListener('input',()=>{
+    if(x.classList.contains('item-weight-kg'))row.dataset.weightGrams=String(Math.max(0,Number(x.value)||0)*1000);
     if(x.classList.contains('qty')){
       renderSerialMeta(row);
       if(document.body.dataset.txntype==='sale'&&row.dataset.bundleChild!=='1'&&typeof window.syncBundleForRow==='function')window.syncBundleForRow(row);
