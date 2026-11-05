@@ -1146,14 +1146,14 @@ body .sense-transaction-entry .doc-entry-totals{display:flex!important;align-ite
 body .sense-transaction-entry .sale-entry-totals strong,
 body .sense-transaction-entry .doc-entry-totals strong{margin-left:4px!important;color:#29384d!important;font-size:15px!important}
 body .sense-transaction-entry .sale-adjustments,
-body .sense-transaction-entry form>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin:8px 0!important}
+body .sense-transaction-entry .grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin:8px 0!important}
 body .sense-transaction-entry .sale-adjustments .form-group,
-body .sense-transaction-entry form>.grid3 .form-group{min-width:0!important;margin:0!important}
+body .sense-transaction-entry .grid3 .form-group{min-width:0!important;margin:0!important}
 body .sense-transaction-entry .sale-adjustments label,
-body .sense-transaction-entry form>.grid3 label,
+body .sense-transaction-entry .grid3 label,
 body .sense-transaction-entry .doc-note-field label{display:block!important;margin-bottom:4px!important;color:#6d7c91!important;font-size:12px!important}
 body .sense-transaction-entry .sale-adjustments input,
-body .sense-transaction-entry form>.grid3 input{width:100%!important;height:36px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important}
+body .sense-transaction-entry .grid3 input{width:100%!important;height:36px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important}
 body .sense-transaction-entry .payment-box,
 body .sense-transaction-entry #poAdvancePayment{min-width:0!important;padding:10px!important;border:1px solid #dfe6ef!important;border-radius:9px!important;background:#fbfdff!important;box-shadow:none!important}
 body .sense-transaction-entry .payment-box .panel-head,
@@ -1206,7 +1206,7 @@ body .sense-transaction-entry#returnForm .grid2 .metric-card{margin:0!important;
  body .sense-transaction-entry .sale-add-party-slot,
  body .sense-transaction-entry .purchase-add-party-slot{grid-column:2!important;grid-row:1!important;padding:22px 0 0!important}
  body .sense-transaction-entry .sale-adjustments,
- body .sense-transaction-entry form>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .sense-transaction-entry .grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  body .sense-transaction-entry#returnForm .grid2{grid-template-columns:minmax(0,1fr)!important}
  body .sense-transaction-entry .txn-form-footer,
  body .sense-transaction-entry .document-form-footer,
@@ -1223,7 +1223,7 @@ body .sense-transaction-entry#returnForm .grid2 .metric-card{margin:0!important;
 }
 @media(max-width:560px){
  body .sense-transaction-entry .sale-adjustments,
- body .sense-transaction-entry form>.grid3{grid-template-columns:minmax(0,1fr)!important}
+ body .sense-transaction-entry .grid3{grid-template-columns:minmax(0,1fr)!important}
  body .sense-transaction-entry .entry-right{grid-template-columns:minmax(0,1fr)!important}
  body .sense-transaction-entry .txn-footer-summary,
  body .sense-transaction-entry .document-footer-summary{justify-content:space-between!important;gap:6px!important;font-size:12px!important}
