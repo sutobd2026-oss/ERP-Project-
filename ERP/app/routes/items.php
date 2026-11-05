@@ -745,7 +745,8 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
       if(!row)return;
       var c=row.cloneNode(true);c.classList.add('bundle-config-row');
       c.querySelectorAll('select').forEach(function(x){x.selectedIndex=0});
-      c.querySelectorAll('input').forEach(function(x){x.value='1'});
+      c.querySelectorAll('input[name="component_price[]"]').forEach(function(x){x.value='0'});
+      c.querySelectorAll('input[name="component_qty[]"]').forEach(function(x){x.value='1'});
       b.appendChild(c);
     }
     </script>
