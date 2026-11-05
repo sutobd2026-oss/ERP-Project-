@@ -497,7 +497,7 @@ function delivery_challan_new(): void {
         <?php endforeach; ?>
       </tbody></table></div>
       <div id="dcItemStatus" class="subtle" style="margin-top:8px"></div>
-      <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="dcAddRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#dcRows','delivery')">+ Add Product</button></div><span class="dc-items-total"><b>Items Total</b> <strong id="dcSubtotal">৳0.00</strong></span></div>
+      <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="dcAddRow()">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#dcRows','delivery')">+ Add Product</button></div><span class="dc-items-total"><b>Items Total</b> <strong id="dcSubtotal">৳0.00</strong><?php if($showProductWeight): ?><b style="margin-left:12px">Product Weight (kg)</b> <strong id="dcProductWeightTotal">0 kg</strong><?php endif; ?></span></div>
       <div class="dc-summary-grid">
         <div class="dc-summary-spacer dc-description-box">
           <div class="form-group"><label>Add Description</label><textarea name="notes" rows="3" placeholder="Optional delivery note"><?=e($editMode?(string)($editTx['notes']??''):'')?></textarea></div>
@@ -632,7 +632,7 @@ function delivery_challan_new(): void {
 
         <table class="dc-print-table">
           <thead>
-            <tr><th style="width:36px">#</th><th>Item</th><th style="width:70px">Qty</th><th style="width:70px">Unit</th><th style="width:110px">Price/Unit</th><th style="width:120px">Amount</th></tr>
+            <tr><th style="width:36px">#</th><th>Item / Description / Warranty</th><th style="width:70px">Qty</th><?php if($showProductWeight): ?><th style="width:80px">Weight (kg)</th><?php endif; ?><th style="width:70px">Unit</th><th style="width:110px">Price/Unit</th><th style="width:120px">Amount</th></tr>
           </thead>
           <tbody data-dc-print-items><tr><td colspan="6">No items.</td></tr></tbody>
         </table>
@@ -689,11 +689,12 @@ function delivery_challan_new(): void {
         const unit=(r.querySelector('.dc-unit')?.textContent||'—').trim();
         const price=Number(r.querySelector('.dc-price')?.value||0);
         const amount=Number((r.querySelector('.dc-amt')?.textContent||'').replace(/[^\d.-]/g,'')||0);
-        if(item||qty||price||amount) rows.push({i:i+1,item,qty,unit,price,amount});
+        const description=r.querySelector('.dc-item-description')?.value||'',warranty=r.querySelector('.dc-item-warranty')?.value||'',weight=Number(r.querySelector('.dc-item-weight')?.value||0);
+        if(item||qty||price||amount) rows.push({i:i+1,item,description,warranty,qty,unit,price,amount,weight});
       });
       const tbody=sheet.querySelector('[data-dc-print-items]');
       if(tbody){
-        tbody.innerHTML=rows.length?rows.map(r=>`<tr><td>${r.i}</td><td>${dcPrintEsc(r.item||'—')}</td><td class="num">${dcPrintQty(r.qty)}</td><td>${dcPrintEsc(r.unit||'—')}</td><td class="num">${dcFmt(r.price)}</td><td class="num">${dcFmt(r.amount)}</td></tr>`).join(''):'<tr><td colspan="6">No items.</td></tr>';
+        tbody.innerHTML=rows.length?rows.map(r=>`<tr><td>${r.i}</td><td>${dcPrintEsc(r.item||'—')}${r.description?`<div style="font-size:10px;color:#64748b">${dcPrintEsc(r.description)}</div>`:''}${r.warranty?`<div style="font-size:10px;color:#64748b">Warranty: ${dcPrintEsc(r.warranty)}</div>`:''}</td><td class="num">${dcPrintQty(r.qty)}</td><?php if($showProductWeight): ?><td class="num">${dcPrintQty(r.weight)} kg</td><?php endif; ?><td>${dcPrintEsc(r.unit||'—')}</td><td class="num">${dcFmt(r.price)}</td><td class="num">${dcFmt(r.amount)}</td></tr>`).join(''):'<tr><td colspan="<?= $showProductWeight?7:6 ?>">No items.</td></tr>';
       }
       set('[data-dc-print-subtotal]',text('#dcSubtotal')||'৳0.00');
       set('[data-dc-print-discount]',dcFmt(Number(val('#dcInvDisc')||0)));
