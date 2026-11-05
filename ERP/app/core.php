@@ -1061,6 +1061,178 @@ ITEMHTML;
 })();
 </script>
 HTML;
+    echo <<<'HTML'
+<style id="sense-transaction-entry-common-v1">
+/* One shared visual system for Sale, Purchase, Quotation, Sale Order, Purchase Order and both Return entry pages. */
+body .sense-transaction-entry{box-sizing:border-box!important;width:100%!important;max-width:none!important;color:#263548!important}
+body form.sense-transaction-entry{display:block!important;padding:10px 10px 88px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important}
+body form.sense-transaction-entry>.panel{margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+body div.sense-transaction-entry{margin-top:10px!important;padding:10px 10px 88px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important}
+body .sense-transaction-entry .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px!important;padding:0 0 8px!important;border-bottom:1px solid #edf1f5!important}
+body .sense-transaction-entry .panel-head h2{margin:0!important;color:#263548!important;font-size:14px!important;font-weight:700!important}
+body .sense-transaction-entry .entry-top,
+body .sense-transaction-entry .doc-entry-top{display:grid!important;gap:10px!important;align-items:end!important;margin:0!important;padding:0 1px 10px!important}
+body .sense-transaction-entry .sale-entry-top,
+body .sense-transaction-entry .purchase-entry-top{grid-template-columns:minmax(190px,1.8fr) minmax(100px,.65fr) minmax(280px,1.8fr)!important}
+body .sense-transaction-entry .entry-right{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;min-width:0!important}
+body .sense-transaction-entry .doc-entry-top{grid-template-columns:minmax(190px,1.8fr) minmax(100px,.65fr) minmax(160px,1.2fr) minmax(160px,1fr)!important}
+body .sense-transaction-entry .return-entry-top{grid-template-columns:minmax(220px,1.6fr) repeat(2,minmax(150px,1fr))!important}
+body .sense-transaction-entry .entry-top>div,
+body .sense-transaction-entry .doc-entry-top>div,
+body .sense-transaction-entry .return-entry-top>div{min-width:0!important}
+body .sense-transaction-entry .entry-top .form-group,
+body .sense-transaction-entry .doc-entry-top .form-group,
+body .sense-transaction-entry .return-entry-top .form-group{margin:0!important;min-width:0!important}
+body .sense-transaction-entry .entry-top label,
+body .sense-transaction-entry .doc-entry-top label,
+body .sense-transaction-entry .return-entry-top label{display:block!important;margin:0 0 4px!important;color:#627189!important;font-size:12px!important;font-weight:600!important}
+body .sense-transaction-entry .entry-top input:not([type=checkbox]),
+body .sense-transaction-entry .entry-top select,
+body .sense-transaction-entry .doc-entry-top input:not([type=checkbox]),
+body .sense-transaction-entry .return-entry-top input:not([type=checkbox]),
+body .sense-transaction-entry .return-entry-top select,
+body .sense-transaction-entry .party-search-input{width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;padding:0 9px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#253347!important;font-size:14px!important;box-shadow:none!important}
+body .sense-transaction-entry .sale-add-party-slot,
+body .sense-transaction-entry .purchase-add-party-slot,
+body .sense-transaction-entry .doc-add-party-slot{display:flex!important;align-items:flex-end!important;min-width:0!important;padding:0!important}
+body .sense-transaction-entry .sale-add-party-slot .btn,
+body .sense-transaction-entry .purchase-add-party-slot .btn,
+body .sense-transaction-entry .doc-add-party-slot .btn{width:100%!important;height:36px!important;min-height:36px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 9px!important;border-radius:7px!important;font-size:13px!important;white-space:nowrap!important}
+body .sense-transaction-entry .entry-table,
+body .sense-transaction-entry .table-wrap{width:100%!important;min-width:0!important;overflow-x:auto!important;border:1px solid #dfe6ef!important;border-radius:8px!important;background:#fff!important}
+body .sense-transaction-entry .entry-table table,
+body .sense-transaction-entry .doc-entry-table,
+body .sense-transaction-entry #returnForm .table-wrap table{width:100%!important;min-width:860px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important}
+body .sense-transaction-entry .entry-table thead th,
+body .sense-transaction-entry .doc-entry-table thead th,
+body .sense-transaction-entry #returnForm .table-wrap thead th{height:34px!important;padding:6px 8px!important;background:#f4f7fb!important;color:#526276!important;border-bottom:1px solid #dce4ee!important;font-size:14px!important;font-weight:700!important;letter-spacing:.02em!important;text-align:left!important;text-transform:uppercase!important;white-space:nowrap!important}
+body .sense-transaction-entry .entry-table tbody td,
+body .sense-transaction-entry .doc-entry-table tbody td,
+body .sense-transaction-entry #returnForm .table-wrap tbody td{padding:7px 8px!important;border-bottom:1px solid #e5ebf2!important;background:#fff!important;vertical-align:top!important;font-size:14px!important}
+body .sense-transaction-entry .entry-table tbody tr:last-child td,
+body .sense-transaction-entry .doc-entry-table tbody tr:last-child td,
+body .sense-transaction-entry #returnForm .table-wrap tbody tr:last-child td{border-bottom:0!important}
+body .sense-transaction-entry .item-picker-cell,
+body .sense-transaction-entry .item-live-search,
+body .sense-transaction-entry .item-search-wrap{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+body .sense-transaction-entry .item-search-input{width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;padding:0 30px 0 9px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#263548!important;font-size:14px!important}
+body .sense-transaction-entry .item-line-meta,
+body .sense-transaction-entry .doc-item-meta{display:flex!important;flex-direction:row!important;align-items:center!important;gap:6px!important;min-width:0!important;margin-top:5px!important;padding:0!important;border:0!important;background:transparent!important}
+body .sense-transaction-entry .item-line-meta>div,
+body .sense-transaction-entry .doc-item-meta>input{flex:1 1 0!important;min-width:0!important;width:0!important}
+body .sense-transaction-entry .item-line-meta input,
+body .sense-transaction-entry .doc-item-meta input{width:100%!important;min-width:0!important;height:29px!important;min-height:29px!important;box-sizing:border-box!important;padding:4px 7px!important;border:1px solid #dbe3ed!important;border-radius:6px!important;background:#fff!important;color:#536278!important;font-size:12px!important}
+body .sense-transaction-entry .qty,
+body .sense-transaction-entry .price,
+body .sense-transaction-entry .line-disc,
+body .sense-transaction-entry .amount-input,
+body .sense-transaction-entry .doc-qty,
+body .sense-transaction-entry .doc-price,
+body .sense-transaction-entry .doc-disc,
+body .sense-transaction-entry .doc-amt-input,
+body .sense-transaction-entry .return-qty{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:36px!important;box-sizing:border-box!important;padding:0 8px!important;border:1px solid #cfd9e5!important;border-radius:7px!important;background:#fff!important;color:#253347!important;font-size:14px!important}
+body .sense-transaction-entry .amount-input,
+body .sense-transaction-entry .doc-amt-input{font-weight:700!important;text-align:right!important}
+body .sense-transaction-entry .unit-label,
+body .sense-transaction-entry .doc-unit{display:flex!important;align-items:center!important;min-height:36px!important;padding:0 4px!important;color:#64748b!important;font-size:13px!important;white-space:nowrap!important}
+body .sense-transaction-entry .qty-weight-stack .qty{height:34px!important}
+body .sense-transaction-entry .qty-weight-stack .item-weight-kg{height:29px!important;min-height:29px!important;font-size:11px!important}
+body .sense-transaction-entry .entry-actions,
+body .sense-transaction-entry .doc-entry-actions{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;padding:8px 0!important;margin:0!important}
+body .sense-transaction-entry .entry-actions .btn,
+body .sense-transaction-entry .doc-entry-actions .btn{height:34px!important;min-height:34px!important;padding:0 12px!important;border-radius:7px!important;font-size:13px!important}
+body .sense-transaction-entry .sale-entry-totals,
+body .sense-transaction-entry .doc-entry-totals{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:16px!important;flex-wrap:wrap!important;color:#66758a!important;font-size:14px!important}
+body .sense-transaction-entry .sale-entry-totals strong,
+body .sense-transaction-entry .doc-entry-totals strong{margin-left:4px!important;color:#29384d!important;font-size:15px!important}
+body .sense-transaction-entry .sale-adjustments,
+body .sense-transaction-entry form>.grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin:8px 0!important}
+body .sense-transaction-entry .sale-adjustments .form-group,
+body .sense-transaction-entry form>.grid3 .form-group{min-width:0!important;margin:0!important}
+body .sense-transaction-entry .sale-adjustments label,
+body .sense-transaction-entry form>.grid3 label,
+body .sense-transaction-entry .doc-note-field label{display:block!important;margin-bottom:4px!important;color:#6d7c91!important;font-size:12px!important}
+body .sense-transaction-entry .sale-adjustments input,
+body .sense-transaction-entry form>.grid3 input{width:100%!important;height:36px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:14px!important}
+body .sense-transaction-entry .payment-box,
+body .sense-transaction-entry #poAdvancePayment{min-width:0!important;padding:10px!important;border:1px solid #dfe6ef!important;border-radius:9px!important;background:#fbfdff!important;box-shadow:none!important}
+body .sense-transaction-entry .payment-box .panel-head,
+body .sense-transaction-entry #poAdvancePayment>.panel-head{margin-bottom:8px!important;padding-bottom:6px!important}
+body .sense-transaction-entry .payment-line,
+body .sense-transaction-entry .po-payment-line{display:grid!important;gap:7px!important;align-items:center!important}
+body .sense-transaction-entry .payment-line select,
+body .sense-transaction-entry .payment-line input,
+body .sense-transaction-entry .po-payment-line select,
+body .sense-transaction-entry .po-payment-line input{width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;border:1px solid #cfd9e5!important;border-radius:7px!important;font-size:13px!important}
+body .sense-transaction-entry .doc-note-field textarea,
+body .sense-transaction-entry textarea[name="notes"]{width:100%!important;min-height:82px!important;box-sizing:border-box!important;padding:8px 10px!important;border:1px solid #cfd9e5!important;border-radius:8px!important;background:#fff!important;color:#334155!important;font-size:13px!important;resize:vertical!important}
+body .sense-transaction-entry .txn-form-footer,
+body .sense-transaction-entry .document-form-footer,
+body .sense-transaction-entry .form-footer{position:fixed!important;left:235px!important;right:0!important;bottom:0!important;z-index:60!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0!important;padding:10px 14px!important;min-height:62px!important;border:0!important;border-top:1px solid #dfe5ec!important;border-radius:0!important;background:rgba(255,255,255,.98)!important;box-shadow:0 -3px 14px rgba(15,23,42,.08)!important}
+body .sense-transaction-entry .txn-footer-summary,
+body .sense-transaction-entry .document-footer-summary{display:flex!important;align-items:center!important;gap:16px!important;flex-wrap:wrap!important;color:#667385!important;font-size:14px!important;white-space:nowrap!important}
+body .sense-transaction-entry .txn-footer-summary b,
+body .sense-transaction-entry .document-footer-summary strong{color:#27313f!important;font-size:15px!important;font-weight:700!important}
+body .sense-transaction-entry .txn-footer-actions,
+body .sense-transaction-entry .document-footer-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;flex-wrap:wrap!important}
+body .sense-transaction-entry .txn-footer-actions .btn,
+body .sense-transaction-entry .document-footer-actions .btn,
+body .sense-transaction-entry .form-footer .btn{height:38px!important;min-height:38px!important;padding:0 14px!important;border-radius:8px!important;font-size:14px!important;white-space:nowrap!important}
+body .sense-transaction-entry .return-meta-strip{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 0 10px!important;padding:8px 10px!important;border:1px solid #e5ebf2!important;border-radius:7px!important;background:#f8fafc!important}
+body .sense-transaction-entry #returnForm .grid2{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)!important;gap:12px!important;margin-top:12px!important}
+body .sense-transaction-entry #returnForm .grid2 .metric-card{margin:0!important;border:1px solid #dfe6ef!important;border-radius:9px!important;background:#fbfdff!important}
+@media(max-width:1180px){
+ body .sense-transaction-entry .sale-entry-top,
+ body .sense-transaction-entry .purchase-entry-top{grid-template-columns:minmax(0,1.5fr) minmax(100px,.6fr) minmax(250px,1.6fr)!important}
+ body .sense-transaction-entry .txn-form-footer,
+ body .sense-transaction-entry .document-form-footer,
+ body .sense-transaction-entry .form-footer{left:215px!important}
+}
+@media(max-width:850px){
+ body form.sense-transaction-entry{padding:9px 8px 122px!important}
+ body div.sense-transaction-entry{padding:9px 8px 122px!important}
+ body .sense-transaction-entry .entry-top,
+ body .sense-transaction-entry .doc-entry-top,
+ body .sense-transaction-entry .return-entry-top,
+ body .sense-transaction-entry .sale-entry-top,
+ body .sense-transaction-entry .purchase-entry-top{grid-template-columns:minmax(0,1fr) 112px!important;gap:8px!important}
+ body .sense-transaction-entry .entry-right{grid-column:1/-1!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .sense-transaction-entry .doc-entry-top>.form-group,
+ body .sense-transaction-entry .return-entry-top>.form-group{grid-column:1/-1!important}
+ body .sense-transaction-entry .doc-party-column,
+ body .sense-transaction-entry .sale-customer-column,
+ body .sense-transaction-entry .purchase-supplier-column{grid-column:1!important;grid-row:1!important}
+ body .sense-transaction-entry .doc-add-party-slot,
+ body .sense-transaction-entry .sale-add-party-slot,
+ body .sense-transaction-entry .purchase-add-party-slot{grid-column:2!important;grid-row:1!important;padding:22px 0 0!important}
+ body .sense-transaction-entry .sale-adjustments,
+ body .sense-transaction-entry form>.grid3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .sense-transaction-entry #returnForm .grid2{grid-template-columns:minmax(0,1fr)!important}
+ body .sense-transaction-entry .txn-form-footer,
+ body .sense-transaction-entry .document-form-footer,
+ body .sense-transaction-entry .form-footer{left:0!important;right:0!important;min-height:94px!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;gap:8px!important;padding:8px 10px!important}
+ body .sense-transaction-entry .txn-footer-summary,
+ body .sense-transaction-entry .document-footer-summary{justify-content:center!important;gap:10px!important;font-size:13px!important}
+ body .sense-transaction-entry .txn-footer-actions,
+ body .sense-transaction-entry .document-footer-actions{width:100%!important;justify-content:flex-end!important}
+ body .sense-transaction-entry .txn-footer-actions .btn,
+ body .sense-transaction-entry .document-footer-actions .btn,
+ body .sense-transaction-entry .form-footer .btn{height:36px!important;min-height:36px!important;font-size:13px!important;padding:0 10px!important}
+ body .sense-transaction-entry .entry-actions,
+ body .sense-transaction-entry .doc-entry-actions{align-items:flex-start!important;flex-direction:column!important}
+}
+@media(max-width:560px){
+ body .sense-transaction-entry .sale-adjustments,
+ body .sense-transaction-entry form>.grid3{grid-template-columns:minmax(0,1fr)!important}
+ body .sense-transaction-entry .entry-right{grid-template-columns:minmax(0,1fr)!important}
+ body .sense-transaction-entry .txn-footer-summary,
+ body .sense-transaction-entry .document-footer-summary{justify-content:space-between!important;gap:6px!important;font-size:12px!important}
+ body .sense-transaction-entry .txn-footer-summary b,
+ body .sense-transaction-entry .document-footer-summary strong{font-size:13px!important}
+}
+</style>
+HTML;
+    HTML;
     $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=162"></script></body></html>';
 }
 function get_items(int $cid): array {
