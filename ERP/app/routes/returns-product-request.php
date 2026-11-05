@@ -832,11 +832,11 @@ function delivery_challan_new(): void {
       tr.innerHTML=
         '<td class="txn-row-index-cell"><button type="button" class="row-remove-btn txn-row-remove" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button><span class="txn-row-number"></span></td>'+
         '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
-        '<td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly></td>'+
+        '<td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4)+'">':'')+'</div></td>'+
         '<td class="dc-unit">'+unit+'</td>'+
         '<td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
         '<td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="0" readonly></td>'+
-        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span></td>';
+        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span>'+(window.SutoProductWeightEnabled?'<div class="dc-line-weight">0 kg</div>':'')+'</td>';
       return tr;
     }
     function dcRenderBundleChildren(parentRow,components){
