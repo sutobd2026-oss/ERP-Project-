@@ -9,6 +9,7 @@ function ensure_bundle_schema(): void {
             parent_item_id INT UNSIGNED NOT NULL,
             component_item_id INT UNSIGNED NOT NULL,
             quantity DECIMAL(18,6) NOT NULL DEFAULT 1,
+            unit_price DECIMAL(18,4) NOT NULL DEFAULT 0,
             sort_order INT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -24,8 +25,13 @@ function ensure_bundle_schema(): void {
     // table, so add the missing column explicitly before any INSERT/SELECT uses it.
     try {
         $cols = $pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
+        if(!in_array('unit_price',$cols,true)){
+            $pdo->exec('ALTER TABLE item_bundles ADD COLUMN unit_price DECIMAL(18,4) NOT NULL DEFAULT 0 AFTER quantity');
+            $cols[]='unit_price';
+        }
         if(!in_array('sort_order',$cols,true)){
             $pdo->exec('ALTER TABLE item_bundles ADD COLUMN sort_order INT NOT NULL DEFAULT 0 AFTER quantity');
+            $cols[]='sort_order';
         }
         try { $pdo->exec('CREATE INDEX idx_item_bundle_parent ON item_bundles(company_id,parent_item_id,sort_order)'); } catch(Throwable $e) {}
     } catch(Throwable $e) { error_log('bundle migration item_bundles sort_order: '.$e->getMessage()); }
@@ -44,9 +50,11 @@ function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId)
         // Read them safely while the schema migration is applied or when ALTER is unavailable.
         $cols=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
         $hasSort=in_array('sort_order',$cols,true);
+        $hasPrice=in_array('unit_price',$cols,true);
         $sortSelect=$hasSort?'ib.sort_order':'0 AS sort_order';
+        $priceSelect=$hasPrice?'ib.unit_price':'0 AS unit_price';
         $sortOrder=$hasSort?'ib.sort_order,ib.id':'ib.id';
-        $st=$pdo->prepare('SELECT ib.id bundle_id,ib.component_item_id item_id,ib.quantity,'.$sortSelect.',
+        $st=$pdo->prepare('SELECT ib.id bundle_id,ib.component_item_id item_id,ib.quantity,'.$priceSelect.','.$sortSelect.',
                                   i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
@@ -63,6 +71,7 @@ function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId)
     }
     foreach($rows as &$r){
         $r['bundle_id']=(int)$r['bundle_id']; $r['item_id']=(int)$r['item_id']; $r['quantity']=(float)$r['quantity'];
+        $r['unit_price']=(float)($r['unit_price']??0);
         $r['sort_order']=(int)$r['sort_order']; $r['serial_tracked']=(int)$r['serial_tracked']; $r['unit_id']=(int)$r['unit_id'];
     }
     unset($r); return $rows;
@@ -71,9 +80,11 @@ function bundle_map_for_company(PDO $pdo,int $companyId): array {
     try {
         $cols=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
         $hasSort=in_array('sort_order',$cols,true);
+        $hasPrice=in_array('unit_price',$cols,true);
         $sortSelect=$hasSort?'ib.sort_order':'0 AS sort_order';
+        $priceSelect=$hasPrice?'ib.unit_price':'0 AS unit_price';
         $sortOrder=$hasSort?'ib.parent_item_id,ib.sort_order,ib.id':'ib.parent_item_id,ib.id';
-        $st=$pdo->prepare('SELECT ib.parent_item_id,ib.component_item_id,ib.quantity,'.$sortSelect.',
+        $st=$pdo->prepare('SELECT ib.parent_item_id,ib.component_item_id,ib.quantity,'.$priceSelect.','.$sortSelect.',
                                   i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
@@ -109,6 +120,7 @@ function bundle_option_json(array $rows): string {
     $out=[];
     foreach($rows as $r){
         $out[]=['item_id'=>(int)$r['item_id'],'name'=>(string)$r['name'],'quantity'=>(float)$r['quantity'],
+                'unit_price'=>(float)($r['unit_price']??0),
                 'unit_symbol'=>(string)($r['unit_symbol']??''),'serial_tracked'=>(int)($r['serial_tracked']??0),
                 'weight_grams'=>(float)($r['weight_grams']??0),'description'=>(string)($r['description']??''),'warranty'=>(string)($r['warranty']??'')];
     }
