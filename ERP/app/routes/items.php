@@ -724,19 +724,16 @@ style="width:32px;height:32px;padding:0;border:1px solid #cfd8e3;background:#fff
       @media(max-width:900px){.item-meta-grid-v235{grid-template-columns:1fr;}}
     </style>
     <script>
-    // Cache a row template when the dynamically-loaded Manage Bundle modal is first edited.
-    var itemBundleConfigTemplate=(function(){var b=document.getElementById('itemBundleRows');var r=b?b.querySelector('.bundle-config-row'):null;return r?r.cloneNode(true):null;})();
     function removeBundleConfigRow(btn){
-      var row=btn&&btn.closest('tr');if(!row)return;
-      if(!itemBundleConfigTemplate)itemBundleConfigTemplate=row.cloneNode(true);
-      row.remove();
+      var row=btn&&btn.closest('tr');if(row)row.remove();
     }
     function addBundleConfigRow(){
       var b=document.getElementById('itemBundleRows');if(!b)return;
-      var f=b.querySelector('.bundle-config-row');
-      if(f&&!itemBundleConfigTemplate)itemBundleConfigTemplate=f.cloneNode(true);
-      f=f||itemBundleConfigTemplate;if(!f)return;
-      var c=f.cloneNode(true);c.classList.add('bundle-config-row');
+      var tpl=document.getElementById('itemBundleRowTemplate');
+      var first=b.querySelector('.bundle-config-row');
+      var row=tpl&&tpl.content?tpl.content.firstElementChild:(first?first.cloneNode(true):null);
+      if(!row)return;
+      var c=row.cloneNode(true);c.classList.add('bundle-config-row');
       c.querySelectorAll('select').forEach(function(x){x.selectedIndex=0});
       c.querySelectorAll('input').forEach(function(x){x.value='1'});
       b.appendChild(c);
@@ -915,8 +912,47 @@ window.SutoTxV72=(function(){
     catch(e){detail.innerHTML='<div class="panel empty-detail"><div class="empty-icon">!</div><h2>Unable to load item</h2><p class="subtle">'+esc(e.message||'Please reload the Items page.')+'</p></div>';}
   }
 
+  function senseBundleEsc(value){
+    return String(value??'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});
+  }
+  function senseRenderBundleModal(data){
+    const products=Array.isArray(data.products)?data.products:[];
+    const components=Array.isArray(data.components)?data.components:[];
+    const esc=senseBundleEsc;
+    const options='<option value="">Select product</option>'+products.map(function(p){return '<option value="'+Number(p.id)+'">'+esc(p.name)+'</option>';}).join('');
+    const row=function(component){
+      const selectedId=Number(component?.item_id||component?.component_item_id||0);
+      const qty=Number(component?.quantity||1);
+      const select=options.replace('<option value="'+selectedId+'">','<option value="'+selectedId+'" selected>');
+      return '<tr class="bundle-config-row"><td><select name="component_item_id[]" aria-label="Free item">'+select+'</select></td><td><input type="number" name="component_qty[]" min="0.001" step="0.001" value="'+(qty>0?qty:1)+'" aria-label="Quantity"></td><td><button type="button" class="btn small-btn" onclick="removeBundleConfigRow(this)" aria-label="Remove free item">×</button></td></tr>';
+    };
+    const existing=document.getElementById('itemBundleModal');
+    if(existing)existing.remove();
+    const backdrop=document.createElement('div');
+    backdrop.className='modal-backdrop show';
+    backdrop.id='itemBundleModal';
+    backdrop.innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="itemBundleModalTitle" style="width:min(820px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto">'+
+      '<div class="modal-head"><h2 id="itemBundleModalTitle">Bundle / Included Free Items</h2><button class="close" type="button" onclick="closeModal(\'itemBundleModal\')">×</button></div>'+
+      '<form method="post" action="'+esc(base)+'"><div class="form-body">'+
+      '<input type="hidden" name="_csrf" value="'+esc(data.csrf||'')+'"><input type="hidden" name="action" value="save_bundle"><input type="hidden" name="parent_item_id" value="'+Number(data.parent?.id||0)+'">'+
+      '<div class="subtle" style="margin-bottom:10px"><strong>'+esc(data.parent?.name||'')+'</strong> remains the billed product. Every included item below is always free on a sale invoice.</div>'+
+      '<div class="entry-table"><table><thead><tr><th>FREE ITEM</th><th style="width:150px">QTY</th><th style="width:70px"></th></tr></thead><tbody id="itemBundleRows">'+(components.length?components.map(row).join(''):row(null))+'</tbody></table></div>'+
+      '<template id="itemBundleRowTemplate">'+row(null)+'</template>'+
+      '<div style="margin-top:10px"><button type="button" class="btn" onclick="addBundleConfigRow()">+ Add Free Item</button></div>'+
+      '</div><div class="form-footer"><button type="button" class="btn" onclick="closeModal(\'itemBundleModal\')">Cancel</button><button type="submit" class="btn primary">Save Bundle</button></div></form></div>';
+    backdrop.addEventListener('click',function(e){if(e.target===backdrop)closeModal('itemBundleModal');});
+    document.body.appendChild(backdrop);
+  }
   window.senseLoadItemDialog=async function(mode,id,modalId){
     try{
+      if(modalId==='itemBundleModal'){
+        const endpoint='<?=e(url('item-bundle-manage-api'))?>';
+        const res=await fetch(endpoint+'?id='+encodeURIComponent(id),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+        const data=await res.json();
+        if(!res.ok||!data?.ok)throw new Error(data?.error||'Bundle details could not be loaded.');
+        senseRenderBundleModal(data);
+        return;
+      }
       const q='?tab='+encodeURIComponent(tab())+(mode==='edit'?'&edit=':'&view=')+encodeURIComponent(id);
       const res=await fetch(base+q,{credentials:'same-origin',cache:'no-store'}),html=await res.text(),doc=new DOMParser().parseFromString(html,'text/html'),fresh=doc.getElementById(modalId);
       if(!fresh)throw new Error('Item dialog could not be loaded.');
