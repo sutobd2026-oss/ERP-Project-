@@ -181,7 +181,7 @@ function delivery_challan_new(): void {
                     if($parentKey==='' || !isset($parentRowsByKey[$parentKey])) throw new RuntimeException('A bundle child item is missing its parent product.');
                     $parentItemId=(int)$parentRowsByKey[$parentKey]['item_id'];
                     $component=bundle_component_lookup($pdo,$cid,$parentItemId,$iid);
-                    if(!$component) throw new RuntimeException('Invalid included free item for the selected bundle product.');
+                    if(!$component) throw new RuntimeException('Invalid included item for the selected bundle product.');
                     $parentQty=(float)$parentRowsByKey[$parentKey]['qty'];
                     $expectedQty=round($parentQty*(float)$component['quantity'],6);
                     if(abs($q-$expectedQty)>0.000001) throw new RuntimeException('Included item quantity does not match the bundle quantity.');
@@ -923,7 +923,7 @@ function delivery_challan_new(): void {
       const unitPrice=Math.max(0,Number(component.unit_price||0));
       const initialAmount=(totalQty*unitPrice).toFixed(2);
       tr.innerHTML=
-        '<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button></td>'+
+        '<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove included item" title="Remove included item">×</button></td>'+
         '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><input type="hidden" name="item_description[]" value="'+esc(component.description||'')+'"><input type="hidden" name="item_warranty[]" value="'+esc(component.warranty||'')+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span></div></div></td>'+
         '<td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight item-weight-kg" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Number(component.weight_grams||0)>0?(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4):'')+'" placeholder="Weight in KG">':'')+'</div></td>'+
         '<td class="dc-unit unit-label">'+unit+'</td>'+
