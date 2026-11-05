@@ -101,6 +101,7 @@ page_start('Items');
                 if(!$bundleColumns) throw new RuntimeException('Bundle storage is not available. Please check the database permissions.');
                 $bundleHasSort=in_array('sort_order',$bundleColumns,true);
                 $bundleHasPrice=in_array('unit_price',$bundleColumns,true);
+                if(!$bundleHasPrice) throw new RuntimeException('Bundle price storage is not ready. Please check the database schema permissions and reload Items.');
                 $parentId=(int)($_POST['parent_item_id']??0);
                 if($parentId<=0) throw new RuntimeException('Bundle product not found.');
                 $st=$pdo->prepare('SELECT id,name,item_type,active FROM items WHERE id=? AND company_id=? LIMIT 1');
