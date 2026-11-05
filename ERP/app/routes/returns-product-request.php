@@ -522,7 +522,7 @@ function delivery_challan_new(): void {
    gap:10px!important;
  }
  #dcForm .dc-entry-top>.dc-customer-column{grid-column:1!important;grid-row:1!important;align-self:start!important}
- #dcForm .dc-entry-top>.dc-add-party-slot{grid-column:2!important;grid-row:1!important;align-self:start!important;padding:27px 0 0!important;margin:0!important}
+ #dcForm .dc-entry-top>.dc-add-party-slot{grid-column:2!important;grid-row:1!important;align-self:start!important;padding:17px 0 0!important;margin:0!important;transform:translateY(-10px)!important}
  #dcForm .dc-entry-top>.form-group:nth-child(3){grid-column:3!important;grid-row:1!important;align-self:start!important}
  #dcForm .dc-entry-top>.form-group:nth-child(4){grid-column:4!important;grid-row:1!important;align-self:start!important}
 }
