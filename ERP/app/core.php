@@ -540,8 +540,7 @@ function render_inline_creation_modals(): void {
               <div class="form-group"><label>Purchase Price</label><input type="number" step="0.01" min="0" name="purchase_price" value="0"></div>
               <div class="form-group"><label>Opening Stock</label><input type="number" step="0.01" min="0" name="opening_stock" value="0"></div>
               <div class="form-group"><label>Low Stock Limit</label><input type="number" step="0.01" min="0" name="low_stock_limit" value="0"></div>
-              <div class="form-group"><label>Product Weight</label><input type="number" step="0.0001" min="0" name="weight_value" placeholder="e.g. 250"></div>
-              <div class="form-group"><label>Weight Unit</label><select name="weight_unit"><option value="g">Gram (g)</option><option value="kg">Kilogram (kg)</option></select></div>
+              <div class="form-group"><label>Product Weight (kg)</label><input type="number" step="0.0001" min="0" name="weight_value" placeholder="e.g. 0.25"></div>
               <div class="form-group span2"><label><input type="checkbox" name="serial_tracked" value="1"> Enable Serial Number Tracking</label></div>
               <div class="form-group span2"><label>Description</label><textarea name="description" rows="3"></textarea></div>
             </div>
@@ -892,7 +891,7 @@ function openCashBankTransferV150(dir){var m=document.getElementById('cashBankTr
     if(!opt){opt=document.createElement('option');opt.value=value;sel.appendChild(opt);}
     opt.textContent=String(item.name||'');
     opt.dataset.sale=String(item.sale_price||0);opt.dataset.buy=String(item.purchase_price||0);opt.dataset.price=String((box.dataset.priceMode||'sale')==='purchase'?(item.purchase_price||0):(item.sale_price||0));
-    opt.dataset.unit=String(item.unit_symbol||'');opt.dataset.type=String(item.item_type||'');opt.dataset.serialTracked=String(item.serial_tracked||0);opt.dataset.weightValue=String(item.weight_value||0);opt.dataset.weightUnit=String(item.weight_unit||'g');opt.dataset.weightGrams=String(item.weight_grams||0);opt.dataset.code=String(item.code||'');opt.dataset.barcode=String(item.barcode||'');opt.dataset.location=String(item.location||'');opt.dataset.itemNote=String(item.item_note||'');opt.dataset.description=String(item.description||'');opt.dataset.warranty=String(item.warranty||'');
+    opt.dataset.unit=String(item.unit_symbol||'');opt.dataset.type=String(item.item_type||'');opt.dataset.serialTracked=String(item.serial_tracked||0);opt.dataset.weightValue=String(item.weight_value||0);opt.dataset.weightUnit='kg';opt.dataset.weightGrams=String(item.weight_grams||0);opt.dataset.code=String(item.code||'');opt.dataset.barcode=String(item.barcode||'');opt.dataset.location=String(item.location||'');opt.dataset.itemNote=String(item.item_note||'');opt.dataset.description=String(item.description||'');opt.dataset.warranty=String(item.warranty||'');
     // Do not erase bundle metadata already rendered by the transaction page
     // when the live-search response omits bundle_components.
     const incomingBundle=Array.isArray(item.bundle_components)?item.bundle_components:[];
