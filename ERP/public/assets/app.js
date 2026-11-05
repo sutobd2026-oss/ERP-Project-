@@ -30,9 +30,8 @@ function applyReceivedPayment(total){
   inputs.slice(1).forEach(i=>{i.value='0';});
 }
 function formatProductWeight(grams){
-  const g=Math.max(0,Number(grams)||0);
-  if(g>=1000)return (g/1000).toLocaleString('en-US',{maximumFractionDigits:3})+' kg';
-  return g.toLocaleString('en-US',{maximumFractionDigits:2})+' g';
+  const kg=Math.max(0,Number(grams)||0)/1000;
+  return kg.toLocaleString('en-US',{maximumFractionDigits:4})+' kg';
 }
 function recalc(){
   let sub=0,qtyTotal=0,productWeightGrams=0;
