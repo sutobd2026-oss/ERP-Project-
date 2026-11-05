@@ -1061,7 +1061,7 @@ ITEMHTML;
 })();
 </script>
 HTML;
-    $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=160"></script></body></html>';
+    $serialApi=e(url('serial-search-api')); echo '<script>window.SutoSerialSearchConfig='.json_encode(['url'=>$serialApi],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).';</script>'; echo '</div></main></div><script src="'.e(url('assets/app.js')).'?v=161"></script></body></html>';
 }
 function get_items(int $cid): array {
     $pdo=db();
