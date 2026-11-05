@@ -1091,7 +1091,7 @@ function delivery_challan_new(): void {
     dcRenumberRows();
     dcEnsureDecimalPriceInputs();
     dcRecalc();
-    window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};
+    window.SutoBundleComponentsConfig={url:<?=json_encode(url('bundle-components-api'),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>};window.SutoProductWeightEnabled=<?= $showProductWeight?'true':'false' ?>;
     </script>
     <?php render_inline_creation_modals(); page_end();
 }
