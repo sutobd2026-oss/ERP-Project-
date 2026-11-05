@@ -87,7 +87,7 @@ document.body.dataset.txntype=<?=json_encode($type)?>;
 window.SutoProductWeightEnabled=<?= $showProductWeight?'true':'false' ?>;
 window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
 </script>
-<form id="txnForm" class="transaction-form txn-compact <?= $isSale ? 'sale-invoice-ui' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
+<form id="txnForm" class="transaction-form sense-transaction-entry txn-compact <?= $isSale ? 'sale-invoice-ui' : 'purchase-entry-form' ?>" method="post" action="<?=e(url('transaction-save'))?>" onsubmit="return validateTransactionForm()">
 <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="txn_type" value="<?=$type?>"><?php if($editTx):?><input type="hidden" name="transaction_id" value="<?=$editTx['id']?>"><?php endif; ?>
 <div class="panel">
   <div class="entry-top <?= $isSale?'sale-entry-top':'purchase-entry-top' ?>">
