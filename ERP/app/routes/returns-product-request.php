@@ -639,7 +639,7 @@ function delivery_challan_new(): void {
 
         <div class="dc-print-summary-wrap">
           <div class="dc-print-summary">
-            <div class="dc-print-summary-row"><span>Items Total</span><strong data-dc-print-subtotal>৳0.00</strong></div>
+            <div class="dc-print-summary-row"><span>Items Total</span><strong data-dc-print-subtotal>৳0.00</strong></div><?php if($showProductWeight): ?><div class="dc-print-summary-row"><span>Product Weight</span><strong data-dc-print-weight>0 kg</strong></div><?php endif; ?>
             <div class="dc-print-summary-row"><span>Discount</span><strong data-dc-print-discount>৳0.00</strong></div>
             <div class="dc-print-summary-row"><span>Courier / Shipping</span><strong data-dc-print-shipping>৳0.00</strong></div>
             <div class="dc-print-summary-row total"><span>Total Amount</span><strong data-dc-print-total>৳0.00</strong></div>
@@ -697,6 +697,7 @@ function delivery_challan_new(): void {
         tbody.innerHTML=rows.length?rows.map(r=>`<tr><td>${r.i}</td><td>${dcPrintEsc(r.item||'—')}${r.description?`<div style="font-size:10px;color:#64748b">${dcPrintEsc(r.description)}</div>`:''}${r.warranty?`<div style="font-size:10px;color:#64748b">Warranty: ${dcPrintEsc(r.warranty)}</div>`:''}</td><td class="num">${dcPrintQty(r.qty)}</td><?php if($showProductWeight): ?><td class="num">${dcPrintQty(r.weight)} kg</td><?php endif; ?><td>${dcPrintEsc(r.unit||'—')}</td><td class="num">${dcFmt(r.price)}</td><td class="num">${dcFmt(r.amount)}</td></tr>`).join(''):'<tr><td colspan="<?= $showProductWeight?7:6 ?>">No items.</td></tr>';
       }
       set('[data-dc-print-subtotal]',text('#dcSubtotal')||'৳0.00');
+      set('[data-dc-print-weight]',text('#dcProductWeightTotal')||'0 kg');
       set('[data-dc-print-discount]',dcFmt(Number(val('#dcInvDisc')||0)));
       set('[data-dc-print-shipping]',dcFmt(Number(val('#dcShipping')||0)));
       set('[data-dc-print-total]',text('#dcTotal')||'৳0.00');
