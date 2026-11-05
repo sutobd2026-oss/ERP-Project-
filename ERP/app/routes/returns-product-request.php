@@ -511,6 +511,21 @@ function delivery_challan_new(): void {
  .delivery-entry-form.sale-invoice-ui .entry-table{overflow-x:auto!important}
  .delivery-entry-form.sale-invoice-ui .entry-table table{min-width:900px!important}
 }
+/* Keep Customer, Add Party, Challan Number and Challan Date on one desktop row.
+   This higher-specificity rule overrides the generic standard-entry-top three-column rule. */
+@media(min-width:851px){
+ #dcForm .dc-entry-top{
+   display:grid!important;
+   grid-template-columns:minmax(0,2.1fr) minmax(130px,.85fr) minmax(0,1fr) minmax(0,1fr)!important;
+   grid-auto-flow:row!important;
+   align-items:end!important;
+   gap:10px!important;
+ }
+ #dcForm .dc-entry-top>.dc-customer-column{grid-column:1!important;grid-row:1!important}
+ #dcForm .dc-entry-top>.dc-add-party-slot{grid-column:2!important;grid-row:1!important;align-self:end!important;padding:0!important;margin:0!important}
+ #dcForm .dc-entry-top>.form-group:nth-child(3){grid-column:3!important;grid-row:1!important}
+ #dcForm .dc-entry-top>.form-group:nth-child(4){grid-column:4!important;grid-row:1!important}
+}
 </style>
 <form method="post" id="dcForm" class="panel standard-entry-form delivery-entry-form sale-invoice-ui">
       <input type="hidden" name="_csrf" value="<?=csrf_token()?>"><input type="hidden" name="action" value="save_delivery_challan"><?php if($editMode): ?><input type="hidden" name="transaction_id" value="<?=e((string)$editTx['id'])?>"><?php endif; ?>
