@@ -425,7 +425,8 @@ function delivery_challan_new(): void {
 .delivery-entry-form .entry-table .dc-amt{padding-top:7px;display:block;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 .delivery-entry-form .entry-table .txn-row-index-cell{vertical-align:top}
 .delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label>span:last-child{color:#0b8f55;font-weight:700;font-size:10px}.delivery-entry-form .entry-table input{height:36px}.delivery-entry-form .entry-table .dc-qty{width:78px;min-width:78px;max-width:78px;display:block;box-sizing:border-box}.delivery-entry-form .item-picker-cell{min-width:260px}@media(max-width:900px){.dc-summary-grid{grid-template-columns:1fr}.dc-summary-spacer{display:none}.dc-field{grid-template-columns:1fr 160px}}@media(max-width:600px){.dc-field{grid-template-columns:1fr}.dc-field input{width:100%}.delivery-entry-form .entry-table{overflow:auto}.delivery-entry-form .entry-table table{min-width:850px}}</style>
+.delivery-entry-form .entry-table .dc-bundle-child-row .bundle-child-label>span:last-child{color:#0b8f55;font-weight:700;font-size:10px}.delivery-entry-form .entry-table input{height:36px}.delivery-entry-form .entry-table .dc-qty{width:78px;min-width:78px;max-width:78px;display:block;box-sizing:border-box}.delivery-entry-form .item-picker-cell{min-width:260px}
+.delivery-entry-form .dc-qty-stack{display:flex;flex-direction:column;gap:4px;min-width:0}.delivery-entry-form .dc-item-weight{width:100%;min-width:0;height:27px!important;padding:0 5px!important;border:1px solid #cfd9e5!important;border-radius:6px!important;font-size:11px!important;box-sizing:border-box!important}.delivery-entry-form .dc-line-weight{text-align:right;margin-top:3px;font-size:10px;color:#738198;font-weight:600;white-space:nowrap}.delivery-entry-form .dc-line-meta{margin-top:4px}.delivery-entry-form .dc-line-meta-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.55fr);gap:5px}.delivery-entry-form .dc-line-meta-grid input{width:100%;min-width:0;height:28px!important;padding:0 7px!important;border:1px solid #cfd9e5!important;border-radius:6px!important;font-size:11px!important;box-sizing:border-box!important}@media(max-width:900px){.dc-summary-grid{grid-template-columns:1fr}.dc-summary-spacer{display:none}.dc-field{grid-template-columns:1fr 160px}}@media(max-width:600px){.dc-field{grid-template-columns:1fr}.dc-field input{width:100%}.delivery-entry-form .entry-table{overflow:auto}.delivery-entry-form .entry-table table{min-width:850px}}</style>
     <style>
 @media(min-width:851px){.delivery-entry-form .dc-entry-top{display:grid!important;grid-template-columns:minmax(190px,2fr) minmax(96px,.55fr) minmax(160px,1.3fr) minmax(160px,1fr)!important;gap:10px!important;align-items:start!important;padding:0 1px 10px!important}.delivery-entry-form .dc-add-party-slot{display:flex!important;align-items:flex-start!important;min-width:0!important;padding-top:22px!important}.delivery-entry-form .dc-add-party-slot .btn{width:100%!important;height:34px!important;min-height:34px!important;padding:0 8px!important;white-space:nowrap!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:12px!important}}
 .delivery-entry-form{padding:10px 10px 86px!important;border:1px solid #dfe6ef!important;border-radius:12px!important;box-shadow:0 2px 10px rgba(15,23,42,.05)!important;background:#fff!important}
@@ -459,7 +460,7 @@ function delivery_challan_new(): void {
           $liUnit=(string)($ln['unit_symbol']??'');
           $liDescription=trim((string)($ln['item_description']??'')); if($liDescription==='')$liDescription=trim((string)($ln['item_master_description']??''));
           $liWarranty=trim((string)($ln['item_warranty']??'')); if($liWarranty==='')$liWarranty=trim((string)($ln['item_master_warranty']??''));
-          $liWeightGrams=(float)($ln['item_weight_grams']??0); if(!$editMode && $ln===null && $liId>0)$liWeightGrams=(float)($ln['weight_value']??0)*(strtolower((string)($ln['weight_unit']??'g'))==='kg'?1000:1);
+          $liWeightGrams=(float)($ln['item_weight_grams']??0);
           $childParentId=(int)($ln['bundle_parent_transaction_item_id']??0);
           $isChild=$childParentId>0;
           $rowKey=$ln?'tx-ti-'.(int)$ln['id']:'dc-new-'.bin2hex(random_bytes(5));
@@ -898,6 +899,12 @@ function delivery_challan_new(): void {
       const o=el?.selectedOptions?.[0],r=el?.closest('tr'); if(!r)return;
       r.querySelector('.dc-price').value=String(Number(o?.dataset.price||0));
       r.querySelector('.dc-unit').textContent=o?.dataset.unit||'—';
+      const desc=r.querySelector('.dc-item-description'),war=r.querySelector('.dc-item-warranty'),weight=r.querySelector('.dc-item-weight');
+      if(desc){desc.value=o?.dataset.description||'';const meta=r.querySelector('.dc-line-meta');if(meta)meta.style.display=el.value?'':'none';}
+      if(war)war.value=o?.dataset.warranty||'';
+      const grams=Math.max(0,Number(o?.dataset.weightGrams||0));
+      if(weight){weight.value=(grams/1000).toFixed(4);weight.readOnly=(o?.dataset.type||'product')==='service';}
+      r.dataset.weightGrams=String(grams);
       r.dataset.dcRecalcFromPrice='1';
       const body=document.getElementById('dcRows');
       const rows=body?.querySelectorAll('tr');
@@ -936,7 +943,7 @@ function delivery_challan_new(): void {
       });
     }
     function dcRecalc(){
-      let subtotal=0;
+      let subtotal=0,totalWeightGrams=0;
       document.querySelectorAll('#dcRows tr').forEach(function(r){
         const q=Math.max(0,parseFloat(r.querySelector('.dc-qty')?.value||0)||0);
         const p=Math.max(0,parseFloat(r.querySelector('.dc-price')?.value||0)||0);
@@ -954,7 +961,15 @@ function delivery_challan_new(): void {
           const output=r.querySelector('.dc-amt-text');if(output)output.textContent=dcFmt(net);
         }
         subtotal+=net;
+        const selected=r.querySelector('.dc-item')?.selectedOptions?.[0];
+        const isService=(selected?.dataset.type||'product')==='service';
+        const weightInput=r.querySelector('.dc-item-weight');
+        const grams=isService?0:(weightInput?Math.max(0,Number(weightInput.value)||0)*1000:Math.max(0,Number(r.dataset.weightGrams||selected?.dataset.weightGrams||0)));
+        r.dataset.weightGrams=String(grams);
+        const lineGrams=grams*q;totalWeightGrams+=lineGrams;
+        const lineOut=r.querySelector('.dc-line-weight');if(lineOut)lineOut.textContent=(lineGrams/1000).toLocaleString('en-US',{maximumFractionDigits:4})+' kg';
       });
+      const weightTotal=document.getElementById('dcProductWeightTotal');if(weightTotal)weightTotal.textContent=(totalWeightGrams/1000).toLocaleString('en-US',{maximumFractionDigits:4})+' kg';
       subtotal=Math.round(subtotal*100)/100;
       const invDisc=Math.min(Math.max(0,parseFloat(document.getElementById('dcInvDisc')?.value||0)||0),subtotal);
       const shipping=Math.max(0,parseFloat(document.getElementById('dcShipping')?.value||0)||0);
@@ -992,13 +1007,14 @@ function delivery_challan_new(): void {
         if(inp.classList.contains('dc-qty')) inp.value='1';
         else if(inp.classList.contains('dc-price')||inp.classList.contains('dc-line-discount')) inp.value='0';
         else if(inp.classList.contains('item-search-input')) inp.value='';
+        else if(inp.classList.contains('dc-item-description')||inp.classList.contains('dc-item-warranty')||inp.classList.contains('dc-item-weight')) inp.value='';
         else if(inp.name==='item_id[]') inp.value='';
       });
       row.querySelectorAll('select').forEach(function(sel){sel.value='';});
       const search=row.querySelector('.item-search-input'); if(search) search.value='';
       const clear=row.querySelector('.item-search-clear'); if(clear) clear.style.display='none';
       const results=row.querySelector('.item-search-results'); if(results){results.hidden=true;results.innerHTML='';}
-      const unit=row.querySelector('.dc-unit'); if(unit) unit.textContent='—';
+      const unit=row.querySelector('.dc-unit'); if(unit) unit.textContent='—';const meta=row.querySelector('.dc-line-meta');if(meta)meta.style.display='none';row.dataset.weightGrams='0';
       const amt=row.querySelector('.dc-amt'); if(amt){amt.dataset.discount='0';const ai=amt.querySelector('.dc-amt-input');if(ai)ai.value='0.00';const tx=amt.querySelector('.dc-amt-text');if(tx)tx.textContent='৳0.00';}delete row.dataset.dcRecalcFromPrice;
       const n=row.querySelector('.txn-row-number'); if(n)n.textContent=String(body.querySelectorAll('tr').length+1);
       body.appendChild(row);
@@ -1041,6 +1057,7 @@ function delivery_challan_new(): void {
         const row=e.target.closest('#dcRows tr');if(!row)return;
         if(e.target.classList.contains('dc-qty') && row.dataset.bundleChild!=='1')dcUpdateBundleQuantities(row);
         if(e.target.matches('.dc-qty,.dc-price,.dc-line-discount'))row.dataset.dcRecalcFromPrice='1';
+        if(e.target.matches('.dc-item-weight'))row.dataset.weightGrams=String(Math.max(0,Number(e.target.value)||0)*1000);
         if(e.target.matches('.dc-amt-input')){
           const q=Math.max(0,parseFloat(row.querySelector('.dc-qty')?.value||0)||0);
           const d=Math.max(0,parseFloat(row.querySelector('.dc-line-discount')?.value||row.querySelector('.dc-amt')?.dataset.discount||0)||0);
@@ -1112,7 +1129,7 @@ function document_module(string $type,string $title,string $prefix,string $party
                     $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
                       ->execute([$cid,$src['party_id'],$type,$newDoc,transaction_datetime(null),$src['due_date'],$src['subtotal'],$src['item_discount'],$src['invoice_discount'],$src['tax'],$src['direct_expense'],$src['total'],0,$src['total'],$src['currency_code'],'open','Duplicated from '.$src['document_no'],$u['id']]);
                     $newId=(int)$pdo->lastInsertId();
-                    $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
+                    $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty,item_weight_grams) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
                     foreach($itemsRows as $r) $ins->execute([$newId,$r['item_id'],$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount']]);
                     audit('duplicate','transaction',$newId,['source_transaction'=>$docId,'source_document'=>$src['document_no'],'type'=>$type,'document'=>$newDoc]);
                     $pdo->commit(); flash('success',$title.' '.$src['document_no'].' duplicated as '.$newDoc.'.');
@@ -1246,7 +1263,7 @@ function document_module(string $type,string $title,string $prefix,string $party
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
               ->execute([$cid,$source['party_id'],$targetType,$targetDoc,transaction_datetime(null),$source['due_date'],$source['subtotal'],$source['item_discount'],$source['invoice_discount'],$source['tax'],$source['direct_expense'],$source['total'],$targetPaid,$targetDue,$u['currency_code'],in_array($targetType,['sale','purchase'],true)?'final':'open','Converted from '.$source['document_no'],$u['id']]);
             $tid=(int)$pdo->lastInsertId();$ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
-            foreach($sourceItems as $r){$ins->execute([$tid,$r['item_id'],$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount']]);}
+            foreach($sourceItems as $r){$ins->execute([$tid,$r['item_id'],$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount'],$r['item_description']??null,$r['item_warranty']??null,$r['item_weight_grams']??0]);}
             if($targetType==='sale'){
                 $cogs=0;$st2=$pdo->prepare('SELECT i.purchase_price,i.item_type FROM items i WHERE i.id=? AND i.company_id=?');$stock=$pdo->prepare('INSERT INTO stock_movements(company_id,item_id,transaction_id,movement_date,quantity,movement_type,note) VALUES(?,?,?,?,?,?,?)');
                 foreach($sourceItems as $r){$st2->execute([$r['item_id'],$cid]);$it=$st2->fetch();if($it&&$it['item_type']==='product'){$cogs+=max(0,(float)$r['qty']*(float)$it['purchase_price']);$stock->execute([$cid,$r['item_id'],$tid,date('Y-m-d'),-1*(float)$r['qty'],'sale',$targetDoc]);}}
