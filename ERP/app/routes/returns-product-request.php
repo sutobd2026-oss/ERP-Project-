@@ -138,7 +138,8 @@ function render_delivery_challan_print_preview_direct(array $tx,array $lines,arr
 
 function delivery_challan_new(): void {
     global $u;
-    $cid=(int)$u['company_id']; $pdo=db();
+    $cid=(int)$u['company_id']; $pdo=db(); $showProductWeight=setting('enable_product_weight','1',$cid)==='1';
+    try{$cols=$pdo->query('SHOW COLUMNS FROM transaction_items')->fetchAll(PDO::FETCH_COLUMN,0);foreach(['item_description'=>'TEXT NULL','item_warranty'=>'VARCHAR(255) NULL','item_weight_grams'=>'DECIMAL(14,4) NOT NULL DEFAULT 0'] as $col=>$def){if(!in_array($col,$cols,true))$pdo->exec('ALTER TABLE transaction_items ADD COLUMN `'.$col.'` '.$def);}}catch(Throwable $e){error_log('Delivery Challan item metadata schema: '.$e->getMessage());}
     $previewId=(int)($_GET['preview']??0);
     $previewMode=$previewId>0;
     if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['action']??'')==='save_delivery_challan'){
@@ -163,7 +164,7 @@ function delivery_challan_new(): void {
             if(!$pr) throw new RuntimeException('Customer is required.');
             $txnDate=transaction_datetime($_POST['txn_date']??null); $dueDate=$_POST['due_date']?:null; $notes=trim($_POST['notes']??'');
             $itemIds=$_POST['item_id']??[]; $qtys=$_POST['qty']??[]; $prices=$_POST['price']??[]; $discs=$_POST['discount']??[]; $amounts=(array)($_POST['amount']??[]);
-            $rowKeys=(array)($_POST['bundle_row_key']??[]); $parentKeys=(array)($_POST['bundle_parent_key']??[]); $childFlags=(array)($_POST['bundle_child']??[]);
+            $rowKeys=(array)($_POST['bundle_row_key']??[]); $parentKeys=(array)($_POST['bundle_parent_key']??[]); $childFlags=(array)($_POST['bundle_child']??[]); $descriptions=(array)($_POST['item_description']??[]); $warranties=(array)($_POST['item_warranty']??[]); $weightInputs=(array)($_POST['item_weight_kg']??[]);
             $rows=[]; $subtotal=0; $itemDisc=0; $seenRowKeys=[]; $parentRowsByKey=[];
             foreach($itemIds as $i=>$iid){
                 $iid=(int)$iid; $q=(float)($qtys[$i]??0); $price=(float)($prices[$i]??0); $disc=max(0,(float)($discs[$i]??0));
@@ -189,7 +190,9 @@ function delivery_challan_new(): void {
                     $price=$q>0?($requestedAmount+$disc)/$q:0;
                 }
                 $gross=$q*$price; if($disc>$gross)$disc=$gross;
-                $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'requestedAmount'=>$requestedAmount,'it'=>$it,'parentItemId'=>$parentItemId];
+                $weightKg=array_key_exists($i,$weightInputs)?max(0,(float)$weightInputs[$i]):null;
+                $weightGrams=(string)($it['item_type']??'product')==='service'?0:(($weightKg!==null&&$showProductWeight)?$weightKg*1000:((float)($it['weight_value']??0)*(strtolower((string)($it['weight_unit']??'g'))==='kg'?1000:1)));
+                $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'requestedAmount'=>$requestedAmount,'it'=>$it,'parentItemId'=>$parentItemId,'description'=>trim((string)($descriptions[$i]??'')),'warranty'=>trim((string)($warranties[$i]??'')),'weightGrams'=>$weightGrams];
                 $rows[]=$rowData;
                 if(!$isChild){$parentRowsByKey[$rowKey]=$rowData;$subtotal+=$gross;$itemDisc+=$disc;}
             }
@@ -232,7 +235,7 @@ function delivery_challan_new(): void {
                     ->execute([$cid,$party,'delivery_challan',$doc,$txnDate,$dueDate,$subtotal,$itemDisc,$invDisc,0,$shipping,$total,$advance,$cod,$u['currency_code'],$cod<=0.0001?'paid':'open',$notes,$u['id']]);
                 $tid=(int)$pdo->lastInsertId();
             }
-            $insParent=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,bundle_parent_transaction_item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?,?)');
+            $insParent=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,bundle_parent_transaction_item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty,item_weight_grams) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
             $parentTxItemIds=[];
             foreach($rows as $rr){
                 $parentTxId=null;
@@ -240,7 +243,7 @@ function delivery_challan_new(): void {
                     $parentTxId=$parentTxItemIds[$rr['parentKey']]??null;
                     if(!$parentTxId) throw new RuntimeException('Bundle parent item could not be linked.');
                 }
-                $insParent->execute([$tid,$rr['item_id'],$parentTxId,$rr['qty'],$rr['price'],$rr['discount'],0,($rr['requestedAmount']!==null)?max(0,(float)$rr['requestedAmount']):max(0,$rr['qty']*$rr['price']-$rr['discount'])]);
+                $insParent->execute([$tid,$rr['item_id'],$parentTxId,$rr['qty'],$rr['price'],$rr['discount'],0,($rr['requestedAmount']!==null)?max(0,(float)$rr['requestedAmount']):max(0,$rr['qty']*$rr['price']-$rr['discount']),$rr['description'],$rr['warranty'],$rr['weightGrams']]);
                 $newTi=(int)$pdo->lastInsertId();
                 if(!$rr['isChild']) $parentTxItemIds[$rr['rowKey']]=$newTi;
             }
@@ -384,7 +387,7 @@ function delivery_challan_new(): void {
         if(strtolower((string)($editTx['status']??''))==='cancelled' && !$previewMode){ flash('error','Cancelled Delivery Challan cannot be edited.'); redirect('delivery-challans'); }
         $lk=$pdo->prepare('SELECT tl.to_transaction_id FROM transaction_links tl WHERE tl.company_id=? AND tl.from_transaction_id=? AND tl.relation_type="challan_to_sale" LIMIT 1');$lk->execute([$cid,$editId]);
         if($lk->fetchColumn() && !$previewMode){ flash('error','Converted Delivery Challan cannot be edited.'); redirect('delivery-challans'); }
-        $iq=$pdo->prepare('SELECT ti.*,i.name item_name,u.symbol unit_symbol FROM transaction_items ti JOIN items i ON i.id=ti.item_id LEFT JOIN units u ON u.id=i.unit_id WHERE ti.transaction_id=? ORDER BY ti.id');$iq->execute([$editId]);$editLines=$iq->fetchAll();
+        $iq=$pdo->prepare('SELECT ti.*,i.name item_name,i.description item_master_description,i.warranty item_master_warranty,i.item_type,i.weight_value,i.weight_unit,u.symbol unit_symbol FROM transaction_items ti JOIN items i ON i.id=ti.item_id LEFT JOIN units u ON u.id=i.unit_id WHERE ti.transaction_id=? ORDER BY ti.id');$iq->execute([$editId]);$editLines=$iq->fetchAll();
         $pq=$pdo->prepare('SELECT * FROM payment_lines WHERE transaction_id=? ORDER BY id');$pq->execute([$editId]);$editPayments=$pq->fetchAll();
         $editMode=true;
     }
@@ -392,7 +395,7 @@ function delivery_challan_new(): void {
     $bankSt=$pdo->prepare('SELECT id,name,bank_name,account_number FROM bank_accounts WHERE company_id=? AND active=1 ORDER BY name'); $bankSt->execute([$cid]); $advanceBanks=$bankSt->fetchAll();
     // Delivery Challan uses a dedicated, minimal item query so item selection
     // does not depend on stock-movement calculation or any optional joins.
-    $itemSt=$pdo->prepare('SELECT id,item_type,name,sale_price,unit_id FROM items WHERE company_id=? AND active=1 ORDER BY name');
+    $itemSt=$pdo->prepare('SELECT id,item_type,name,sale_price,unit_id,description,warranty,weight_value,weight_unit FROM items WHERE company_id=? AND active=1 ORDER BY name');
     $itemSt->execute([$cid]);
     $items=$itemSt->fetchAll(PDO::FETCH_ASSOC);
     $unitSymbols=[];
