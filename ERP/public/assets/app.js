@@ -118,6 +118,7 @@ function removeRow(btn){
     qsa('select',r).forEach(x=>x.selectedIndex=0);
     qsa('input',r).forEach(x=>{
       if(x.classList.contains('qty'))x.value='1';
+      else if(x.classList.contains('item-weight-kg')){x.value='0';x.readOnly=true;}
       else if(x.classList.contains('price')||x.classList.contains('line-disc'))x.value='0';
       else if(x.classList.contains('item-search-input'))x.value='';
       else if(x.classList.contains('amount-input'))x.value='0.00';
@@ -131,6 +132,8 @@ function removeRow(btn){
     const u=qs('.unit-label',r);if(u)u.textContent='—';
     const amountDisplay=qs('.amount',r);
     if(amountDisplay){if(amountDisplay.matches('input'))amountDisplay.value='0.00';else amountDisplay.textContent=fmt(0);}
+    const lineWeight=qs('.line-weight-total',r);if(lineWeight)lineWeight.textContent='0 kg';
+    r.dataset.weightGrams='0';
     delete r.dataset.recalcAmountFromPrice;
   }else{
     const key=qs('input[name="bundle_row_key[]"]',target)?.value||target.dataset.bundleRowKey||'';
