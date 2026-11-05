@@ -61,7 +61,7 @@ function recalc(){
     const itemId=qs('.item-select',r)?.value||qs('input[type="hidden"][name="item_id[]"]',r)?.value||'';
     if(itemId){
       qtyTotal+=Math.max(0,qty);
-      if(isSale){
+      if(isSale && window.SutoProductWeightEnabled){
         const isService=selectedOption?.dataset.type==='service';
         const weightInput=qs('.item-weight-kg',r);
         const unitWeightGrams=isService?0:(weightInput
