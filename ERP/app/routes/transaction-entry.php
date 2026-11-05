@@ -117,7 +117,7 @@ window.SutoTxnBundleMap=<?=json_encode($bundleMapTxn,JSON_UNESCAPED_UNICODE|JSON
 <?php endforeach; ?>
     </tbody></table>
   </div>
-  <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addRow('<?=$type?>')">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#entryRows','<?=$type?>')">+ Add Product</button></div><div class="sale-entry-totals"><span>Total QTY <strong id="qtyTotal">0</strong></span><?php if($isSale): ?><span><b>Product Weight</b> <strong id="productWeightTotal">0 g</strong></span><?php endif; ?><span><b>Items Total</b> <strong id="subTotal"><?=money((float)($editTx['subtotal']??0))?></strong></span></div></div>
+  <div class="entry-actions"><div style="display:flex;gap:8px"><button type="button" class="btn" onclick="addRow('<?=$type?>')">+ Add Row</button><button type="button" class="btn" onclick="senseOpenInlineProductModal('#entryRows','<?=$type?>')">+ Add Product</button></div><div class="sale-entry-totals"><span>Total QTY <strong id="qtyTotal">0</strong></span><?php if($isSale): ?><span><b>Product Weight (kg)</b> <strong id="productWeightTotal">0 kg</strong></span><?php endif; ?><span><b>Items Total</b> <strong id="subTotal"><?=money((float)($editTx['subtotal']??0))?></strong></span></div></div>
   <?php if($isSale): ?>
   <div class="sale-adjustments">
     <div class="form-group"><label>Tax / VAT <span class="subtle">(optional)</span></label><input id="tax" type="number" step="0.01" min="0" name="tax" value="<?=e((string)($formRestore['tax']??($editTx['tax']??0)))?>"></div>
