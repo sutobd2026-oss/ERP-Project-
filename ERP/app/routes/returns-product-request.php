@@ -184,9 +184,9 @@ function delivery_challan_new(): void {
                     if(!$component) throw new RuntimeException('Invalid included free item for the selected bundle product.');
                     $parentQty=(float)$parentRowsByKey[$parentKey]['qty'];
                     $expectedQty=round($parentQty*(float)$component['quantity'],6);
-                    if(abs($q-$expectedQty)>0.000001) throw new RuntimeException('Included free item quantity does not match the bundle quantity.');
-                    $price=0; $disc=0; $requestedAmount=0.0;
-                }elseif($requestedAmount!==null){
+                    if(abs($q-$expectedQty)>0.000001) throw new RuntimeException('Included item quantity does not match the bundle quantity.');
+                }
+                if($requestedAmount!==null){
                     $price=$q>0?($requestedAmount+$disc)/$q:0;
                 }
                 $gross=$q*$price; if($disc>$gross)$disc=$gross;
@@ -194,7 +194,8 @@ function delivery_challan_new(): void {
                 $weightGrams=(string)($it['item_type']??'product')==='service'?0:(($weightKg!==null&&$showProductWeight)?$weightKg*1000:((float)($it['weight_value']??0)*(strtolower((string)($it['weight_unit']??'g'))==='kg'?1000:1)));
                 $rowData=['index'=>$i,'rowKey'=>$rowKey,'parentKey'=>$parentKey,'isChild'=>$isChild,'item_id'=>$iid,'qty'=>$q,'price'=>$price,'discount'=>$disc,'requestedAmount'=>$requestedAmount,'it'=>$it,'parentItemId'=>$parentItemId,'description'=>trim((string)($descriptions[$i]??'')),'warranty'=>trim((string)($warranties[$i]??'')),'weightGrams'=>$weightGrams];
                 $rows[]=$rowData;
-                if(!$isChild){$parentRowsByKey[$rowKey]=$rowData;$subtotal+=$gross;$itemDisc+=$disc;}
+                $subtotal+=$gross; $itemDisc+=$disc;
+                if(!$isChild)$parentRowsByKey[$rowKey]=$rowData;
             }
             if(!$rows) throw new RuntimeException('Add at least one item.');
             $invDisc=max(0,(float)($_POST['invoice_discount']??0));
@@ -562,7 +563,7 @@ function delivery_challan_new(): void {
             <input type="hidden" name="bundle_child[]" value="<?= $isChild?'1':'0'?>">
             <div class="item-picker-cell">
               <?php if($isChild): ?>
-                <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=$liId?>"><input type="hidden" name="item_description[]" value="<?=e($liDescription)?>"><input type="hidden" name="item_warranty[]" value="<?=e($liWarranty)?>">
+                <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span></div><input type="hidden" name="item_id[]" value="<?=$liId?>"><input type="hidden" name="item_description[]" value="<?=e($liDescription)?>"><input type="hidden" name="item_warranty[]" value="<?=e($liWarranty)?>">
               <?php else: ?>
                 <?php item_search_field($liId,$liName,'','sale'); ?><div class="dc-line-meta item-line-meta" style="<?= $liId?'':'display:none' ?>"><div class="dc-line-meta-grid item-line-meta-grid"><div><input type="text" class="dc-item-description item-line-description" name="item_description[]" value="<?=e($liDescription)?>" placeholder="Description"></div><div><input type="text" class="dc-item-warranty item-line-warranty" name="item_warranty[]" value="<?=e($liWarranty)?>" placeholder="Warranty"></div></div></div>
                 <select name="item_id[]" class="dc-item item-source-select" tabindex="-1" aria-hidden="true">
@@ -575,9 +576,9 @@ function delivery_challan_new(): void {
           </td>
           <td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight item-weight-kg" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e($liWeightGrams>0?number_format(max(0,$liWeightGrams/1000),4,'.',''):'')?>" placeholder="Weight in KG" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?>><?php endif; ?></div></td>
           <td class="dc-unit unit-label"><?=e($liUnit!==''?$liUnit:'—')?></td>
-          <td><input type="number" class="dc-price price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
-          <td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
-          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text amount">৳0.00</span><?php else:?><input type="number" class="dc-amt-input amount amount-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?><?php if($showProductWeight): ?><div class="dc-line-weight line-weight-total">0 kg</div><?php endif; ?></td>
+          <td><input type="number" class="dc-price price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>"></td>
+          <td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>"></td>
+          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><input type="number" class="dc-amt-input amount amount-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php if($showProductWeight): ?><div class="dc-line-weight line-weight-total">0 kg</div><?php endif; ?></td>
         </tr>
         <?php endforeach; ?>
       </tbody></table></div>
