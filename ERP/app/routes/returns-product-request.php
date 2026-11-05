@@ -457,6 +457,9 @@ function delivery_challan_new(): void {
           $liPrice=(float)($ln['unit_price']??0);
           $liDisc=(float)($ln['discount']??0);
           $liUnit=(string)($ln['unit_symbol']??'');
+          $liDescription=trim((string)($ln['item_description']??'')); if($liDescription==='')$liDescription=trim((string)($ln['item_master_description']??''));
+          $liWarranty=trim((string)($ln['item_warranty']??'')); if($liWarranty==='')$liWarranty=trim((string)($ln['item_master_warranty']??''));
+          $liWeightGrams=(float)($ln['item_weight_grams']??0); if(!$editMode && $ln===null && $liId>0)$liWeightGrams=(float)($ln['weight_value']??0)*(strtolower((string)($ln['weight_unit']??'g'))==='kg'?1000:1);
           $childParentId=(int)($ln['bundle_parent_transaction_item_id']??0);
           $isChild=$childParentId>0;
           $rowKey=$ln?'tx-ti-'.(int)$ln['id']:'dc-new-'.bin2hex(random_bytes(5));
@@ -473,22 +476,22 @@ function delivery_challan_new(): void {
             <input type="hidden" name="bundle_child[]" value="<?= $isChild?'1':'0'?>">
             <div class="item-picker-cell">
               <?php if($isChild): ?>
-                <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div>
+                <div class="bundle-child-label"><span>└─ <strong><?=e($liName)?></strong></span><span>FREE</span></div><input type="hidden" name="item_id[]" value="<?=$liId?>"><input type="hidden" name="item_description[]" value="<?=e($liDescription)?>"><input type="hidden" name="item_warranty[]" value="<?=e($liWarranty)?>">
               <?php else: ?>
-                <?php item_search_field($liId,$liName,'','sale'); ?>
+                <?php item_search_field($liId,$liName,'','sale'); ?><div class="dc-line-meta" style="<?= $liId?'':'display:none' ?>"><div class="dc-line-meta-grid"><input type="text" class="dc-item-description" name="item_description[]" value="<?=e($liDescription)?>" placeholder="Description"><input type="text" class="dc-item-warranty" name="item_warranty[]" value="<?=e($liWarranty)?>" placeholder="Warranty"></div></div>
                 <select name="item_id[]" class="dc-item item-source-select" tabindex="-1" aria-hidden="true">
                   <?php if($liId>0): $liBundle=bundle_components_for_parent($pdo,$cid,$liId); ?>
-                    <option value="<?=$liId?>" data-price="<?=e((string)$liPrice)?>" data-unit="<?=e($liUnit)?>" data-sale="<?=e((string)$liPrice)?>" data-buy="0" data-bundle="<?=e(bundle_option_json($liBundle))?>" selected><?=e($liName)?></option>
+                    <option value="<?=$liId?>" data-price="<?=e((string)$liPrice)?>" data-unit="<?=e($liUnit)?>" data-sale="<?=e((string)$liPrice)?>" data-buy="0" data-type="<?=e((string)($ln['item_type']??'product'))?>" data-description="<?=e((string)($ln['item_master_description']??''))?>" data-warranty="<?=e((string)($ln['item_master_warranty']??''))?>" data-weight-grams="<?=e((string)((float)($ln['weight_value']??0)*(strtolower((string)($ln['weight_unit']??'g'))==='kg'?1000:1)))?>" data-bundle="<?=e(bundle_option_json($liBundle))?>" selected><?=e($liName)?></option>
                   <?php endif; ?>
                 </select>
               <?php endif; ?>
             </div>
           </td>
-          <td><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>></td>
+          <td><div class="dc-qty-stack"><input type="number" class="dc-qty" name="qty[]" step="1" min="1" value="<?=e((string)$liQty)?>" <?= $isChild?'readonly':''?>><?php if($showProductWeight): ?><input type="number" class="dc-item-weight" name="item_weight_kg[]" min="0" step="0.0001" value="<?=e(number_format(max(0,$liWeightGrams/1000),4,'.',''))?>" <?=(!$liId || (($ln['item_type']??'product')==='service'))?'readonly':''?> placeholder="kg"><?php endif; ?></div></td>
           <td class="dc-unit"><?=e($liUnit!==''?$liUnit:'—')?></td>
           <td><input type="number" class="dc-price" name="price[]" step="0.01" min="0" value="<?=e((string)$liPrice)?>" <?= $isChild?'readonly':''?>></td>
           <td><input type="number" class="dc-line-discount" name="discount[]" step="1" min="0" value="<?=e((string)$liDisc)?>" <?= $isChild?'readonly':''?>></td>
-          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span><?php else:?><input type="number" class="dc-amt-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?></td>
+          <td class="dc-amt" data-discount="<?=e((string)$liDisc)?>"><?php if($isChild):?><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text">৳0.00</span><?php else:?><input type="number" class="dc-amt-input" name="amount[]" step="0.01" min="0" value="<?=e(number_format(max(0,(float)($ln['amount']??($liQty*$liPrice-$liDisc))),2,'.',''))?>" aria-label="Amount"><?php endif;?><?php if($showProductWeight): ?><div class="dc-line-weight">0 kg</div><?php endif; ?></td>
         </tr>
         <?php endforeach; ?>
       </tbody></table></div>
