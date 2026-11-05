@@ -144,8 +144,15 @@ function delivery_challans_list(): void {
             $pdo->prepare('INSERT INTO transactions(company_id,party_id,txn_type,document_no,txn_date,due_date,subtotal,item_discount,invoice_discount,tax,direct_expense,total,paid,due,currency_code,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
               ->execute([$cid,$source['party_id'],'sale',$doc,$source['txn_date'],null,$source['subtotal'],$source['item_discount'],$source['invoice_discount'],$source['tax'],$source['direct_expense'],$source['total'],$sourceAdvance,$saleDue,$source['currency_code'],$saleDue>0?'open':'final','Converted from '.$source['document_no'],$u['id']]);
             $tid=(int)$pdo->lastInsertId();
-            $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,qty,unit_price,discount,tax,amount) VALUES(?,?,?,?,?,?,?)');
-            foreach($sourceItems as $r){$ins->execute([$tid,$r['item_id'],$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount']]);}
+            $ins=$pdo->prepare('INSERT INTO transaction_items(transaction_id,item_id,bundle_parent_transaction_item_id,qty,unit_price,discount,tax,amount,item_description,item_warranty,item_weight_grams) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
+            $sourceToSaleItemIds=[];
+            foreach($sourceItems as $r){
+                $sourceParentId=(int)($r['bundle_parent_transaction_item_id']??0);
+                $saleParentId=$sourceParentId>0?($sourceToSaleItemIds[$sourceParentId]??null):null;
+                if($sourceParentId>0 && !$saleParentId) throw new RuntimeException('Bundle parent item could not be linked during Sale conversion.');
+                $ins->execute([$tid,$r['item_id'],$saleParentId,$r['qty'],$r['unit_price'],$r['discount'],$r['tax'],$r['amount'],$r['item_description']??null,$r['item_warranty']??null,$r['item_weight_grams']??0]);
+                $sourceToSaleItemIds[(int)$r['id']]=(int)$pdo->lastInsertId();
+            }
             $cogs=0;
             $itq=$pdo->prepare('SELECT item_type,purchase_price FROM items WHERE id=? AND company_id=?');
             $stock=$pdo->prepare('INSERT INTO stock_movements(company_id,item_id,transaction_id,movement_date,quantity,movement_type,note) VALUES(?,?,?,?,?,?,?)');
