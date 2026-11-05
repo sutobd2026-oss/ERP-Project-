@@ -40,7 +40,13 @@ function ensure_bundle_schema(): void {
 }
 function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId): array {
     try {
-        $st=$pdo->prepare('SELECT ib.id bundle_id,ib.component_item_id item_id,ib.quantity,ib.sort_order,
+        // Older company databases may still have the original table without sort_order.
+        // Read them safely while the schema migration is applied or when ALTER is unavailable.
+        $cols=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
+        $hasSort=in_array('sort_order',$cols,true);
+        $sortSelect=$hasSort?'ib.sort_order':'0 AS sort_order';
+        $sortOrder=$hasSort?'ib.sort_order,ib.id':'ib.id';
+        $st=$pdo->prepare('SELECT ib.id bundle_id,ib.component_item_id item_id,ib.quantity,'.$sortSelect.',
                                   i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
@@ -48,7 +54,7 @@ function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId)
                            JOIN items i ON i.id=ib.component_item_id AND i.company_id=ib.company_id AND i.active=1
                            LEFT JOIN units u ON u.id=i.unit_id
                            WHERE ib.company_id=? AND ib.parent_item_id=?
-                           ORDER BY ib.sort_order,ib.id');
+                           ORDER BY '.$sortOrder);
         $st->execute([$companyId,$parentItemId]);
         $rows=$st->fetchAll(PDO::FETCH_ASSOC);
     } catch(Throwable $e) {
@@ -63,14 +69,18 @@ function bundle_components_for_parent(PDO $pdo,int $companyId,int $parentItemId)
 }
 function bundle_map_for_company(PDO $pdo,int $companyId): array {
     try {
-        $st=$pdo->prepare('SELECT ib.parent_item_id,ib.component_item_id,ib.quantity,ib.sort_order,
+        $cols=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
+        $hasSort=in_array('sort_order',$cols,true);
+        $sortSelect=$hasSort?'ib.sort_order':'0 AS sort_order';
+        $sortOrder=$hasSort?'ib.parent_item_id,ib.sort_order,ib.id':'ib.parent_item_id,ib.id';
+        $st=$pdo->prepare('SELECT ib.parent_item_id,ib.component_item_id,ib.quantity,'.$sortSelect.',
                                   i.name,i.code,i.item_type,i.serial_tracked,i.sale_price,i.purchase_price,i.unit_id,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
                                   CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
                                   COALESCE(u.symbol,"") unit_symbol
                            FROM item_bundles ib
                            JOIN items i ON i.id=ib.component_item_id AND i.company_id=ib.company_id AND i.active=1
                            LEFT JOIN units u ON u.id=i.unit_id
-                           WHERE ib.company_id=? ORDER BY ib.parent_item_id,ib.sort_order,ib.id');
+                           WHERE ib.company_id=? ORDER BY '.$sortOrder);
         $st->execute([$companyId]); $map=[];
     } catch(Throwable $e) {
         error_log('bundle map failed: '.$e->getMessage());
