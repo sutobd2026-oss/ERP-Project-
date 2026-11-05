@@ -162,7 +162,7 @@ if($route==='item-search-api'){
     // v236: item metadata must always be available to the AJAX search.
     try {
         $cols=db()->query('SHOW COLUMNS FROM items')->fetchAll(PDO::FETCH_COLUMN,0);
-        foreach(['item_note'=>'TEXT NULL','warranty'=>'VARCHAR(255) NULL','location'=>'VARCHAR(255) NULL'] as $c=>$def){
+        foreach(['item_note'=>'TEXT NULL','warranty'=>'VARCHAR(255) NULL','location'=>'VARCHAR(255) NULL','weight_value'=>'DECIMAL(12,4) NULL','weight_unit'=>"VARCHAR(2) NOT NULL DEFAULT 'g'"] as $c=>$def){
             if(!in_array($c,$cols,true)) db()->exec('ALTER TABLE items ADD COLUMN `'.$c.'` '.$def);
         }
     } catch(Throwable $e) { error_log('item search metadata schema: '.$e->getMessage()); }
@@ -172,6 +172,7 @@ if($route==='item-search-api'){
     $like='%'.$q.'%';
     $sql='SELECT i.id,i.name,i.code,i.barcode,i.item_type,i.serial_tracked,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,
       COALESCE(i.location,"") location,COALESCE(i.item_note,"") item_note,COALESCE(i.description,"") description,COALESCE(i.warranty,"") warranty,
+      COALESCE(i.weight_value,0) weight_value,COALESCE(i.weight_unit,"g") weight_unit,CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,
       COALESCE((SELECT SUM(sm.quantity) FROM stock_movements sm WHERE sm.company_id=i.company_id AND sm.item_id=i.id
                      AND (sm.transaction_id IS NULL OR EXISTS (
                          SELECT 1 FROM transactions st
@@ -194,6 +195,8 @@ if($route==='item-search-api'){
         $r['sale_price']=(float)$r['sale_price'];
         $r['wholesale_price']=(float)$r['wholesale_price'];
         $r['purchase_price']=(float)$r['purchase_price'];
+        $r['weight_value']=(float)($r['weight_value']??0);
+        $r['weight_grams']=(float)($r['weight_grams']??0);
         $r['bundle_components']=array_map(function($c){
           $c['item_id']=(int)($c['item_id']??$c['component_item_id']??0);
           $c['quantity']=(float)($c['quantity']??1);
@@ -223,6 +226,7 @@ if($route==='bundle-components-api'){
                 'serial_tracked'=>(int)($r['serial_tracked']??0),
                 'sale_price'=>(float)($r['sale_price']??0),
                 'purchase_price'=>(float)($r['purchase_price']??0),
+                'weight_grams'=>(float)($r['weight_grams']??0),
             ];
         }
         echo json_encode(['ok'=>true,'items'=>$items],JSON_UNESCAPED_UNICODE);exit;
@@ -281,6 +285,7 @@ if($route==='inline-product-create'){
     try{
         check_csrf();
         $cid=(int)$u['company_id']; $pdo=db();
+        try{$itemCols=$pdo->query('SHOW COLUMNS FROM items')->fetchAll(PDO::FETCH_COLUMN,0);foreach(['weight_value'=>'DECIMAL(12,4) NULL','weight_unit'=>"VARCHAR(2) NOT NULL DEFAULT 'g'"] as $col=>$def){if(!in_array($col,$itemCols,true))$pdo->exec('ALTER TABLE items ADD COLUMN `'.$col.'` '.$def);}}catch(Throwable $schemaError){error_log('inline product weight schema: '.$schemaError->getMessage());}
         $name=trim((string)($_POST['name']??''));
         $code=trim((string)($_POST['code']??''));
         $categoryId=(int)($_POST['category_id']??0)?:null;
@@ -288,6 +293,7 @@ if($route==='inline-product-create'){
         $sale=(float)($_POST['sale_price']??0); $wh=(float)($_POST['wholesale_price']??0); $minWh=(float)($_POST['min_wholesale_qty']??0); $buy=(float)($_POST['purchase_price']??0);
         $opening=max(0,(float)($_POST['opening_stock']??0)); $low=max(0,(float)($_POST['low_stock_limit']??0));
         $serial=!empty($_POST['serial_tracked'])?1:0; $desc=trim((string)($_POST['description']??''));
+        $weightRaw=trim((string)($_POST['weight_value']??''));if($weightRaw!==''&&(!is_numeric($weightRaw)||(float)$weightRaw<0))throw new RuntimeException('Product weight must be a number greater than or equal to zero.');$weightValue=$weightRaw===''?null:(float)$weightRaw;$weightUnit=($_POST['weight_unit']??'g')==='kg'?'kg':'g';
         if($name==='')throw new RuntimeException('Product name is required.');
         // Keep inline Add Product consistent with the main Item form:
         // product names must be unique within the same company, ignoring
@@ -296,18 +302,18 @@ if($route==='inline-product-create'){
         $dup->execute([$cid,$name]);
         if($dup->fetchColumn())throw new RuntimeException('A product with this name already exists.');
         $pdo->beginTransaction();
-        $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,serial_tracked,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit,description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-            ->execute([$cid,'product',$name,$code?:null,null,$serial,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$opening,$low,$desc]);
+        $pdo->prepare('INSERT INTO items(company_id,item_type,name,code,barcode,serial_tracked,category_id,unit_id,sale_price,wholesale_price,min_wholesale_qty,purchase_price,opening_stock,low_stock_limit,description,weight_value,weight_unit) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            ->execute([$cid,'product',$name,$code?:null,null,$serial,$categoryId,$unitId,$sale,$wh,$minWh,$buy,$opening,$low,$desc,$weightValue,$weightUnit]);
         $id=(int)$pdo->lastInsertId();
         if($opening>0.0001){
             $pdo->prepare('INSERT INTO stock_movements(company_id,item_id,movement_date,quantity,unit_price,movement_type,note) VALUES(?,?,?,?,?,?,?)')
                 ->execute([$cid,$id,date('Y-m-d'),$opening,$buy,'opening_stock','Opening Stock']);
         }
         $pdo->commit();
-        $st=$pdo->prepare('SELECT i.id,i.name,i.code,i.barcode,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,i.item_type,i.serial_tracked,COALESCE(u.symbol,"") unit_symbol FROM items i LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
+        $st=$pdo->prepare('SELECT i.id,i.name,i.code,i.barcode,i.sale_price,i.wholesale_price,i.purchase_price,i.unit_id,i.item_type,i.serial_tracked,COALESCE(i.weight_value,0) weight_value,COALESCE(i.weight_unit,"g") weight_unit,CASE WHEN LOWER(COALESCE(i.weight_unit,"g"))="kg" THEN COALESCE(i.weight_value,0)*1000 ELSE COALESCE(i.weight_value,0) END weight_grams,COALESCE(u.symbol,"") unit_symbol FROM items i LEFT JOIN units u ON u.id=i.unit_id WHERE i.id=? AND i.company_id=? LIMIT 1');
         $st->execute([$id,$cid]);$item=$st->fetch(PDO::FETCH_ASSOC) ?: [];
         audit('create','item',$id,['name'=>$name,'type'=>'product','opening_stock'=>$opening,'source'=>'inline_form']);
-        foreach(['sale_price','wholesale_price','purchase_price'] as $k)$item[$k]=(float)($item[$k]??0);
+        foreach(['sale_price','wholesale_price','purchase_price','weight_value','weight_grams'] as $k)$item[$k]=(float)($item[$k]??0);
         $item['id']=(int)$item['id']; $item['serial_tracked']=(int)$item['serial_tracked'];
         echo json_encode(['ok'=>true,'item'=>$item],JSON_UNESCAPED_UNICODE);exit;
     }catch(Throwable $e){
