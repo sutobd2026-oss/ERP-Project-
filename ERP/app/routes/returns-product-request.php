@@ -891,7 +891,11 @@ function delivery_challan_new(): void {
           item_id:Number(c.item_id||c.component_item_id||0),
           name:String(c.name||''),
           quantity:Number(c.quantity||1),
-          unit_symbol:String(c.unit_symbol||'')
+          unit_price:Math.max(0,Number(c.unit_price||0)),
+          unit_symbol:String(c.unit_symbol||''),
+          description:String(c.description||''),
+          warranty:String(c.warranty||''),
+          weight_grams:Number(c.weight_grams||0)
         };}).filter(function(c){return c.item_id>0;});
       }catch(e){return [];}
     }
@@ -916,14 +920,16 @@ function delivery_challan_new(): void {
       const totalQty=parentQty*Math.max(0,parseFloat(component.quantity||1)||1);
       const esc=function(v){return String(v||'').replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});};
       const name=esc(component.name),unit=esc(component.unit_symbol),itemId=Number(component.item_id||0);
+      const unitPrice=Math.max(0,Number(component.unit_price||0));
+      const initialAmount=(totalQty*unitPrice).toFixed(2);
       tr.innerHTML=
         '<td class="txn-row-index-cell"><span class="txn-row-number"></span><button type="button" class="row-remove-btn txn-row-remove txn-row-remove-btn" onclick="dcRemoveRow(this)" aria-label="Remove free item" title="Remove free item">×</button></td>'+
-        '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><input type="hidden" name="item_description[]" value="'+esc(component.description||'')+'"><input type="hidden" name="item_warranty[]" value="'+esc(component.warranty||'')+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span><span>FREE</span></div></div></td>'+
+        '<td><input type="hidden" name="bundle_row_key[]" value="'+tr.dataset.bundleRowKey+'"><input type="hidden" name="bundle_parent_key[]" value="'+esc(parentKey)+'"><input type="hidden" name="bundle_child[]" value="1"><input type="hidden" name="item_id[]" value="'+itemId+'"><input type="hidden" name="item_description[]" value="'+esc(component.description||'')+'"><input type="hidden" name="item_warranty[]" value="'+esc(component.warranty||'')+'"><div class="item-picker-cell"><div class="bundle-child-label"><span>└─ <strong>'+name+'</strong></span></div></div></td>'+
         '<td><div class="dc-qty-stack qty-weight-stack"><input type="number" class="dc-qty qty" name="qty[]" step="1" min="1" value="'+totalQty+'" readonly>'+(window.SutoProductWeightEnabled?'<input class="dc-item-weight item-weight-kg" type="number" name="item_weight_kg[]" min="0" step="0.0001" value="'+(Number(component.weight_grams||0)>0?(Math.max(0,Number(component.weight_grams||0))/1000).toFixed(4):'')+'" placeholder="Weight in KG">':'')+'</div></td>'+
         '<td class="dc-unit unit-label">'+unit+'</td>'+
-        '<td><input type="number" class="dc-price price" name="price[]" step="0.01" min="0" value="0" readonly></td>'+
-        '<td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="1" min="0" value="0" readonly></td>'+
-        '<td class="dc-amt" data-discount="0"><input type="hidden" name="amount[]" value="0"><span class="dc-amt-text amount">৳0.00</span>'+(window.SutoProductWeightEnabled?'<div class="dc-line-weight line-weight-total">0 kg</div>':'')+'</td>';
+        '<td><input type="number" class="dc-price price" name="price[]" step="0.0001" min="0" value="'+unitPrice+'"></td>'+
+        '<td><input type="number" class="dc-line-discount line-disc" name="discount[]" step="0.01" min="0" value="0"></td>'+
+        '<td class="dc-amt" data-discount="0"><input type="number" class="dc-amt-input amount amount-input" name="amount[]" step="0.01" min="0" value="'+initialAmount+'">'+(window.SutoProductWeightEnabled?'<div class="dc-line-weight line-weight-total">0 kg</div>':'')+'</td>';
       return tr;
     }
     function dcRenderBundleChildren(parentRow,components){
@@ -953,6 +959,7 @@ function delivery_challan_new(): void {
         if(String(r.dataset.bundleParentKey||'')!==String(parentKey))return;
         const id=r.querySelector('input[name="item_id[]"]')?.value||'';
         const q=r.querySelector('.dc-qty'); if(q)q.value=String(parentQty*(factorMap[String(id)]||1));
+        r.dataset.dcRecalcFromPrice='1';
       });
     }
     function dcSyncBundleForRow(row){
