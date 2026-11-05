@@ -100,30 +100,39 @@ page_start('Items');
                 $bundleColumns=$pdo->query('SHOW COLUMNS FROM item_bundles')->fetchAll(PDO::FETCH_COLUMN,0);
                 if(!$bundleColumns) throw new RuntimeException('Bundle storage is not available. Please check the database permissions.');
                 $bundleHasSort=in_array('sort_order',$bundleColumns,true);
+                $bundleHasPrice=in_array('unit_price',$bundleColumns,true);
                 $parentId=(int)($_POST['parent_item_id']??0);
                 if($parentId<=0) throw new RuntimeException('Bundle product not found.');
                 $st=$pdo->prepare('SELECT id,name,item_type,active FROM items WHERE id=? AND company_id=? LIMIT 1');
                 $st->execute([$parentId,$cid]); $parent=$st->fetch();
                 if(!$parent || (int)$parent['active']!==1) throw new RuntimeException('Bundle product not found.');
-                if($parent['item_type']!=='product') throw new RuntimeException('Only products can have included free items.');
-                $ids=(array)($_POST['component_item_id']??[]); $qtys=(array)($_POST['component_qty']??[]); $clean=[]; $seen=[]; $sort=0;
+                if($parent['item_type']!=='product') throw new RuntimeException('Only products can have included items.');
+                $ids=(array)($_POST['component_item_id']??[]); $qtys=(array)($_POST['component_qty']??[]); $prices=(array)($_POST['component_price']??[]); $clean=[]; $seen=[]; $sort=0;
                 foreach($ids as $i=>$raw){
-                    $componentId=(int)$raw; $qty=(float)($qtys[$i]??0); if($componentId<=0||$qty<=0)continue;
+                    $componentId=(int)$raw; $qty=(float)($qtys[$i]??0); $price=max(0,(float)($prices[$i]??0)); if($componentId<=0||$qty<=0)continue;
                     if($componentId===$parentId)throw new RuntimeException('A product cannot include itself.');
                     if(isset($seen[$componentId]))throw new RuntimeException('The same included item cannot be added twice.');
                     $st=$pdo->prepare('SELECT id,item_type,active FROM items WHERE id=? AND company_id=? LIMIT 1');$st->execute([$componentId,$cid]);$component=$st->fetch();
                     if(!$component || (int)$component['active']!==1)throw new RuntimeException('Included item not found.');
-                    if($component['item_type']!=='product')throw new RuntimeException('Only products can be included as free bundle items.');
-                    $seen[$componentId]=true;$clean[]=[$componentId,$qty,$sort++];
+                    if($component['item_type']!=='product')throw new RuntimeException('Only products can be included in a bundle.');
+                    $seen[$componentId]=true;$clean[]=[$componentId,$qty,$price,$sort++];
                 }
                 $pdo->beginTransaction();
                 try{
                     $pdo->prepare('DELETE FROM item_bundles WHERE company_id=? AND parent_item_id=?')->execute([$cid,$parentId]);
-                    $ins=$bundleHasSort
-                        ?$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,sort_order) VALUES(?,?,?,?,?)')
-                        :$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity) VALUES(?,?,?,?)');
+                    if($bundleHasSort && $bundleHasPrice){
+                        $ins=$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,unit_price,sort_order) VALUES(?,?,?,?,?,?)');
+                    }elseif($bundleHasPrice){
+                        $ins=$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,unit_price) VALUES(?,?,?,?,?)');
+                    }elseif($bundleHasSort){
+                        $ins=$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity,sort_order) VALUES(?,?,?,?,?)');
+                    }else{
+                        $ins=$pdo->prepare('INSERT INTO item_bundles(company_id,parent_item_id,component_item_id,quantity) VALUES(?,?,?,?)');
+                    }
                     foreach($clean as $r){
-                        if($bundleHasSort)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[2]]);
+                        if($bundleHasSort && $bundleHasPrice)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[2],$r[3]]);
+                        elseif($bundleHasPrice)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[2]]);
+                        elseif($bundleHasSort)$ins->execute([$cid,$parentId,$r[0],$r[1],$r[3]]);
                         else $ins->execute([$cid,$parentId,$r[0],$r[1]]);
                     }
                     $pdo->commit();
